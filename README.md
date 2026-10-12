@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Then open the link it prints (http://localhost:5173/horses-tour2/).
+Then open the link it prints (http://localhost:5173/Horses-Tour2/).
 
 ## Where things live
 
