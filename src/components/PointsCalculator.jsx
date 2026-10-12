@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react"
-import { getContributions, getSchedule } from "../data/googleSheets"
+import { getMatchEntry, getSchedule } from "../data/googleSheets"
+import { getPlayedMatchEntryRows } from "../utils/matchEntry"
+import { ordinal } from "../utils/ordinal"
+
+// Reads Match Entry (like the rest of the site) instead of the old
+// Contributions tab, which stopped being updated after the first two events.
+function formatPoints(value) {
+  const num = parseFloat(value)
+  return isNaN(num) ? "-" : num.toFixed(2)
+}
 
 function PointsCalculator() {
 
@@ -12,8 +21,8 @@ function PointsCalculator() {
 
       try {
 
-        const [contributions, schedule] = await Promise.all([
-          getContributions(),
+        const [matchEntry, schedule] = await Promise.all([
+          getMatchEntry(),
           getSchedule(),
         ])
 
@@ -23,9 +32,11 @@ function PointsCalculator() {
           scheduleById[event["Event ID"]] = event
         })
 
+        const playedRows = getPlayedMatchEntryRows(matchEntry)
+
         const eventIds = []
 
-        contributions.forEach((row) => {
+        playedRows.forEach((row) => {
           if (row["Event ID"] && !eventIds.includes(row["Event ID"])) {
             eventIds.push(row["Event ID"])
           }
@@ -36,16 +47,16 @@ function PointsCalculator() {
 
             const event = scheduleById[eventId]
 
-            const rows = contributions
+            const rows = playedRows
               .filter((row) => row["Event ID"] === eventId)
               .sort(
                 (a, b) =>
-                  parseFloat(b["Match Points"]) - parseFloat(a["Match Points"])
+                  parseFloat(b["Match Ranking Points"]) - parseFloat(a["Match Ranking Points"])
               )
 
             return {
               eventId,
-              eventName: event ? event["Event Name"] : `Event ${eventId}`,
+              eventName: event ? event["Event Name"].trim() : `Event ${eventId}`,
               date: event ? event.Date : "",
               rows,
             }
@@ -87,7 +98,7 @@ function PointsCalculator() {
       )}
 
       {!loading && events.length === 0 && (
-        <p>No contribution data yet.</p>
+        <p>No match results yet.</p>
       )}
 
       {!loading && events.map((event) => (
@@ -107,9 +118,9 @@ function PointsCalculator() {
                 <tr>
                   <th>Player</th>
                   <th>Team</th>
+                  <th>Finish</th>
                   <th>Contribution</th>
-                  <th>Points Earned</th>
-                  <th>Rank</th>
+                  <th>Placement Points</th>
                   <th>Multiplier</th>
                   <th>Final Points</th>
                 </tr>
@@ -122,16 +133,12 @@ function PointsCalculator() {
                   <tr key={index}>
                     <td>{row.Player}</td>
                     <td>{row.Team}</td>
+                    <td>{row.Placement ? ordinal(Number(row.Placement)) : "-"}</td>
                     <td>{row["Contribution %"]}</td>
-                    <td>{row["Points Earned"]}</td>
+                    <td>{row["Power Score Earned"]}</td>
+                    <td>{row.Multiplier}x</td>
                     <td>
-                      {row["Player's current rank"]
-                        ? `#${row["Player's current rank"]}`
-                        : "New"}
-                    </td>
-                    <td>{row["Multiplyer"]}x</td>
-                    <td>
-                      <strong>{row["Match Points"]}</strong>
+                      <strong>{formatPoints(row["Match Ranking Points"])}</strong>
                     </td>
                   </tr>
 

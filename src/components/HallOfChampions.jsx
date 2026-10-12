@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { getSchedule, getMatchEntry, getPlayers, getEvents } from "../data/googleSheets"
+import { Lightbox } from "./Gallery"
 
 function formatOverPar(value) {
   if (value === "" || value === null || value === undefined) return value
@@ -26,6 +27,7 @@ function HallOfChampions() {
   const [champions, setChampions] = useState([])
   const [playerIds, setPlayerIds] = useState({})
   const [loading, setLoading] = useState(true)
+  const [openIndex, setOpenIndex] = useState(null)
 
   useEffect(() => {
 
@@ -120,6 +122,20 @@ function HallOfChampions() {
 
   }, [])
 
+  // Only champions with a photo can be enlarged.
+  const photos = champions
+    .filter((c) => c.image)
+    .map((c) => ({
+      eventId: c.eventId,
+      Image: c.image,
+      Caption: `${c.year} ${c.eventName} · ${c.players.join(" & ")}`,
+    }))
+
+  function openPhoto(eventId) {
+    const index = photos.findIndex((p) => p.eventId === eventId)
+    if (index !== -1) setOpenIndex(index)
+  }
+
   return (
 
     <section className="card">
@@ -152,14 +168,32 @@ function HallOfChampions() {
 
             </div>
 
-            <div className="champion-card-photo-wrap">
+            <div
+              className={`champion-card-photo-wrap${c.image ? " is-zoomable" : ""}`}
+              {...(c.image && {
+                role: "button",
+                tabIndex: 0,
+                "aria-label": `Enlarge photo from ${c.eventName}`,
+                onClick: () => openPhoto(c.eventId),
+                onKeyDown: (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault()
+                    openPhoto(c.eventId)
+                  }
+                },
+              })}
+            >
 
               {c.image ? (
-                <img
-                  src={c.image}
-                  alt={c.eventName}
-                  className="champion-card-photo"
-                />
+                <>
+                  <img
+                    src={c.image}
+                    alt={c.eventName}
+                    className="champion-card-photo"
+                  />
+
+                  <div className="gallery-card-zoom-hint">⤢</div>
+                </>
               ) : (
                 <div className="champion-card-photo-fallback" />
               )}
@@ -173,6 +207,8 @@ function HallOfChampions() {
                     <Link
                       to={`/player-profile/${playerIds[name]}`}
                       className="champion-card-player"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
                     >
                       {name}
                     </Link>
@@ -198,6 +234,15 @@ function HallOfChampions() {
         ))}
 
       </div>
+
+      {openIndex !== null && (
+        <Lightbox
+          photos={photos}
+          index={openIndex}
+          onClose={() => setOpenIndex(null)}
+          onNavigate={setOpenIndex}
+        />
+      )}
 
     </section>
 

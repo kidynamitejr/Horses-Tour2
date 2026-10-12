@@ -7,7 +7,7 @@ import LastMatchFeature from "../components/LastMatchFeature"
 import News from "../components/News"
 import HottestPlayer from "../components/HottestPlayer"
 import { getEvents } from "../data/googleSheets"
-import { PHOTOS, COURSES } from "../siteConfig"
+import { PHOTOS, COURSES, LOGO } from "../siteConfig"
 import {
   CalendarIcon,
   FlagIcon,
@@ -65,6 +65,9 @@ function HomeHero() {
       <img className="home-hero-image" src={PHOTOS.aerialFairway} alt="" />
 
       <div className="home-hero-overlay" />
+
+      {/* Oversized one-color logo that the photo fades into on the left */}
+      <img className="home-hero-logo" src={LOGO} alt="" aria-hidden="true" />
 
       <div className="container home-hero-content">
         <span className="eyebrow eyebrow-light">Horses Tour · 2026 Season</span>

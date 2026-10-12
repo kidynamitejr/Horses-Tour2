@@ -564,6 +564,28 @@ html[data-theme="dark"] .site-brand-text {
     linear-gradient(0deg, rgba(0, 18, 36, .85) 0%, rgba(0, 18, 36, 0) 40%);
 }
 
+/* The logo, recolored to a single deep tone, sits on the dark left side of
+   the hero and dissolves toward the photo. */
+.home-hero-logo {
+  position: absolute;
+  z-index: -1;
+  /* Only the horse-and-clubs emblem - the wordmark below it is clipped off
+     so it doesn't run behind the stats row. */
+  top: 44%;
+  left: max(-80px, calc(50% - 790px));
+  height: min(135%, 1150px);
+  width: auto;
+  max-width: none;
+  transform: translateY(-40%);
+  clip-path: inset(8% 0 34% 0);
+  filter: brightness(0) invert(1);
+  opacity: .09;
+  -webkit-mask-image: linear-gradient(90deg, black 45%, transparent 95%);
+  mask-image: linear-gradient(90deg, black 45%, transparent 95%);
+  pointer-events: none;
+  user-select: none;
+}
+
 .home-hero-content {
   padding-top: 96px;
   padding-bottom: 56px;
@@ -1052,9 +1074,68 @@ html[data-theme="dark"] .power-points-table td {
   border-bottom-color: var(--line);
 }
 
-/* Glass tables on top of course photos keep their own look */
+/* Individual placements: a dark frosted panel over the course photo, so
+   the numbers read clearly whatever the photo looks like behind them. */
+.individual-placements-panel {
+  background: rgba(0, 18, 36, .72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: var(--radius-md);
+  padding: 8px;
+  text-shadow: none;
+}
+
 .individual-placements-panel .table-scroll {
   border: none;
+}
+
+.individual-placements-panel table,
+html[data-theme="dark"] .individual-placements-panel table {
+  color: white;
+  font-size: 15px;
+}
+
+.individual-placements-panel th {
+  background: transparent;
+  color: #7fd0ff;
+  border-bottom: 1px solid rgba(255, 255, 255, .25);
+}
+
+.individual-placements-panel td,
+html[data-theme="dark"] .individual-placements-panel td {
+  color: white;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  border-bottom: 1px solid rgba(255, 255, 255, .12);
+  padding: 8px 14px;
+}
+
+.individual-placements-panel tbody tr,
+.individual-placements-panel tbody tr:nth-child(even),
+html[data-theme="dark"] .individual-placements-panel tbody tr:nth-child(even) {
+  background: transparent;
+}
+
+.individual-placements-panel tbody tr:hover,
+html[data-theme="dark"] .individual-placements-panel tbody tr:hover {
+  background: rgba(255, 255, 255, .08);
+}
+
+/* Place and Points Earned get the emphasis */
+.individual-placements-panel td:first-child,
+.individual-placements-panel td:last-child {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.individual-placements-panel td:last-child {
+  color: #f4d374;
+}
+
+.individual-placements-panel tbody tr:nth-child(-n+3) td:first-child {
+  color: #f4d374;
 }
 
 .schedule-event-name,
@@ -1475,6 +1556,27 @@ html[data-theme="dark"] .calc-event h3 {
   border-bottom-color: var(--line);
 }
 
+.champion-card-photo-wrap.is-zoomable {
+  cursor: zoom-in;
+}
+
+.champion-card-photo-wrap.is-zoomable .champion-card-photo {
+  transition: transform .4s;
+}
+
+.champion-card-photo-wrap.is-zoomable:hover .champion-card-photo {
+  transform: scale(1.05);
+}
+
+.champion-card-photo-wrap.is-zoomable:hover .gallery-card-zoom-hint,
+.champion-card-photo-wrap.is-zoomable:focus-visible .gallery-card-zoom-hint {
+  opacity: 1;
+}
+
+.champion-card-photo-wrap .gallery-card-zoom-hint {
+  z-index: 2;
+}
+
 .champion-card,
 html[data-theme="dark"] .champion-card {
   border-radius: var(--radius-lg);
@@ -1751,6 +1853,16 @@ input[type="number"] {
 
   .home-hero {
     min-height: auto;
+  }
+
+  .home-hero-logo {
+    top: 2%;
+    left: 50%;
+    height: 620px;
+    transform: translateX(-50%);
+    opacity: .13;
+    -webkit-mask-image: none;
+    mask-image: none;
   }
 
   .home-hero-content {

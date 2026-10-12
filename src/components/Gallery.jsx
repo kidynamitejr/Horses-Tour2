@@ -2,9 +2,30 @@ import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import { getGallery } from "../data/googleSheets"
 
-function Lightbox({ photos, index, onClose, onNavigate }) {
+// Full-screen photo viewer, shared with the Hall of Champions. `photos` is
+// a list of { Image, Caption }.
+export function Lightbox({ photos, index, onClose, onNavigate }) {
 
   const photo = photos[index]
+
+  // Lets the arrow keys and Escape drive the lightbox while it's open.
+  useEffect(() => {
+
+    function handleKeyDown(e) {
+
+      if (e.key === "Escape") onClose()
+
+      if (e.key === "ArrowRight") onNavigate((index + 1) % photos.length)
+
+      if (e.key === "ArrowLeft") onNavigate((index - 1 + photos.length) % photos.length)
+
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+
+    return () => window.removeEventListener("keydown", handleKeyDown)
+
+  }, [index, photos.length, onClose, onNavigate])
 
   return createPortal(
 
@@ -108,31 +129,6 @@ function Gallery() {
     loadGallery()
 
   }, [])
-
-  // Lets the arrow keys and Escape drive the lightbox once it's open.
-  useEffect(() => {
-
-    if (openIndex === null) return
-
-    function handleKeyDown(e) {
-
-      if (e.key === "Escape") setOpenIndex(null)
-
-      if (e.key === "ArrowRight") {
-        setOpenIndex((i) => (i + 1) % photos.length)
-      }
-
-      if (e.key === "ArrowLeft") {
-        setOpenIndex((i) => (i - 1 + photos.length) % photos.length)
-      }
-
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-
-    return () => window.removeEventListener("keydown", handleKeyDown)
-
-  }, [openIndex, photos.length])
 
   return (
 

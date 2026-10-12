@@ -80,7 +80,6 @@ function ScoreChart({ match, field, caption, tooltipLabel }) {
             <YAxis
               allowDecimals={false}
               width={36}
-              reversed
               interval={0}
               domain={yAxis.domain}
               ticks={yAxis.ticks}
