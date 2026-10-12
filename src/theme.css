@@ -16,13 +16,16 @@
   --green: #2d6a4f;
 
   --ink: #0d1b2a;
-  --text: #45525f;
-  --muted: #6c7884;
-  --line: #e3e8ee;
-  --surface: #ffffff;
-  --surface-2: #f4f6f9;
-  --surface-3: #eaeef3;
-  --page: #ffffff;
+  --text: #414e5b;
+  --muted: #64707c;
+  /* Soft gray-blue tones instead of bright white, easier on the eyes */
+  --line: #d4dbe3;
+  --surface: #f5f7f9;
+  --surface-2: #dfe5ec;
+  --surface-3: #d6dde5;
+  --page: #e9edf2;
+  --row-alt: #ebeff3;
+  --header-bg: rgba(245, 247, 249, .96);
 
   --font-display: "Red Hat Display", "Nunito Sans", Arial, sans-serif;
   --font-body: "Nunito Sans", Arial, Helvetica, sans-serif;
@@ -50,6 +53,8 @@ html[data-theme="dark"] {
   --surface-2: #0c1520;
   --surface-3: #1a2636;
   --page: #0c1520;
+  --row-alt: #0c1520;
+  --header-bg: rgba(12, 21, 32, .94);
   --sky-soft: rgba(26, 159, 224, .14);
   --gold-soft: rgba(201, 162, 39, .14);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, .3);
@@ -261,7 +266,7 @@ html[data-theme="dark"] .text-link {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(255, 255, 255, .96);
+  background: var(--header-bg);
   backdrop-filter: saturate(180%) blur(14px);
   -webkit-backdrop-filter: saturate(180%) blur(14px);
   border-bottom: 1px solid transparent;
@@ -1051,7 +1056,7 @@ td {
 
 tbody tr:nth-child(even),
 html[data-theme="dark"] tbody tr:nth-child(even) {
-  background: var(--surface-2);
+  background: var(--row-alt);
 }
 
 tr:hover,
@@ -1577,8 +1582,15 @@ html[data-theme="dark"] .calc-event h3 {
   z-index: 2;
 }
 
+/* Leftover white boxes from the old styles */
+.course-match,
+.match-card {
+  background: var(--surface);
+}
+
 .champion-card,
 html[data-theme="dark"] .champion-card {
+  background: var(--surface) !important;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
 }
