@@ -84,10 +84,16 @@ function Schedule() {
 
             <th>Event</th>
             <th>Date</th>
-            <th>Course</th>
-            <th>Classification</th>
+            <th className="hide-on-phone">Course</th>
+            <th>
+              <span className="label-full">Classification</span>
+              <span className="label-short">Type</span>
+            </th>
             <th>Winner</th>
-            <th>Tee Times</th>
+            <th>
+              <span className="label-full">Tee Times</span>
+              <span className="label-short">Tee</span>
+            </th>
 
           </tr>
 
@@ -112,7 +118,7 @@ function Schedule() {
               </td>
 
 
-              <td>
+              <td className="hide-on-phone">
                 {event.Course}
               </td>
 
@@ -141,7 +147,12 @@ function Schedule() {
                   return (
                     <span className={`status-badge ${badgeClass}`}>
                       {isSpecial && <span className="status-major-star">★</span>}
-                      {statusText}
+                      {isChampionship ? (
+                        <>
+                          <span className="label-full">{statusText}</span>
+                          <span className="label-short">Champ</span>
+                        </>
+                      ) : statusText}
                     </span>
                   )
 

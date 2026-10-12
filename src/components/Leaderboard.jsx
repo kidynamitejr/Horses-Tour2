@@ -170,13 +170,28 @@ function Leaderboard() {
         <thead>
 
           <tr>
-            <th>Rank</th>
+            <th>
+              <span className="label-full">Rank</span>
+              <span className="label-short">#</span>
+            </th>
             <th>Player</th>
-            <th>Ranking Factor</th>
-            <th>Events Played</th>
+            <th>
+              <span className="label-full">Ranking Factor</span>
+              <span className="label-short">Factor</span>
+            </th>
+            <th>
+              <span className="label-full">Events Played</span>
+              <span className="label-short">Played</span>
+            </th>
             <th>Wins</th>
-            <th>Runner-Ups</th>
-            <th>Movement</th>
+            <th>
+              <span className="label-full">Runner-Ups</span>
+              <span className="label-short">2nd</span>
+            </th>
+            <th>
+              <span className="label-full">Movement</span>
+              <span className="label-short">+/−</span>
+            </th>
           </tr>
 
         </thead>
