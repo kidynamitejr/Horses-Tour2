@@ -447,7 +447,8 @@ function NextEventFeature() {
             </div>
 
             {[...nextEventTeams]
-              .sort((a, b) => b.combined - a.combined)
+              // Team 1, Team 2, ... in order.
+              .sort((a, b) => Number(a.team.replace(/\D/g, "")) - Number(b.team.replace(/\D/g, "")))
               .map((t) => (
 
                 <button
