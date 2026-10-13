@@ -137,7 +137,7 @@ function Header() {
         <div className="site-header-actions">
           {themeButton}
 
-          <Link to="/schedule" className="btn btn-primary site-header-cta">
+          <Link to="/next-event" className="btn btn-primary site-header-cta">
             Next Event
           </Link>
 
@@ -167,7 +167,7 @@ function Header() {
             <NavLink key={item.to} to={item.to}>{item.label}</NavLink>
           ))}
 
-          <Link to="/schedule" className="btn btn-primary site-mobile-nav-cta">
+          <Link to="/next-event" className="btn btn-primary site-mobile-nav-cta">
             Next Event
           </Link>
         </nav>

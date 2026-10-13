@@ -27,11 +27,13 @@ import PointsCalculatorPage from "./pages/PointsCalculatorPage"
 import ComparePlayersPage from "./pages/ComparePlayersPage"
 import HallOfChampionsPage from "./pages/HallOfChampionsPage"
 import CourseHistoryPage from "./pages/CourseHistoryPage"
+import NextEventPage from "./pages/NextEventPage"
 
 function getPageHero(pathname) {
   if (PAGE_HEROES[pathname]) return PAGE_HEROES[pathname]
   if (pathname.startsWith("/news/")) return PAGE_HEROES["/news"]
-  // Player profiles already open with their own banner.
+  // Player profiles and the Next Event page already open with their own
+  // photo banner.
   return null
 }
 
@@ -75,6 +77,8 @@ function Layout() {
           <Route path="/hall-of-champions" element={<HallOfChampionsPage />} />
 
           <Route path="/course-history" element={<CourseHistoryPage />} />
+
+          <Route path="/next-event" element={<NextEventPage />} />
 
           <Route
             path="/player-profile/:name"
