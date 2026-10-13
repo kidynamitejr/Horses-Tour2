@@ -820,9 +820,14 @@ html[data-theme="dark"] .tc-table tbody tr:hover {
   text-transform: uppercase;
 }
 
-.ev-title {
+.ev-title,
+.card .ev-title,
+html[data-theme="dark"] .card .ev-title {
   margin: 0 0 12px;
-  color: white;
+  /* Always white on the photo, even inside a page card (Past Matches),
+     whose heading color would otherwise turn it navy. */
+  color: white !important;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, .35);
   font-size: clamp(30px, 4vw, 46px);
   font-weight: 800;
   letter-spacing: -0.025em;
