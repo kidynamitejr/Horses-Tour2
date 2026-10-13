@@ -264,8 +264,99 @@
     height: 26px;
   }
 
+  /* Profile header on phones: photo beside the name instead of above it,
+     with the facts / numbers / tools rows running full width below. */
+  .pp-hero {
+    grid-template-columns: 124px minmax(0, 1fr);
+    grid-template-areas:
+      "photo top"
+      "facts facts"
+      "numbers numbers"
+      "tools tools";
+  }
+
+  .pp-hero-body {
+    display: contents;
+  }
+
   .pp-hero-photo {
-    height: 230px;
+    grid-area: photo;
+    height: 158px;
+    padding-top: 12px;
+    border-bottom: none;
+  }
+
+  .pp-hero-top {
+    grid-area: top;
+    flex-direction: column;
+    align-self: center;
+    gap: 8px;
+    padding: 14px 14px 10px 6px;
+  }
+
+  .pp-hero-top h1 {
+    font-size: 28px;
+  }
+
+  .pp-hero-club {
+    flex-direction: row-reverse;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    max-width: none;
+    margin: 0;
+    font-size: 11.5px;
+    text-align: left;
+  }
+
+  .pp-hero-club svg,
+  .pp-hero-club img {
+    width: 30px;
+    height: 30px;
+  }
+
+  .pp-facts,
+  .pp-numbers,
+  .pp-tools {
+    margin: 0 16px;
+  }
+
+  .pp-facts {
+    grid-area: facts;
+    gap: 8px 12px;
+    padding: 10px 0 12px;
+  }
+
+  .pp-facts dt,
+  .pp-numbers dt {
+    font-size: 10.5px;
+  }
+
+  .pp-facts dd {
+    margin-top: 2px;
+    font-size: 12.5px;
+  }
+
+  .pp-numbers {
+    grid-area: numbers;
+    gap: 10px 12px;
+    padding: 10px 0 12px;
+  }
+
+  .pp-numbers dd {
+    margin-top: 2px;
+    font-size: 24px;
+  }
+
+  .pp-tools {
+    grid-area: tools;
+    gap: 8px;
+    padding: 10px 0 14px;
+  }
+
+  .pp-tool {
+    padding: 7px 11px;
+    font-size: 12px;
   }
 
   .tm-player-art {
