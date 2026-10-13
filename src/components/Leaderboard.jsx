@@ -1,6 +1,12 @@
-import { useEffect, useState } from "react"
-import { getPlayers, getMatchEntry } from "../data/googleSheets"
+import { Fragment, useEffect, useState } from "react"
+import { Link } from "react-router-dom"
+import { getPlayers, getMatchEntry, getEvents } from "../data/googleSheets"
 import { getPlayerSummaries } from "../utils/matchEntry"
+import { buildPlayerProfiles } from "../utils/playerProfile"
+import { ordinal } from "../utils/ordinal"
+import { UsaFlag, ChevronDownIcon } from "./Icons"
+
+const BASE = import.meta.env.BASE_URL
 
 // Ranks every player by their average Match Ranking Points using only
 // played rows through (and including) maxEventId - lets us reconstruct
@@ -37,32 +43,92 @@ function getRanksThroughEvent(playedRows, maxEventId) {
 
 }
 
+// Ranks players who have played golf-style (ties share a position, shown
+// as "T4", and the next player is 6th) and leaves the rest unranked.
+function withRanks(players, value) {
+  const played = players.filter((p) => p.eventsPlayed > 0).sort((a, b) => value(b) - value(a))
+  const unplayed = players.filter((p) => !(p.eventsPlayed > 0))
+  return [
+    ...played.map((p) => {
+      const position = played.findIndex((q) => value(q) === value(p)) + 1
+      const tied = played.filter((q) => value(q) === value(p)).length > 1
+      return { ...p, computedRank: position, tied }
+    }),
+    ...unplayed.map((p) => ({ ...p, computedRank: null, tied: false })),
+  ]
+}
+
+const posLabel = (p) => (p.computedRank ? `${p.tied ? "T" : ""}${p.computedRank}` : "–")
+
+const BOARDS = {
+  horsewide: {
+    label: "Horsewide",
+    title: "Horsewide Standings",
+    blurb: "Ranked by Ranking Factor - average ranking points per event.",
+    statLabel: "Ranking Factor",
+    statShort: "RF",
+    value: (p) => p.avgRankingPoints,
+    format: (v) => (Number.isFinite(v) ? v.toFixed(2) : "-"),
+  },
+  power: {
+    label: "Power Points",
+    title: "Power Points Standings",
+    blurb: "Season-long total of placement points earned at every event.",
+    statLabel: "Power Points",
+    statShort: "PTS",
+    value: (p) => p.totalPowerScore,
+    format: (v) => (Number.isFinite(v) ? String(Math.round(v)) : "-"),
+  },
+}
+
+function Cutout({ id, name }) {
+  const [src, setSrc] = useState(`${BASE}images/players/cutouts/${id || "default"}.png`)
+  return (
+    <img
+      className="lb2-podium-photo"
+      src={src}
+      alt={name}
+      onError={() => setSrc(`${BASE}images/players/cutouts/default.png`)}
+    />
+  )
+}
+
+function Movement({ value }) {
+  if (value === null || value === undefined || value === 0) {
+    return <span className="lb2-move is-flat" aria-label="No change">–</span>
+  }
+  return value > 0 ? (
+    <span className="lb2-move is-up" aria-label={`Up ${value}`}>▲{value}</span>
+  ) : (
+    <span className="lb2-move is-down" aria-label={`Down ${Math.abs(value)}`}>▼{Math.abs(value)}</span>
+  )
+}
+
 function Leaderboard() {
 
   const [players, setPlayers] = useState([])
   const [playerIds, setPlayerIds] = useState({})
   const [summaries, setSummaries] = useState({})
   const [matchEntry, setMatchEntry] = useState([])
+  const [profiles, setProfiles] = useState({})
+  const [board, setBoard] = useState("horsewide")
+  const [expanded, setExpanded] = useState(null)
 
   useEffect(() => {
 
-    getPlayers().then((data) => {
+    Promise.all([getPlayers(), getMatchEntry(), getEvents()]).then(([playerRows, entries, events]) => {
 
       const idsByName = {}
 
-      data.forEach((player) => {
+      playerRows.forEach((player) => {
         idsByName[player.Name] = player["Player ID"]
       })
 
       setPlayerIds(idsByName)
-      setPlayers(data)
-
-    })
-
-    getMatchEntry().then((data) => {
-
-      setMatchEntry(data)
-      setSummaries(getPlayerSummaries(data))
+      setPlayers(playerRows)
+      setMatchEntry(entries)
+      setSummaries(getPlayerSummaries(entries))
+      setProfiles(buildPlayerProfiles({ players: playerRows, matchEntry: entries, events, holeRows: [] }).profiles)
 
     })
 
@@ -72,40 +138,17 @@ function Leaderboard() {
   // matchup, even one that's since been removed from the Players sheet -
   // so only names still on that sheet are eligible to rank. Substitute
   // players (name tagged "(Sub)") fill in for someone else's match but
-  // shouldn't earn a season ranking of their own, so they're excluded
-  // from both leaderboards here too.
+  // shouldn't earn a season ranking of their own, so they're excluded.
   const activeNames = new Set(players.map((player) => player.Name))
 
   const rankablePlayers = Object.entries(summaries)
     .filter(([name]) => activeNames.has(name))
     .filter(([name]) => !/\(sub\)/i.test(name))
-
-  // Rank is computed here from Ranking Factor (AVG Ranking Points)
-  // rather than trusting the sheet's own Current Rank column, which is
-  // a separate lookup against the old Rankings tab and can drift out
-  // of sync with what Match Entry actually calculates.
-  const sortedPlayers = rankablePlayers
     .map(([name, s]) => ({ name, ...s }))
-    .sort((a, b) => b.avgRankingPoints - a.avgRankingPoints)
-
-  let rankCounter = 0
-
-  const rankedPlayers = sortedPlayers.map((player) => {
-
-    if (player.eventsPlayed > 0) {
-      rankCounter += 1
-      return { ...player, computedRank: rankCounter }
-    }
-
-    return { ...player, computedRank: null }
-
-  })
 
   // Movement compares each player's current Ranking Factor rank against
   // where they ranked before the most recently played event. Only players
-  // who actually played in that event get a movement value - otherwise
-  // someone who sat out could appear to "drop" just because another
-  // player's result pushed past them in the standings.
+  // who actually played in that event get a movement value.
   const playedRows = matchEntry.filter((row) => row.Player && row.Contributions)
 
   const playedEventIds = [...new Set(playedRows.map((row) => Number(row["Event ID"])))]
@@ -124,227 +167,206 @@ function Leaderboard() {
     ? getRanksThroughEvent(playedRows, previousEventId)
     : {}
 
-  const rankedPlayersWithMovement = rankedPlayers.map((player) => {
+  const config = BOARDS[board]
+
+  const ranked = withRanks(rankablePlayers, config.value).map((player) => {
 
     const previousRank = previousRanks[player.name]
 
+    // Movement only applies to the Ranking Factor standings.
     const movement =
-      player.computedRank && previousRank !== undefined && playedLastEvent.has(player.name)
+      board === "horsewide" && player.computedRank && previousRank !== undefined && playedLastEvent.has(player.name)
         ? previousRank - player.computedRank
         : null
 
-    return { ...player, movement }
+    return { ...player, movement, profile: profiles[player.name] }
 
   })
 
-  const powerRankedPlayers = rankablePlayers
-    .map(([name, s]) => ({ name, ...s }))
-    .sort((a, b) => b.totalPowerScore - a.totalPowerScore)
-    .reduce((acc, player) => {
+  const leaderValue = ranked.length ? config.value(ranked[0]) : 0
+  const podium = ranked.filter((p) => p.computedRank && p.computedRank <= 3)
 
-      if (player.eventsPlayed > 0) {
-        acc.rankCounter += 1
-        acc.players.push({ ...player, computedRank: acc.rankCounter })
-      } else {
-        acc.players.push({ ...player, computedRank: null })
-      }
-
-      return acc
-
-    }, { rankCounter: 0, players: [] }).players
+  const lastName = (name) => name.split(" ").slice(-1)[0]
 
   return (
 
-    <>
+    <div className="lb2">
 
-    <section className="card">
+      <div className="lb2-head">
+        <div>
+          <span className="lb2-eyebrow">2026 Season · After {playedEventIds.length} event{playedEventIds.length === 1 ? "" : "s"}</span>
+          <h2>{config.title}</h2>
+          <p>{config.blurb}</p>
+        </div>
 
-      <h2>
-        Horsewide Leaderboard
-      </h2>
+        <div className="lb2-tabs" role="tablist" aria-label="Standings">
+          {Object.entries(BOARDS).map(([key, b]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={board === key}
+              className={board === key ? "active" : ""}
+              onClick={() => {
+                setBoard(key)
+                setExpanded(null)
+              }}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
-      <div className="table-scroll">
-
-      <table className="leaderboard-table horsewide-table">
-
-        <thead>
-
-          <tr>
-            <th>
-              <span className="label-full">Rank</span>
-              <span className="label-short">#</span>
-            </th>
-            <th>Player</th>
-            <th>
-              <span className="label-full">Ranking Factor</span>
-              <span className="label-short">Factor</span>
-            </th>
-            <th>
-              <span className="label-full">Events Played</span>
-              <span className="label-short">Played</span>
-            </th>
-            <th>Wins</th>
-            <th>
-              <span className="label-full">Runner-Ups</span>
-              <span className="label-short">2nd</span>
-            </th>
-            <th>
-              <span className="label-full">Movement</span>
-              <span className="label-short">+/−</span>
-            </th>
-          </tr>
-
-        </thead>
-
-        <tbody>
-
-          {rankedPlayersWithMovement.map((player) => (
-
-            <tr key={player.name}>
-
-              <td>
-
-                {player.computedRank ?? "-"}
-
-              </td>
-
-              <td>
-
-                <div className="leaderboard-player">
-
-                  <img
-                    src={`${import.meta.env.BASE_URL}images/players/${playerIds[player.name]}.jpg`}
-                    alt={player.name}
-                    className="leaderboard-avatar"
-                    onError={(e) => {
-                      e.target.src = `${import.meta.env.BASE_URL}images/players/default.jpg`
-                    }}
-                  />
-
-                  {player.name}
-
+      {podium.length > 0 && (
+        <div className="lb2-podium">
+          {podium.map((p) => (
+            <Link
+              key={p.name}
+              to={`/player-profile/${playerIds[p.name]}`}
+              className={`lb2-podium-card is-pos-${p.computedRank}`}
+            >
+              <div className="lb2-podium-art">
+                <span className="lb2-podium-rank">{posLabel(p)}</span>
+                <Cutout id={playerIds[p.name]} name={p.name} />
+              </div>
+              <div className="lb2-podium-body">
+                <strong>{p.name}</strong>
+                <div className="lb2-podium-stat">
+                  <b>{config.format(config.value(p))}</b>
+                  <span>{config.statLabel}</span>
                 </div>
+                <span className="lb2-podium-gap">
+                  {p.computedRank === 1 ? "Leader" : `${config.format(leaderValue - config.value(p))} behind`}
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
 
-              </td>
+      <section className="lb2-board">
 
-              <td>
+        <div className="lb2-table" role="table" aria-label={config.title}>
 
-                {player.avgRankingPoints}
+          <div className="lb2-row lb2-row-head" role="row">
+            <span role="columnheader">Pos</span>
+            <span role="columnheader">Player</span>
+            <span role="columnheader" className="lb2-col-stat">
+              <span className="label-full">{config.statLabel}</span>
+              <span className="label-short">{config.statShort}</span>
+            </span>
+            <span role="columnheader" className="lb2-col-opt">Behind</span>
+            <span role="columnheader" className="lb2-col-opt">Events</span>
+            <span role="columnheader">Wins</span>
+            <span role="columnheader" className="lb2-col-opt">2nd</span>
+            <span role="columnheader" className="lb2-col-opt">Top 3</span>
+            <span role="columnheader" aria-label="Details" />
+          </div>
 
-              </td>
+          {ranked.map((player) => {
 
-              <td>
+            const isOpen = expanded === player.name
+            const recent = player.profile ? [...player.profile.results].reverse().slice(0, 4) : []
+            const value = config.value(player)
 
-                {player.eventsPlayed}
+            return (
 
-              </td>
+              <Fragment key={player.name}>
 
-              <td>
+                <button
+                  type="button"
+                  role="row"
+                  aria-expanded={isOpen}
+                  className={`lb2-row${player.computedRank && player.computedRank <= 3 ? " is-top" : ""}${isOpen ? " is-open" : ""}${!player.computedRank ? " is-unranked" : ""}`}
+                  onClick={() => setExpanded(isOpen ? null : player.name)}
+                >
 
-                {player.wins}
+                  <span className="lb2-pos" role="cell">
+                    <b>{posLabel(player)}</b>
+                    {board === "horsewide" && <Movement value={player.movement} />}
+                  </span>
 
-              </td>
+                  <span className="lb2-player" role="cell">
+                    <img
+                      src={`${BASE}images/players/${playerIds[player.name]}.jpg`}
+                      alt=""
+                      onError={(e) => {
+                        e.target.src = `${BASE}images/players/default.jpg`
+                      }}
+                    />
+                    <span className="lb2-player-text">
+                      <span className="lb2-name">
+                        <span className="lb2-first">{player.name.split(" ").slice(0, -1).join(" ")}</span>{" "}
+                        <strong>{lastName(player.name)}</strong>
+                      </span>
+                      <span className="lb2-flag"><UsaFlag width={14} /> USA</span>
+                    </span>
+                  </span>
 
-              <td>
+                  <span className="lb2-stat lb2-col-stat" role="cell">{player.computedRank ? config.format(value) : "–"}</span>
 
-                {player.runnerUps}
+                  <span className="lb2-col-opt lb2-muted" role="cell">
+                    {!player.computedRank ? "–" : player.computedRank === 1 ? "–" : config.format(leaderValue - value)}
+                  </span>
 
-              </td>
+                  <span className="lb2-col-opt" role="cell">{player.eventsPlayed}</span>
+                  <span role="cell">{player.wins}</span>
+                  <span className="lb2-col-opt" role="cell">{player.runnerUps}</span>
+                  <span className="lb2-col-opt" role="cell">{player.topThree}</span>
 
-              <td>
+                  <span className="lb2-caret" role="cell" aria-hidden="true"><ChevronDownIcon size={18} /></span>
 
-                {player.movement === null || player.movement === 0 ? (
-                  <span className="movement-neutral">—</span>
-                ) : player.movement > 0 ? (
-                  <span className="movement-up">▲ {player.movement}</span>
-                ) : (
-                  <span className="movement-down">▼ {Math.abs(player.movement)}</span>
+                </button>
+
+                {isOpen && (
+                  <div className="lb2-detail">
+                    <div className="lb2-detail-stats">
+                      <div><span>Events</span><b>{player.eventsPlayed}</b></div>
+                      <div><span>2nd</span><b>{player.runnerUps}</b></div>
+                      <div><span>Top 3</span><b>{player.topThree}</b></div>
+                      <div><span>Behind</span><b>{player.computedRank && player.computedRank > 1 ? config.format(leaderValue - value) : "–"}</b></div>
+                    </div>
+
+                    {recent.length > 0 ? (
+                      <div className="lb2-detail-results">
+                        <span className="lb2-detail-title">Recent results</span>
+                        <ul>
+                          {recent.map((r) => (
+                            <li key={r.eventId}>
+                              <span className={`lb2-detail-pos${r.placement === 1 ? " is-win" : ""}`}>{r.placement ? ordinal(r.placement) : "-"}</span>
+                              <span className="lb2-detail-event">{r.eventName}</span>
+                              <span className="lb2-detail-pts">{r.rankingPoints.toFixed(2)} pts</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
+                      <p className="lb2-detail-empty">No events played yet.</p>
+                    )}
+
+                    <Link to={`/player-profile/${playerIds[player.name]}`} className="lb2-detail-link">
+                      View full profile →
+                    </Link>
+                  </div>
                 )}
 
-              </td>
+              </Fragment>
 
-            </tr>
+            )
 
-          ))}
+          })}
 
-        </tbody>
+        </div>
 
-      </table>
+      </section>
 
-      </div>
+      <p className="lb2-note">
+        Movement shows how many spots a player moved in the Horsewide standings after the most
+        recent event. Tap any player for their recent results.
+      </p>
 
-    </section>
-
-    <section className="card power-points-card">
-
-      <h2>
-        Power Points Leaderboard
-      </h2>
-
-      <div className="table-scroll">
-
-      <table className="leaderboard-table power-points-table">
-
-        <thead>
-
-          <tr>
-            <th>Rank</th>
-            <th>Player</th>
-            <th>Power Points</th>
-          </tr>
-
-        </thead>
-
-        <tbody>
-
-          {powerRankedPlayers.map((player) => (
-
-            <tr key={player.name}>
-
-              <td>
-
-                {player.computedRank ?? "-"}
-
-              </td>
-
-              <td>
-
-                <div className="leaderboard-player">
-
-                  <img
-                    src={`${import.meta.env.BASE_URL}images/players/${playerIds[player.name]}.jpg`}
-                    alt={player.name}
-                    className="leaderboard-avatar"
-                    onError={(e) => {
-                      e.target.src = `${import.meta.env.BASE_URL}images/players/default.jpg`
-                    }}
-                  />
-
-                  {player.name}
-
-                </div>
-
-              </td>
-
-              <td>
-
-                {player.totalPowerScore}
-
-              </td>
-
-            </tr>
-
-          ))}
-
-        </tbody>
-
-      </table>
-
-      </div>
-
-    </section>
-
-    </>
+    </div>
 
   )
 
