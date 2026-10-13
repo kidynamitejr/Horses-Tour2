@@ -4,6 +4,8 @@ import "./profile.css"
 import "./cards.css"
 import "./compare.css"
 import "./gallery.css"
+import "./rules.css"
+import "./mobile.css"
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom"
 
 import Header from "./components/Header"

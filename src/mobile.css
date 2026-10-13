@@ -1,0 +1,350 @@
+/* ==========================================================================
+   MOBILE / TABLET REFINEMENTS - loaded last so these win.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Up Next groupings + match recap leaderboard
+   -------------------------------------------------------------------------- */
+
+/* Tablets: keep the table layout, just narrower columns (and keep the
+   "Together" / "Top Contributor" column visible). */
+@media (max-width: 960px) {
+  .ev-col-together {
+    display: block;
+  }
+
+  .ev-row-head .ev-col-together {
+    display: inline;
+  }
+
+  .ev-row {
+    grid-template-columns: 48px minmax(0, 1.6fr) 110px minmax(90px, 1fr) 96px;
+    gap: 10px;
+    padding: 11px 12px;
+  }
+
+  .ev-table-recap .ev-row {
+    grid-template-columns: 48px minmax(0, 1.6fr) 60px minmax(100px, 1fr) 60px 24px;
+  }
+
+  .ev-together {
+    font-size: 12px;
+  }
+}
+
+/* Phones: every row becomes a compact two-line card so nothing is hidden. */
+@media (max-width: 640px) {
+  .ev-row-head {
+    display: none;
+  }
+
+  .ev-row,
+  .ev-table-recap .ev-row {
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "team players status"
+      "team rf rf"
+      "team together together";
+    align-items: center;
+    gap: 6px 10px;
+    padding: 12px 12px 12px 10px;
+  }
+
+  .ev-table-recap .ev-row {
+    grid-template-columns: 34px minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "team players players status"
+      "team together topar pts";
+  }
+
+  .ev-row .ev-team { grid-area: team; align-self: start; }
+  .ev-row .ev-players { grid-area: players; }
+  .ev-row .ev-rf { grid-area: rf; }
+  .ev-row .ev-together { grid-area: together; }
+  .ev-row .ev-status { grid-area: status; align-self: start; }
+  .ev-row .ev-topar { grid-area: topar; }
+  .ev-row .ev-pts { grid-area: pts; }
+
+  .ev-team {
+    width: 30px;
+    height: 30px;
+    font-size: 13px;
+    border-radius: 8px;
+  }
+
+  .ev-players {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .ev-player {
+    gap: 8px;
+  }
+
+  .ev-player img {
+    width: 34px;
+    height: 34px;
+  }
+
+  .ev-player-name {
+    font-size: 12.5px;
+  }
+
+  .ev-player-rank {
+    padding: 0 6px;
+    font-size: 10px;
+  }
+
+  /* Ranking factor: label, value and bar on one line */
+  .ev-rf {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ev-rf::before {
+    content: "RF";
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .08em;
+  }
+
+  .ev-rf b {
+    font-size: 14px;
+  }
+
+  .ev-row.is-favored .ev-rf b::after {
+    content: none;
+  }
+
+  .ev-rf-track {
+    display: block;
+    flex: 1;
+    height: 5px;
+  }
+
+  .ev-together {
+    display: block;
+    font-size: 11.5px;
+    line-height: 1.3;
+  }
+
+  .ev-row .ev-status {
+    display: flex;
+    gap: 4px;
+  }
+
+  .ev-tag {
+    padding: 3px 8px;
+    font-size: 9.5px;
+  }
+
+  .ev-chevron {
+    font-size: 20px;
+  }
+
+  /* Recap: small labels in front of the numbers */
+  .ev-topar,
+  .ev-pts {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  .ev-topar::before,
+  .ev-pts::before {
+    color: var(--muted);
+    font-family: var(--font-body);
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+
+  .ev-topar::before {
+    content: "To par";
+  }
+
+  .ev-table-recap .ev-together::before {
+    content: "Top ";
+    color: var(--muted);
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+
+  .ev-pts::before {
+    content: "Pts";
+  }
+
+  .ev-board-head > span {
+    font-size: 12px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Home: "2026 by the Numbers"
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 640px) {
+  .section-heading h2 {
+    font-size: 26px;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .dashboard-card.leader {
+    grid-column: 1 / -1;
+  }
+
+  .dashboard-card,
+  html[data-theme="dark"] .dashboard-card {
+    min-height: 0;
+    padding: 16px 14px 14px;
+    border-radius: var(--radius-md);
+  }
+
+  .dashboard-card h2,
+  html[data-theme="dark"] .dashboard-card h2 {
+    font-size: 10px;
+  }
+
+  .dashboard-card h3,
+  html[data-theme="dark"] .dashboard-card h3 {
+    margin: 8px 0 2px;
+    font-size: 28px;
+  }
+
+  .dashboard-card.leader h3 {
+    font-size: 22px;
+  }
+
+  .dashboard-card p {
+    font-size: 13px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Player cards + profile header: shorter gray photo areas on phones
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 640px) {
+  .pc-art {
+    height: 128px;
+    padding-top: 10px;
+  }
+
+  .pc-rank {
+    top: 8px;
+    left: 8px;
+    min-width: 34px;
+    padding: 4px 6px;
+    font-size: 15px;
+  }
+
+  .pc-rank small {
+    font-size: 8px;
+  }
+
+  .pc-crest {
+    top: 8px;
+    right: 8px;
+  }
+
+  .pc-crest svg,
+  .pc-crest img {
+    width: 26px;
+    height: 26px;
+  }
+
+  .pp-hero-photo {
+    height: 230px;
+  }
+
+  .tm-player-art {
+    height: 120px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Hall of Champions: smaller reigning-champions feature on phones
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 640px) {
+  .hoc-feature-photo {
+    min-height: 210px;
+  }
+
+  .hoc-feature-body {
+    padding: 18px 16px 18px;
+  }
+
+  .hoc-eyebrow {
+    margin-bottom: 6px;
+    font-size: 10.5px;
+  }
+
+  .hoc-feature-body h2,
+  .card .hoc-feature-body h2 {
+    gap: 6px 10px;
+    margin-bottom: 4px;
+    font-size: 22px;
+  }
+
+  .hoc-feature-meta {
+    margin-bottom: 14px;
+    font-size: 13px;
+  }
+
+  .hoc-feature-body .hoc-names {
+    gap: 8px 16px;
+  }
+
+  .hoc-feature-body .hoc-name {
+    gap: 8px;
+    font-size: 14px;
+  }
+
+  .hoc-feature-body .hoc-headshot {
+    width: 36px;
+    height: 36px;
+  }
+
+  .hoc-feature-stats {
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 14px;
+  }
+
+  .hoc-feature-stats dt {
+    font-size: 9px;
+  }
+
+  .hoc-feature-stats dd {
+    margin-top: 4px;
+    font-size: 18px;
+  }
+
+  .hoc-summary {
+    gap: 8px;
+  }
+
+  .hoc-summary b {
+    font-size: 22px;
+  }
+
+  .hoc-summary span {
+    font-size: 10px;
+  }
+
+  .hoc-card-photo {
+    height: 190px;
+  }
+}
