@@ -266,6 +266,18 @@ function EmptyState({ name }) {
   )
 }
 
+// Full name on bigger screens, "C. Averette" on phones.
+function PartnerName({ name }) {
+  const parts = name.split(" ")
+  const short = parts.length > 1 ? `${parts[0][0]}. ${parts.slice(1).join(" ")}` : name
+  return (
+    <>
+      <span className="label-full">{name}</span>
+      <span className="label-short">{short}</span>
+    </>
+  )
+}
+
 function placeLabel(r) {
   return r.placement ? ordinal(r.placement) : "-"
 }
@@ -615,7 +627,7 @@ function ResultsTab({ profile, season, playerIds }) {
           <table className="pp-results-table">
             <thead>
               <tr>
-                <th>Date</th>
+                <th className="hide-on-phone">Date</th>
                 <th>Tournament</th>
                 <th>Pos</th>
                 <th>Partner</th>
@@ -629,20 +641,21 @@ function ResultsTab({ profile, season, playerIds }) {
                   <span className="label-short">Pts</span>
                 </th>
                 <th className="hide-on-phone">Power Pts</th>
-                <th>
-                  <span className="label-full">Winnings</span>
-                  <span className="label-short">$</span>
-                </th>
+                <th className="hide-on-phone">Winnings</th>
               </tr>
             </thead>
             <tbody>
               {[...rows].reverse().map((r) => (
                 <tr key={r.eventId}>
-                  <td className="pp-nowrap">{r.date}</td>
+                  <td className="pp-nowrap hide-on-phone">{r.date}</td>
                   <td className="pp-results-event">
                     <strong>{r.eventName}</strong>
                     {r.isMajor && <span className="pp-major-tag">★ {r.type}</span>}
-                    <small>{r.course}</small>
+                    <small className="hide-on-phone">{r.course}</small>
+                    {/* Phones: date + winnings move under the event name */}
+                    <small className="show-on-phone">
+                      {r.date}{r.winnings ? ` · Won ${formatCurrency(r.winnings)}` : ""}
+                    </small>
                   </td>
                   <td>
                     <span className={`pp-pos${r.placement === 1 ? " is-win" : ""}`}>{placeLabel(r)}</span>
@@ -650,9 +663,9 @@ function ResultsTab({ profile, season, playerIds }) {
                   <td>
                     {r.partners.map((p) => (
                       playerIds[p.toLowerCase()] ? (
-                        <Link key={p} to={`/player-profile/${playerIds[p.toLowerCase()]}`} className="pp-partner">{p}</Link>
+                        <Link key={p} to={`/player-profile/${playerIds[p.toLowerCase()]}`} className="pp-partner"><PartnerName name={p} /></Link>
                       ) : (
-                        <span key={p} className="pp-partner">{p}</span>
+                        <span key={p} className="pp-partner"><PartnerName name={p} /></span>
                       )
                     ))}
                   </td>
@@ -660,7 +673,7 @@ function ResultsTab({ profile, season, playerIds }) {
                   <td>{pct(r.contribution)}</td>
                   <td><b>{num(r.rankingPoints)}</b></td>
                   <td className="hide-on-phone">{r.powerPoints}</td>
-                  <td>{r.winnings ? formatCurrency(r.winnings) : "-"}</td>
+                  <td className="hide-on-phone">{r.winnings ? formatCurrency(r.winnings) : "-"}</td>
                 </tr>
               ))}
             </tbody>

@@ -529,3 +529,75 @@
     height: 190px;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Player profile: Results & Scorecards table on phones
+   -------------------------------------------------------------------------- */
+
+.show-on-phone,
+.pp-results-event .show-on-phone {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .show-on-phone,
+  .pp-results-event .show-on-phone {
+    display: block;
+  }
+
+  .pp-results-panel .table-scroll {
+    border-radius: var(--radius-sm);
+  }
+
+  .pp-results-table {
+    font-size: 11.5px;
+  }
+
+  .pp-results-table th {
+    padding: 8px 3px;
+    font-size: 8.5px;
+    letter-spacing: .03em;
+  }
+
+  .pp-results-table td {
+    padding: 8px 3px;
+    font-size: 11.5px;
+  }
+
+  .pp-results-table td:first-child,
+  .pp-results-table th:first-child {
+    padding-left: 8px;
+  }
+
+  .pp-results-event strong {
+    display: block;
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  .pp-results-event small {
+    font-size: 10px;
+  }
+
+  .pp-results-event .pp-major-tag {
+    margin: 2px 0 0;
+    padding: 1px 5px;
+    font-size: 8px;
+  }
+
+  .pp-results-table .pp-pos {
+    min-width: 0;
+    padding: 3px 5px;
+    font-size: 11px;
+  }
+
+  .pp-partner {
+    font-size: 11px;
+    white-space: normal;
+    line-height: 1.2;
+  }
+
+  .pp-results-table td b {
+    font-size: 12px;
+  }
+}
