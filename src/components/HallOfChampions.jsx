@@ -1,13 +1,18 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { getSchedule, getMatchEntry, getPlayers, getEvents } from "../data/googleSheets"
+import { formatCurrency } from "../utils/winnings"
 import { Lightbox } from "./Gallery"
+import { TrophyIcon } from "./Icons"
+
+const BASE = import.meta.env.BASE_URL
 
 function formatOverPar(value) {
   if (value === "" || value === null || value === undefined) return value
   const num = Number(value)
   if (isNaN(num)) return value
-  return num >= 0 ? `+${value}` : value
+  if (num === 0) return "E"
+  return num > 0 ? `+${value}` : value
 }
 
 // Schedule dates are "M/D/YY" (e.g. "8/23/26") - pulled apart by hand
@@ -20,6 +25,39 @@ function getEventYear(dateStr) {
   let year = parts[2].trim()
   if (year.length === 2) year = `20${year}`
   return year
+}
+
+function money(value) {
+  const num = parseFloat(String(value ?? "").replace(/[^0-9.-]/g, ""))
+  return isNaN(num) ? 0 : num
+}
+
+function Headshot({ id, name, size = 40 }) {
+  return (
+    <img
+      className="hoc-headshot"
+      src={`${BASE}images/players/${id || "default"}.jpg`}
+      alt={name}
+      width={size}
+      height={size}
+      onError={(e) => {
+        e.target.src = `${BASE}images/players/default.jpg`
+      }}
+    />
+  )
+}
+
+function ChampionNames({ players, playerIds, size }) {
+  return (
+    <div className="hoc-names">
+      {players.map((name) => (
+        <Link key={name} to={`/player-profile/${playerIds[name]}`} className="hoc-name" onClick={(e) => e.stopPropagation()}>
+          <Headshot id={playerIds[name]} name={name} size={size} />
+          <span>{name}</span>
+        </Link>
+      ))}
+    </div>
+  )
 }
 
 function HallOfChampions() {
@@ -56,14 +94,7 @@ function HallOfChampions() {
 
         events.forEach((e) => { eventsTabById[e["Event ID"]] = e })
 
-        const majorWinsEvents = new Set()
-
-        events.forEach((e) => {
-          const type = (e["Event Type"] || "").trim().toLowerCase()
-          if (type === "major" || type === "championship") {
-            majorWinsEvents.add(e["Event ID"])
-          }
-        })
+        const winningsKey = events[0] ? Object.keys(events[0]).find((k) => /winnings/i.test(k)) : null
 
         const winningRows = matchEntry.filter(
           (row) => row.Player && row.Contributions && Number(row.Placement) === 1
@@ -80,6 +111,7 @@ function HallOfChampions() {
               eventId,
               players: [],
               teamScore: row["Team Score"],
+              totalTeams: Number(row["Total Teams"]) || null,
             }
           }
 
@@ -90,16 +122,20 @@ function HallOfChampions() {
         const list = Object.values(byEvent)
           .map((c) => {
             const event = eventById[c.eventId]
+            const details = eventsTabById[c.eventId] || {}
+            const type = (details["Event Type"] || "").trim()
             return {
               ...c,
               eventName: event ? event["Event Name"].trim() : `Event ${c.eventId}`,
               date: event ? event.Date : "",
               year: event ? getEventYear(event.Date) : "",
+              course: ((details.Course || event?.Course) || "").trim(),
+              type,
+              isMajor: ["major", "championship"].includes(type.toLowerCase()),
               // A photo the tour owner pastes a link to in the Events
-              // tab's "Winner Picture" column - same pattern as the
-              // News tab's Image column - not a stock course photo.
-              image: eventsTabById[c.eventId]?.["Winner Picture"] || "",
-              isMajor: majorWinsEvents.has(c.eventId),
+              // tab's "Winner Picture" column.
+              image: details["Winner Picture"] || "",
+              payout: winningsKey ? money(details[winningsKey]) : 0,
             }
           })
           .sort((a, b) => Number(b.eventId) - Number(a.eventId))
@@ -136,104 +172,195 @@ function HallOfChampions() {
     if (index !== -1) setOpenIndex(index)
   }
 
+  // Title counts per player (wins, majors), most first.
+  const titles = {}
+  champions.forEach((c) => {
+    c.players.forEach((name) => {
+      if (!titles[name]) titles[name] = { name, wins: 0, majors: 0, earnings: 0 }
+      titles[name].wins += 1
+      if (c.isMajor) titles[name].majors += 1
+      titles[name].earnings += c.payout
+    })
+  })
+  const titleLeaders = Object.values(titles).sort((a, b) => b.wins - a.wins || b.majors - a.majors || b.earnings - a.earnings)
+
+  const reigning = champions[0]
+  const totalPurse = champions.reduce((sum, c) => sum + c.payout * c.players.length, 0)
+
+  if (loading) {
+    return (
+      <section className="card">
+        <h2>Hall of Champions</h2>
+        <p>Loading champions...</p>
+      </section>
+    )
+  }
+
+  if (champions.length === 0) {
+    return (
+      <section className="card">
+        <h2>Hall of Champions</h2>
+        <p>No champions crowned yet.</p>
+      </section>
+    )
+  }
+
   return (
 
-    <section className="card">
+    <div className="hoc">
 
-      <h2>Hall of Champions</h2>
+      {/* ---------- Reigning champions ---------- */}
+      <section className="hoc-feature">
 
-      {loading && <p>Loading champions...</p>}
+        <button
+          type="button"
+          className="hoc-feature-photo"
+          onClick={() => openPhoto(reigning.eventId)}
+          disabled={!reigning.image}
+          aria-label={reigning.image ? `Enlarge photo from ${reigning.eventName}` : undefined}
+        >
+          {reigning.image ? (
+            <img src={reigning.image} alt={reigning.eventName} />
+          ) : (
+            <div className="hoc-photo-fallback"><TrophyIcon size={64} /></div>
+          )}
+          {reigning.image && <span className="hoc-zoom">⤢</span>}
+        </button>
 
-      {!loading && champions.length === 0 && (
-        <p>No champions crowned yet.</p>
-      )}
+        <div className="hoc-feature-body">
+          <span className="hoc-eyebrow">Reigning Champions</span>
+          <h2>
+            {reigning.year} {reigning.eventName}
+            {reigning.isMajor && <span className="hoc-major-tag">★ {reigning.type}</span>}
+          </h2>
+          <p className="hoc-feature-meta">
+            {reigning.date}
+            {reigning.course && <> · {reigning.course}</>}
+          </p>
 
-      <div className="champion-grid">
+          <ChampionNames players={reigning.players} playerIds={playerIds} size={52} />
 
-        {champions.map((c) => (
-
-          <div className={`champion-card${c.isMajor ? " champion-card-major" : ""}`} key={c.eventId}>
-
-            <div className="champion-card-header">
-
-              <p className="champion-card-eyebrow">{c.date}</p>
-
-              <h3 className="champion-card-event">
-                {c.year} {c.eventName}
-              </h3>
-
-              {c.isMajor && (
-                <span className="champion-card-major-tag">★ Major</span>
-              )}
-
+          <dl className="hoc-feature-stats">
+            <div>
+              <dt>Winning Score</dt>
+              <dd>{formatOverPar(reigning.teamScore)}</dd>
             </div>
+            <div>
+              <dt>Field</dt>
+              <dd>{reigning.totalTeams ? `${reigning.totalTeams} teams` : "-"}</dd>
+            </div>
+            <div>
+              <dt>Payout (each)</dt>
+              <dd>{reigning.payout ? formatCurrency(reigning.payout) : "-"}</dd>
+            </div>
+          </dl>
+        </div>
 
-            <div
-              className={`champion-card-photo-wrap${c.image ? " is-zoomable" : ""}`}
-              {...(c.image && {
-                role: "button",
-                tabIndex: 0,
-                "aria-label": `Enlarge photo from ${c.eventName}`,
-                onClick: () => openPhoto(c.eventId),
-                onKeyDown: (e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault()
-                    openPhoto(c.eventId)
-                  }
-                },
-              })}
-            >
+      </section>
 
-              {c.image ? (
-                <>
-                  <img
-                    src={c.image}
-                    alt={c.eventName}
-                    className="champion-card-photo"
-                  />
+      {/* ---------- Tour summary + most titles ---------- */}
+      <section className="hoc-row">
 
-                  <div className="gallery-card-zoom-hint">⤢</div>
-                </>
-              ) : (
-                <div className="champion-card-photo-fallback" />
-              )}
+        <div className="hoc-summary">
+          <div>
+            <b>{champions.length}</b>
+            <span>Titles awarded</span>
+          </div>
+          <div>
+            <b>{champions.filter((c) => c.isMajor).length}</b>
+            <span>Majors decided</span>
+          </div>
+          <div>
+            <b>{titleLeaders.length}</b>
+            <span>Different champions</span>
+          </div>
+          <div>
+            <b>{formatCurrency(totalPurse)}</b>
+            <span>Paid to winners</span>
+          </div>
+        </div>
 
-              <div className="champion-card-photo-overlay">
+        <div className="hoc-leaders">
+          <h3>Most Titles</h3>
+          <ol>
+            {titleLeaders.slice(0, 6).map((p, index) => (
+              <li key={p.name}>
+                <span className="hoc-leader-rank">{index + 1}</span>
+                <Link to={`/player-profile/${playerIds[p.name]}`} className="hoc-name">
+                  <Headshot id={playerIds[p.name]} name={p.name} size={34} />
+                  <span>{p.name}</span>
+                </Link>
+                <span className="hoc-trophies" aria-label={`${p.wins} titles`}>
+                  {Array.from({ length: p.wins }, (_, i) => (
+                    <TrophyIcon key={i} size={16} className={i < p.majors ? "is-major" : ""} />
+                  ))}
+                </span>
+                <b>{p.wins}</b>
+              </li>
+            ))}
+          </ol>
+          <p className="hoc-legend"><TrophyIcon size={14} className="is-major" /> Major title</p>
+        </div>
 
-                {c.players.map((name, i) => (
+      </section>
 
-                  <span className="champion-card-player-wrap" key={name}>
+      {/* ---------- Champions board ---------- */}
+      <section className="card hoc-board">
 
-                    <Link
-                      to={`/player-profile/${playerIds[name]}`}
-                      className="champion-card-player"
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => e.stopPropagation()}
-                    >
-                      {name}
-                    </Link>
+        <h2>Champions Board</h2>
 
-                    {i < c.players.length - 1 && (
-                      <span className="champion-card-and">&amp;</span>
-                    )}
+        <div className="hoc-grid">
 
+          {champions.map((c) => (
+
+            <article className={`hoc-card${c.isMajor ? " is-major" : ""}`} key={c.eventId}>
+
+              <button
+                type="button"
+                className="hoc-card-photo"
+                onClick={() => openPhoto(c.eventId)}
+                disabled={!c.image}
+                aria-label={c.image ? `Enlarge photo from ${c.eventName}` : undefined}
+              >
+                {c.image ? (
+                  <img src={c.image} alt={c.eventName} loading="lazy" />
+                ) : (
+                  <div className="hoc-photo-fallback"><TrophyIcon size={44} /></div>
+                )}
+                <span className="hoc-year">{c.year}</span>
+                {c.isMajor && <span className="hoc-ribbon">★ {c.type}</span>}
+                {c.image && <span className="hoc-zoom">⤢</span>}
+              </button>
+
+              <div className="hoc-card-body">
+                <h3>{c.eventName}</h3>
+                <p className="hoc-card-meta">{c.date}{c.course && ` · ${c.course}`}</p>
+
+                <ChampionNames players={c.players} playerIds={playerIds} size={34} />
+
+                <div className="hoc-card-foot">
+                  <span>
+                    <small>Score</small>
+                    <b>{formatOverPar(c.teamScore)}</b>
                   </span>
-
-                ))}
-
+                  <span>
+                    <small>Field</small>
+                    <b>{c.totalTeams || "-"}</b>
+                  </span>
+                  <span>
+                    <small>Payout</small>
+                    <b>{c.payout ? formatCurrency(c.payout) : "-"}</b>
+                  </span>
+                </div>
               </div>
 
-            </div>
+            </article>
 
-            <p className="champion-card-score">
-              Team Score: {formatOverPar(c.teamScore)}
-            </p>
+          ))}
 
-          </div>
+        </div>
 
-        ))}
-
-      </div>
+      </section>
 
       {openIndex !== null && (
         <Lightbox
@@ -244,7 +371,7 @@ function HallOfChampions() {
         />
       )}
 
-    </section>
+    </div>
 
   )
 

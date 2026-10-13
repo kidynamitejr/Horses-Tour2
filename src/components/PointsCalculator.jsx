@@ -121,7 +121,6 @@ function PointsCalculator() {
                   <th>Finish</th>
                   <th>Contribution</th>
                   <th>Placement Points</th>
-                  <th>Multiplier</th>
                   <th>Final Points</th>
                 </tr>
               </thead>
@@ -136,7 +135,6 @@ function PointsCalculator() {
                     <td>{row.Placement ? ordinal(Number(row.Placement)) : "-"}</td>
                     <td>{row["Contribution %"]}</td>
                     <td>{row["Power Score Earned"]}</td>
-                    <td>{row.Multiplier}x</td>
                     <td>
                       <strong>{formatPoints(row["Match Ranking Points"])}</strong>
                     </td>
