@@ -426,113 +426,164 @@ function NextEventFeature() {
     leaderTeamLabel,
   }))
 
+
+  // Each player's current tour rank (by Ranking Factor, regular players
+  // who have played) - shown next to their name in the groupings.
+  const tourRankByName = {}
+
+  Object.entries(summaries)
+    .filter(([n, s]) => !/\(sub\)/i.test(n) && s.eventsPlayed > 0)
+    .sort((a, b) => b[1].avgRankingPoints - a[1].avgRankingPoints)
+    .forEach(([n], index) => {
+      tourRankByName[n] = index + 1
+    })
+
+  function partnershipLabel(history) {
+    if (history.length === 0) return "First pairing"
+    const best = Math.min(...history.map((h) => Number(h.placement) || 99))
+    return `${history.length} event${history.length > 1 ? "s" : ""} · best ${ordinal(best)}`
+  }
+
   return (
 
-    <section className="next-event-feature">
+    <section className="ev-card">
 
-      <CourseBackground course={nextEvent?.Course} />
+      <div className="ev-hero">
 
-      <div className="next-event-overlay" />
+        <CourseBackground course={nextEvent?.Course} />
 
-      <div className="next-event-content">
+        <div className="ev-hero-overlay" />
 
-        {!nextEvent ? (
+        <div className="ev-hero-content">
 
-          <>
-            <p className="next-event-eyebrow">Up Next</p>
-            <h2 className="next-event-title">No Upcoming Event</h2>
-            <p className="next-event-meta">Schedule Coming Soon</p>
-          </>
+          {!nextEvent ? (
 
-        ) : (
+            <>
+              <span className="ev-eyebrow">Up Next</span>
+              <h2 className="ev-title">No Upcoming Event</h2>
+              <p className="ev-meta">Schedule coming soon</p>
+            </>
 
-          <>
+          ) : (
 
-            <p className="next-event-eyebrow">Up Next</p>
+            <>
 
-            <h2 className="next-event-title">{nextEvent["Event Name"]}</h2>
+              <span className="ev-eyebrow">Up Next · Matchup Preview</span>
 
-            <div className="next-event-badges">
+              <h2 className="ev-title">{nextEvent["Event Name"]}</h2>
 
-              {daysUntilNextEvent !== null && (
-                <span className="next-event-countdown">
-                  {daysUntilNextEvent === 0
-                    ? "Today!"
-                    : daysUntilNextEvent === 1
-                      ? "1 Day Away"
-                      : `${daysUntilNextEvent} Days Away`}
-                </span>
-              )}
+              <p className="ev-meta">
+                <span>{nextEvent.Date}</span>
+                {nextEvent.Course && <span>{nextEvent.Course}</span>}
+                {nextEventTeeTime && nextEventTeeTime !== "TBD" && <span>Tee time {nextEventTeeTime}</span>}
+              </p>
 
-              {weather && (
-                <span className="next-event-weather">
-                  {weather.icon} {weather.high}° / {weather.low}°
-                  {weather.precipChance > 0 && ` · ${weather.precipChance}% rain`}
-                </span>
-              )}
+              <div className="ev-chips">
 
-            </div>
+                {daysUntilNextEvent !== null && (
+                  <span className="ev-chip ev-chip-gold">
+                    {daysUntilNextEvent === 0
+                      ? "Today"
+                      : daysUntilNextEvent === 1
+                        ? "Tomorrow"
+                        : `${daysUntilNextEvent} days away`}
+                  </span>
+                )}
 
-            <p className="next-event-meta">
-              {nextEvent.Date}
-              {nextEvent.Course && <span className="next-event-dot">•</span>}
-              {nextEvent.Course}
-              {nextEventTeeTime && nextEventTeeTime !== "TBD" && (
-                <>
-                  <span className="next-event-dot">•</span>
-                  {nextEventTeeTime}
-                </>
-              )}
-            </p>
+                {weather && (
+                  <span className="ev-chip">
+                    {weather.icon} {weather.high}° / {weather.low}°
+                    {weather.precipChance > 0 && ` · ${weather.precipChance}% rain`}
+                  </span>
+                )}
 
-            {nextEventTeams.length > 0 && (
-
-              <div className="next-event-matchups">
-
-                {nextEventTeams.map((t) => (
-
-                  <div
-                    className={`next-event-matchup-card${t.isFavored ? " next-event-favored" : ""}${t.isUnderdog ? " next-event-underdog" : ""}`}
-                    key={t.team}
-                    onClick={() => setModalTeam(t)}
-                  >
-
-                    <span className="next-event-team-tag">{t.team}</span>
-
-                    {t.isFavored && (
-                      <span className="next-event-favored-badge">★ Favored</span>
-                    )}
-
-                    {t.isUnderdog && (
-                      <span className="next-event-underdog-badge">Underdog</span>
-                    )}
-
-                    <div className="next-event-matchup-players">
-
-                      <PlayerChip name={t.teamPlayers[0]} playerIds={playerIds} />
-
-                      {t.teamPlayers.length > 1 && (
-                        <>
-                          <span className="next-event-teammate-divider">&amp;</span>
-                          <PlayerChip name={t.teamPlayers[1]} playerIds={playerIds} />
-                        </>
-                      )}
-
-                    </div>
-
-                  </div>
-
-                ))}
+                {nextEventTeams.length > 0 && (
+                  <span className="ev-chip">{nextEventTeams.length} teams</span>
+                )}
 
               </div>
 
-            )}
+            </>
 
-          </>
+          )}
 
-        )}
+        </div>
 
       </div>
+
+      {nextEventTeams.length > 0 && (
+
+        <div className="ev-board">
+
+          <div className="ev-board-head">
+            <h3>Groupings</h3>
+            <span>Favorite decided by combined Ranking Factor · tap a team for the full preview</span>
+          </div>
+
+          <div className="ev-table" role="table" aria-label="Team groupings">
+
+            <div className="ev-row ev-row-head" role="row">
+              <span role="columnheader">Team</span>
+              <span role="columnheader">Players</span>
+              <span role="columnheader">Ranking Factor</span>
+              <span role="columnheader" className="ev-col-together">Together</span>
+              <span role="columnheader" aria-label="Status" />
+            </div>
+
+            {[...nextEventTeams]
+              .sort((a, b) => b.combined - a.combined)
+              .map((t) => (
+
+                <button
+                  type="button"
+                  role="row"
+                  className={`ev-row${t.isFavored ? " is-favored" : ""}${t.isUnderdog ? " is-underdog" : ""}`}
+                  key={t.team}
+                  onClick={() => setModalTeam(t)}
+                >
+
+                  <span className="ev-team" role="cell">{t.team.replace("Team ", "")}</span>
+
+                  <span className="ev-players" role="cell">
+                    {t.teamPlayers.map((p) => (
+                      <span className="ev-player" key={p}>
+                        <img
+                          src={`${import.meta.env.BASE_URL}images/players/${playerIds[p]}.jpg`}
+                          alt=""
+                          onError={(e) => {
+                            e.target.src = `${import.meta.env.BASE_URL}images/players/default.jpg`
+                          }}
+                        />
+                        <span className="ev-player-name">{p}</span>
+                        {tourRankByName[p] && <span className="ev-player-rank">#{tourRankByName[p]}</span>}
+                      </span>
+                    ))}
+                  </span>
+
+                  <span className="ev-rf" role="cell">
+                    <b>{t.combined.toFixed(2)}</b>
+                    <span className="ev-rf-track">
+                      <span style={{ width: `${highestCombined ? (t.combined / highestCombined) * 100 : 0}%` }} />
+                    </span>
+                  </span>
+
+                  <span className="ev-together ev-col-together" role="cell">{partnershipLabel(t.history)}</span>
+
+                  <span className="ev-status" role="cell">
+                    {t.isFavored && <span className="ev-tag ev-tag-favored">★ Favored</span>}
+                    {t.isUnderdog && <span className="ev-tag ev-tag-underdog">Underdog</span>}
+                    <span className="ev-chevron" aria-hidden="true">›</span>
+                  </span>
+
+                </button>
+
+              ))}
+
+          </div>
+
+        </div>
+
+      )}
 
       {modalTeam && (
         <TeamDetailModal

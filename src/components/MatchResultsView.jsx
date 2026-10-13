@@ -325,193 +325,223 @@ function MatchResultsView({ eventId, matchEntry, schedule, playerIds, eyebrow, o
   const event = schedule.find((e) => e["Event ID"] === String(eventId))
   const eventName = event ? event["Event Name"] : `Event ${eventId}`
 
+  const champions = teams.find((t) => t.teamPlacement === 1)
+
   return (
 
-    <section className="next-event-feature last-match-feature" ref={sectionRef}>
+    <section className="ev-card ev-card-recap" ref={sectionRef}>
 
-      <CourseBackground course={event?.Course} />
+      <div className="ev-hero ev-hero-compact">
 
-      <div className="next-event-overlay" />
+        <CourseBackground course={event?.Course} />
 
-      <canvas ref={confettiCanvasRef} className="confetti-canvas" />
+        <div className="ev-hero-overlay" />
 
-      {onCollapse && (
-        <button
-          type="button"
-          className="match-collapse-button"
-          onClick={onCollapse}
-          aria-label="Collapse"
-        >
-          ▲ Collapse
-        </button>
-      )}
+        <canvas ref={confettiCanvasRef} className="confetti-canvas" />
 
-      <div className="next-event-content">
+        {onCollapse && (
+          <button
+            type="button"
+            className="match-collapse-button"
+            onClick={onCollapse}
+            aria-label="Collapse"
+          >
+            ▲ Collapse
+          </button>
+        )}
 
-        <p className="next-event-eyebrow">{eyebrow}</p>
+        <div className="ev-hero-content">
 
-        <h2 className="next-event-title">{eventName} Results</h2>
+          <span className="ev-eyebrow">{eyebrow} · Final Results</span>
 
-        <p className="next-event-meta">
-          {event?.Date}
-          {event?.Course && <span className="next-event-dot">•</span>}
-          {event?.Course}
-        </p>
+          <h2 className="ev-title">{eventName}</h2>
 
-        {teams.length > 0 && (
+          <p className="ev-meta">
+            {event?.Date && <span>{event.Date}</span>}
+            {event?.Course && <span>{event.Course}</span>}
+            {teams.length > 0 && <span>{teams.length} teams</span>}
+          </p>
 
-          <>
+          {champions && (
+            <div className="ev-champions">
+              <span className="ev-champions-label">🏆 Champions</span>
+              <span className="ev-champions-names">
+                {champions.players.map((p) => p.name).join(" & ")}
+              </span>
+              <span className="ev-champions-score">{formatOverPar(champions.teamScore)}</span>
+            </div>
+          )}
 
-            <div className="match-view-toggle">
+        </div>
 
+      </div>
+
+      {teams.length > 0 && (
+
+        <div className="ev-board">
+
+          <div className="ev-board-head">
+            <h3>{view === "teams" ? "Final Leaderboard" : "Individual Placements"}</h3>
+
+            <div className="ev-segment" role="tablist">
               <button
                 type="button"
-                className={`match-view-tab${view === "teams" ? " active" : ""}`}
+                role="tab"
+                aria-selected={view === "teams"}
+                className={view === "teams" ? "active" : ""}
                 onClick={() => setView("teams")}
               >
-                Team Results
+                Teams
               </button>
-
               <button
                 type="button"
-                className={`match-view-tab${view === "individual" ? " active" : ""}`}
+                role="tab"
+                aria-selected={view === "individual"}
+                className={view === "individual" ? "active" : ""}
                 onClick={() => setView("individual")}
               >
-                Individual Placements
+                Individual
               </button>
+            </div>
+          </div>
+
+          {view === "teams" ? (
+
+            <div className="ev-table ev-table-recap" role="table" aria-label="Team results">
+
+              <div className="ev-row ev-row-head" role="row">
+                <span role="columnheader">Pos</span>
+                <span role="columnheader">Team</span>
+                <span role="columnheader">To Par</span>
+                <span role="columnheader" className="ev-col-together">Top Contributor</span>
+                <span role="columnheader">Pts</span>
+                <span role="columnheader" aria-label="Details" />
+              </div>
+
+              {teams.map((t) => {
+
+                const isChampion = t.teamPlacement === 1
+                const top = [...t.players].sort((a, b) => b.matchPoints - a.matchPoints)[0]
+
+                return (
+
+                  <button
+                    type="button"
+                    role="row"
+                    className={`ev-row${isChampion ? " is-champion" : ""}`}
+                    key={t.team}
+                    onClick={() => setModalTeam(t)}
+                  >
+
+                    <span className="ev-team" role="cell">{isChampion ? "🏆" : t.teamPlacement}</span>
+
+                    <span className="ev-players" role="cell">
+                      {t.players.map((p) => (
+                        <span className="ev-player" key={p.name}>
+                          <img
+                            src={`${import.meta.env.BASE_URL}images/players/${playerIds[p.name]}.jpg`}
+                            alt=""
+                            onError={(e) => {
+                              e.target.src = `${import.meta.env.BASE_URL}images/players/default.jpg`
+                            }}
+                          />
+                          <span className="ev-player-name">{p.name}</span>
+                        </span>
+                      ))}
+                    </span>
+
+                    <span className="ev-topar" role="cell">{formatOverPar(t.teamScore)}</span>
+
+                    <span className="ev-together ev-col-together" role="cell">
+                      {top ? `${top.name} · ${formatContributionPercent(top.contributionPercent)}` : "-"}
+                    </span>
+
+                    <span className="ev-pts" role="cell">
+                      {t.players.reduce((sum, p) => sum + p.matchPoints, 0).toFixed(2)}
+                    </span>
+
+                    <span className="ev-status" role="cell">
+                      <span className="ev-chevron" aria-hidden="true">›</span>
+                    </span>
+
+                  </button>
+
+                )
+
+              })}
 
             </div>
 
-            {view === "teams" ? (
+          ) : (
 
-              <div className="next-event-matchups last-match-matchups-stacked">
+            <div className="table-scroll ev-ind-scroll">
 
-                {teams.map((t) => {
+              <table className="ev-ind-table">
 
-                  const isChampion = t.teamPlacement === 1
+                <thead>
+                  <tr>
+                    <th>Pos</th>
+                    <th>Player</th>
+                    <th>
+                      <span className="label-full">Team Finish</span>
+                      <span className="label-short">Team</span>
+                    </th>
+                    <th className="hide-on-phone">Team Pts</th>
+                    <th>
+                      <span className="label-full">Contribution</span>
+                      <span className="label-short">Contr.</span>
+                    </th>
+                    <th>
+                      <span className="label-full">Points Earned</span>
+                      <span className="label-short">Pts</span>
+                    </th>
+                  </tr>
+                </thead>
 
-                  return (
+                <tbody>
 
-                    <div
-                      className={`next-event-matchup-card${isChampion ? " last-match-champion-card" : ""}`}
-                      key={t.team}
-                      onClick={() => setModalTeam(t)}
-                    >
+                  {allPlayersRanked.map((player) => (
 
-                      <span className="next-event-team-tag">
-                        {isChampion ? "🏆 Champions" : ordinal(t.teamPlacement)}
-                      </span>
+                    <tr key={player.name} className={player.individualPlacement <= 3 ? "is-podium" : ""}>
 
-                      <div className="next-event-matchup-players">
+                      <td className="ev-ind-pos">{player.individualPlacement}</td>
 
-                        <PlayerChip player={t.players[0]} playerIds={playerIds} />
+                      <td>
+                        <Link to={`/player-profile/${playerIds[player.name]}`} className="ev-ind-player">
+                          <img
+                            src={`${import.meta.env.BASE_URL}images/players/${playerIds[player.name]}.jpg`}
+                            alt=""
+                            onError={(e) => {
+                              e.target.src = `${import.meta.env.BASE_URL}images/players/default.jpg`
+                            }}
+                          />
+                          {player.name}
+                        </Link>
+                      </td>
 
-                        {t.players.length > 1 && (
-                          <>
-                            <span className="next-event-teammate-divider">&amp;</span>
-                            <PlayerChip player={t.players[1]} playerIds={playerIds} />
-                          </>
-                        )}
+                      <td>{ordinal(player.teamPlacement)}</td>
 
-                      </div>
+                      <td className="hide-on-phone">{player.teamPointsAvailable.toFixed(1)}</td>
 
-                      <p className="last-match-team-score">
-                        Team Score: {formatOverPar(t.teamScore)}
-                      </p>
+                      <td>{formatContributionPercent(player.contributionPercent)}</td>
 
-                    </div>
+                      <td className="ev-ind-pts">{player.matchPoints.toFixed(2)}</td>
 
-                  )
+                    </tr>
 
-                })}
+                  ))}
 
-              </div>
+                </tbody>
 
-            ) : (
+              </table>
 
-              <div className="individual-placements-panel">
+            </div>
 
-                <div className="table-scroll">
+          )}
 
-                  <table className="leaderboard-table">
+        </div>
 
-                    <thead>
-
-                      <tr>
-                        <th>Place</th>
-                        <th>Player</th>
-                        <th>Team Placement</th>
-                        <th>Team Points</th>
-                        <th>Contribution</th>
-                        <th>Points Earned</th>
-                      </tr>
-
-                    </thead>
-
-                    <tbody>
-
-                      {allPlayersRanked.map((player) => (
-
-                        <tr key={player.name}>
-
-                          <td>
-                            {player.individualPlacement}
-                          </td>
-
-                          <td>
-
-                            <div className="leaderboard-player">
-
-                              <img
-                                src={`${import.meta.env.BASE_URL}images/players/${playerIds[player.name]}.jpg`}
-                                alt={player.name}
-                                className="leaderboard-avatar"
-                                onError={(e) => {
-                                  e.target.src = `${import.meta.env.BASE_URL}images/players/default.jpg`
-                                }}
-                              />
-
-                              {player.name}
-
-                            </div>
-
-                          </td>
-
-                          <td>
-                            {ordinal(player.teamPlacement)}
-                          </td>
-
-                          <td>
-                            {player.teamPointsAvailable.toFixed(1)}
-                          </td>
-
-                          <td>
-                            {formatContributionPercent(player.contributionPercent)}
-                          </td>
-
-                          <td>
-                            {player.matchPoints.toFixed(2)}
-                          </td>
-
-                        </tr>
-
-                      ))}
-
-                    </tbody>
-
-                  </table>
-
-                </div>
-
-              </div>
-
-            )}
-
-          </>
-
-        )}
-
-      </div>
+      )}
 
       {modalTeam && (
         <TeamRecapModal

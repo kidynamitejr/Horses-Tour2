@@ -8,6 +8,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  ReferenceLine,
 } from "recharts"
 
 import {
@@ -280,9 +281,11 @@ function PointsChart({ results }) {
     points: Math.round(r.rankingPoints * 100) / 100,
   }))
 
+  const average = data.reduce((sum, d) => sum + d.points, 0) / (data.length || 1)
+
   return (
     <ResponsiveContainer width="100%" height={260}>
-      <BarChart data={data} margin={{ top: 16, right: 8, left: -12, bottom: 0 }} barCategoryGap="28%">
+      <BarChart data={data} margin={{ top: 16, right: 64, left: -12, bottom: 0 }} barCategoryGap="28%">
         <CartesianGrid vertical={false} stroke="currentColor" strokeOpacity={0.12} />
         <XAxis
           dataKey="label"
@@ -304,6 +307,22 @@ function PointsChart({ results }) {
           contentStyle={{ borderRadius: 10, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)" }}
         />
         <Bar dataKey="points" fill="#0b3157" className="pp-chart-bar" radius={[4, 4, 0, 0]} maxBarSize={56} isAnimationActive={false} />
+
+        {/* Dotted line at the player's average points per event */}
+        <ReferenceLine
+          y={average}
+          stroke="#c9a227"
+          strokeWidth={2}
+          strokeDasharray="6 5"
+          ifOverflow="extendDomain"
+          label={{
+            value: `Avg ${average.toFixed(2)}`,
+            position: "right",
+            fill: "currentColor",
+            fontSize: 12,
+            fontWeight: 700,
+          }}
+        />
       </BarChart>
     </ResponsiveContainer>
   )
@@ -962,13 +981,7 @@ function PlayerProfile() {
 
       {showTradingCard && (
         <TradingCardModal
-          player={{ Name: profile.name, "Player ID": profile.id }}
-          stats={{
-            rank: profile.tourRank ? profile.tourRank.position : null,
-            wins: profile.career.wins,
-            majorWins: profile.career.majors,
-            winnings: profile.career.winnings,
-          }}
+          profile={profile}
           onClose={() => setShowTradingCard(false)}
         />
       )}
