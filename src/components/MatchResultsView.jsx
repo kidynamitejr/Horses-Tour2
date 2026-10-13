@@ -261,10 +261,14 @@ function MatchResultsView({ eventId, matchEntry, schedule, playerIds, eyebrow, o
           useWorker: true,
         })
 
+        // Bursts from near the top of the card and falls down over the
+        // results board below.
         fireConfetti({
-          particleCount: 120,
-          spread: 80,
-          origin: { y: 0.6 },
+          particleCount: 160,
+          spread: 100,
+          startVelocity: 38,
+          ticks: 420,
+          origin: { y: 0.18 },
           colors: ["#d9b64a", "#f4d374", "#002140", "#ffffff"],
         })
 
@@ -296,13 +300,14 @@ function MatchResultsView({ eventId, matchEntry, schedule, playerIds, eyebrow, o
 
     <section className="ev-card ev-card-recap" ref={sectionRef}>
 
+      {/* Covers the whole card (photo + results) so the confetti falls over both */}
+      <canvas ref={confettiCanvasRef} className="confetti-canvas ev-confetti" />
+
       <div className="ev-hero ev-hero-compact">
 
         <CourseBackground course={event?.Course} />
 
         <div className="ev-hero-overlay" />
-
-        <canvas ref={confettiCanvasRef} className="confetti-canvas" />
 
         {onCollapse && (
           <button

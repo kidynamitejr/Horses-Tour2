@@ -800,8 +800,19 @@ html[data-theme="dark"] .tc-table tbody tr:hover {
     linear-gradient(0deg, rgba(0, 18, 36, .75) 0%, rgba(0, 18, 36, 0) 60%);
 }
 
-.ev-hero .confetti-canvas {
-  z-index: 3;
+.ev-card {
+  position: relative;
+}
+
+/* Confetti spans the whole recap card - photo header and results - and
+   never blocks clicks. */
+.ev-confetti {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 .ev-hero-content {
