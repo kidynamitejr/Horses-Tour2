@@ -1,126 +1,118 @@
 import { useEffect, useState } from "react"
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  LabelList,
-} from "recharts"
+import { Link } from "react-router-dom"
 import { getMatchEntry, getEvents, getPlayers } from "../data/googleSheets"
 import { getPlayerSummaries } from "../utils/matchEntry"
 import { getPlayerWinnings, formatCurrency } from "../utils/winnings"
 
-function toChartData(summaries, field) {
-  return Object.entries(summaries)
-    .filter(([name]) => !/\(sub\)/i.test(name))
-    .map(([name, s]) => ({ name, value: s[field] }))
-    .filter((entry) => entry.value > 0)
-    .sort((a, b) => b.value - a.value)
-}
+const MAX_ROWS = 8
 
-// Maps a player name (case-insensitive) to the headshot image the rest of
-// the site uses for them.
-function buildAvatarUrl(name, playerIdByName) {
-  const id = playerIdByName[name.trim().toLowerCase()]
-  return id
-    ? `${import.meta.env.BASE_URL}images/players/${id}.jpg`
-    : `${import.meta.env.BASE_URL}images/players/default.jpg`
-}
-
-function toWinningsChartData(winningsByPlayer, playerIdByName) {
-  return Object.entries(winningsByPlayer)
-    .filter(([name]) => !/\(sub\)/i.test(name))
+// One ranked list per stat: sorted biggest first, players with 0 left out.
+function toRows(entries, playerByName) {
+  return entries
+    .filter(([name, value]) => !/\(sub\)/i.test(name) && value > 0)
+    .sort((a, b) => b[1] - a[1])
     .map(([name, value]) => ({
       name,
       value,
-      avatarUrl: buildAvatarUrl(name, playerIdByName),
+      id: playerByName[name.trim().toLowerCase()],
     }))
-    .filter((entry) => entry.value > 0)
-    .sort((a, b) => b.value - a.value)
 }
 
-// Renders a player's headshot as a small ringed circle floating above
-// their bar. Recharts clones this with x/y/width (the bar's geometry) and
-// index added on top of the `data` prop we pass in ourselves.
-function WinningsAvatarLabel({ x, y, width, index, data }) {
+// Golf-style ranking: ties share a position shown as "T2", the next player
+// is 4th.
+function withRanks(rows) {
+  return rows.map((row) => {
+    const position = rows.findIndex((r) => r.value === row.value) + 1
+    const tied = rows.filter((r) => r.value === row.value).length > 1
+    return { ...row, rank: `${tied ? "T" : ""}${position}` }
+  })
+}
 
-  const entry = data && data[index]
+function LeaderChart({ title, subtitle, rows, format = (v) => v, accent }) {
+  const ranked = withRanks(rows).slice(0, MAX_ROWS)
+  const max = ranked.length ? ranked[0].value : 0
 
-  const [imgError, setImgError] = useState(false)
-
-  if (!entry) return null
-
-  const size = 34
-  const cx = x + width / 2
-  const cy = y - size / 2 - 10
-  const clipId = `winnings-avatar-clip-${index}`
-
-  const src = imgError
-    ? `${import.meta.env.BASE_URL}images/players/default.jpg`
-    : entry.avatarUrl
+  // Gridlines at even fractions of the leader's value give the bars a
+  // quiet scale to sit on without a full axis.
+  const ticks = [0.25, 0.5, 0.75]
 
   return (
-    <g>
-      <defs>
-        <clipPath id={clipId}>
-          <circle cx={cx} cy={cy} r={size / 2} />
-        </clipPath>
-      </defs>
+    <figure className={`leader-chart leader-chart-${accent}`}>
+      <figcaption className="leader-chart-head">
+        <h3>{title}</h3>
+        {subtitle && <span>{subtitle}</span>}
+      </figcaption>
 
-      <circle cx={cx} cy={cy} r={size / 2 + 2} fill="#fff" stroke="#d9b64a" strokeWidth={2} />
+      {ranked.length === 0 ? (
+        <p className="leader-chart-empty">No results yet.</p>
+      ) : (
+        <ol className="leader-chart-list">
+          {ranked.map((row) => (
+            <li
+              key={row.name}
+              className={row.value === max ? "is-leader" : ""}
+              title={`${row.name}: ${format(row.value)}`}
+            >
+              <span className="leader-chart-rank">{row.rank}</span>
 
-      <image
-        href={src}
-        x={cx - size / 2}
-        y={cy - size / 2}
-        width={size}
-        height={size}
-        clipPath={`url(#${clipId})`}
-        preserveAspectRatio="xMidYMid slice"
-        onError={() => setImgError(true)}
-      />
-    </g>
+              <Link
+                to={row.id ? `/player-profile/${row.id}` : "/players"}
+                className="leader-chart-player"
+              >
+                <img
+                  src={`${import.meta.env.BASE_URL}images/players/${row.id || "default"}.jpg`}
+                  alt=""
+                  onError={(e) => {
+                    e.target.src = `${import.meta.env.BASE_URL}images/players/default.jpg`
+                  }}
+                />
+                <span>{row.name}</span>
+              </Link>
+
+              <div className="leader-chart-track" aria-hidden="true">
+                {ticks.map((t) => (
+                  <i key={t} style={{ left: `${t * 100}%` }} />
+                ))}
+                <div
+                  className="leader-chart-bar"
+                  style={{ width: `${max ? (row.value / max) * 100 : 0}%` }}
+                />
+              </div>
+
+              <span className="leader-chart-value">{format(row.value)}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </figure>
   )
-
 }
 
 function TourLeaderCharts() {
 
-  const [winsData, setWinsData] = useState([])
-  const [runnerUpsData, setRunnerUpsData] = useState([])
-  const [topThreeData, setTopThreeData] = useState([])
-  const [winningsData, setWinningsData] = useState([])
+  const [charts, setCharts] = useState(null)
 
   useEffect(() => {
 
     // Wins/Runner Ups/Top 3 come from Match Entry (like the rest of the
-    // site) instead of the old Match Results tab, which stopped being
-    // updated after the first two events.
-    getMatchEntry().then((data) => {
+    // site); winnings come from the Events tab (Winner + per-person payout).
+    Promise.all([getMatchEntry(), getEvents(), getPlayers()]).then(([matchEntry, events, players]) => {
 
-      const summaries = getPlayerSummaries(data)
-
-      setWinsData(toChartData(summaries, "wins"))
-      setRunnerUpsData(toChartData(summaries, "runnerUps"))
-      setTopThreeData(toChartData(summaries, "topThree"))
-
-    })
-
-    // Winnings live on the Events tab (Winner + per-person payout),
-    // not Match Entry. Players is only needed to look up each winner's
-    // headshot for the chart labels.
-    Promise.all([getEvents(), getPlayers()]).then(([events, players]) => {
-
-      const playerIdByName = {}
+      const playerByName = {}
 
       players.forEach((p) => {
-        playerIdByName[p.Name.trim().toLowerCase()] = p["Player ID"]
+        playerByName[p.Name.trim().toLowerCase()] = p["Player ID"]
       })
 
-      setWinningsData(toWinningsChartData(getPlayerWinnings(events), playerIdByName))
+      const summaries = Object.entries(getPlayerSummaries(matchEntry))
+      const pick = (field) => summaries.map(([name, s]) => [name, s[field]])
+
+      setCharts({
+        wins: toRows(pick("wins"), playerByName),
+        runnerUps: toRows(pick("runnerUps"), playerByName),
+        topThree: toRows(pick("topThree"), playerByName),
+        winnings: toRows(Object.entries(getPlayerWinnings(events)), playerByName),
+      })
 
     })
 
@@ -134,103 +126,21 @@ function TourLeaderCharts() {
         Tour Leaders
       </h2>
 
-      <div className="leaderboard-charts">
+      {!charts ? (
+        <p>Loading...</p>
+      ) : (
+        <div className="leader-charts">
 
-        <div className="leaderboard-chart-card">
+          <LeaderChart title="Wins" subtitle="Season" rows={charts.wins} accent="gold" />
 
-          <h3>Wins</h3>
+          <LeaderChart title="Career Winnings" subtitle="Official money" rows={charts.winnings} format={formatCurrency} accent="green" />
 
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={winsData} margin={{ top: 10, right: 10, left: 0, bottom: 50 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis
-                dataKey="name"
-                angle={-35}
-                textAnchor="end"
-                interval={0}
-                height={70}
-                tick={{ fontSize: 11 }}
-              />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Bar dataKey="value" name="Wins" fill="#c9a227" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <LeaderChart title="Top 3 Finishes" subtitle="Season" rows={charts.topThree} accent="navy" />
+
+          <LeaderChart title="Runner Ups" subtitle="Season" rows={charts.runnerUps} accent="sky" />
 
         </div>
-
-        <div className="leaderboard-chart-card">
-
-          <h3>Runner Ups</h3>
-
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={runnerUpsData} margin={{ top: 10, right: 10, left: 0, bottom: 50 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis
-                dataKey="name"
-                angle={-35}
-                textAnchor="end"
-                interval={0}
-                height={70}
-                tick={{ fontSize: 11 }}
-              />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Bar dataKey="value" name="Runner Ups" fill="#002140" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-
-        </div>
-
-        <div className="leaderboard-chart-card">
-
-          <h3>Top 3 Finishes</h3>
-
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={topThreeData} margin={{ top: 10, right: 10, left: 0, bottom: 50 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis
-                dataKey="name"
-                angle={-35}
-                textAnchor="end"
-                interval={0}
-                height={70}
-                tick={{ fontSize: 11 }}
-              />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Bar dataKey="value" name="Top 3 Finishes" fill="#2d6a4f" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-
-        </div>
-
-        <div className="leaderboard-chart-card">
-
-          <h3>Career Winnings</h3>
-
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={winningsData} margin={{ top: 50, right: 10, left: 0, bottom: 50 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis
-                dataKey="name"
-                angle={-35}
-                textAnchor="end"
-                interval={0}
-                height={70}
-                tick={{ fontSize: 11 }}
-              />
-              <YAxis allowDecimals={false} tickFormatter={(value) => formatCurrency(value)} />
-              <Tooltip formatter={(value) => formatCurrency(value)} />
-              <Bar dataKey="value" name="Winnings" fill="#1f7a3f" radius={[6, 6, 0, 0]}>
-                <LabelList content={<WinningsAvatarLabel data={winningsData} />} />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-
-        </div>
-
-      </div>
+      )}
 
     </section>
 

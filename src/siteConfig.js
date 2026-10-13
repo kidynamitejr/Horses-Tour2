@@ -40,6 +40,14 @@ export const COURSES = [
   { name: "The Island", image: `${BASE}images/courses/the-island.jpeg` },
 ]
 
+// Optional real logos for players' home courses (shown on player profiles).
+// Without an entry, a generated crest with the course's initials is used.
+// To add one: put the image in public/images/course-logos/ and add a line
+// like the example below - the name must match the Players tab exactly.
+export const COURSE_LOGOS = {
+  // "Copper Mill Golf Course": `${BASE}images/course-logos/copper-mill.png`,
+}
+
 // Main header links - everything else lives under "More".
 export const PRIMARY_NAV = [
   { to: "/leaderboard", label: "Leaderboard" },

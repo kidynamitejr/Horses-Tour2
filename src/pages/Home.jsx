@@ -11,8 +11,6 @@ import { PHOTOS, COURSES, LOGO } from "../siteConfig"
 import {
   CalendarIcon,
   FlagIcon,
-  MapPinIcon,
-  TrophyIcon,
   UsersIcon,
   ArrowRightIcon,
 } from "../components/Icons"
@@ -44,10 +42,6 @@ function HomeHero() {
 
   const scheduled = events.filter((e) => e["Event Name"])
   const played = scheduled.filter((e) => (e.Status || "").trim().toLowerCase() === "played")
-  const courses = new Set(scheduled.map((e) => (e.Course || "").trim()).filter(Boolean))
-  const majors = scheduled.filter((e) =>
-    ["major", "championship"].includes((e["Event Type"] || "").trim().toLowerCase())
-  )
 
   const loaded = scheduled.length > 0
   const show = (value) => (loaded ? value : "–")
@@ -55,8 +49,6 @@ function HomeHero() {
   const stats = [
     { icon: CalendarIcon, value: show(scheduled.length), label: "Season Events" },
     { icon: FlagIcon, value: show(played.length), label: "Events Played" },
-    { icon: MapPinIcon, value: show(courses.size), label: "Host Courses" },
-    { icon: TrophyIcon, value: show(majors.length), label: "Majors" },
     { icon: UsersIcon, value: "2-Player", label: "Scramble Format" },
   ]
 

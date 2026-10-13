@@ -53,6 +53,40 @@ export const CalendarIcon = (p) => (
   <Icon {...p}><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 10h17" /><path d="M8 3v4" /><path d="M16 3v4" /></Icon>
 )
 
+export const DollarIcon = (p) => (
+  <Icon {...p}><circle cx="12" cy="12" r="9" /><path d="M15 9.2c-.5-1-1.6-1.6-3-1.6-1.8 0-3 .9-3 2.2 0 3 6 1.6 6 4.5 0 1.3-1.3 2.2-3 2.2-1.5 0-2.7-.6-3.2-1.7" /><path d="M12 6v1.6M12 16.5V18" /></Icon>
+)
+
+export const TargetIcon = (p) => (
+  <Icon {...p}><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1.2" /></Icon>
+)
+
+export const ChevronRightIcon = (p) => (
+  <Icon {...p}><path d="M9 6l6 6-6 6" /></Icon>
+)
+
+export const SwapIcon = (p) => (
+  <Icon {...p}><path d="M7 7h12l-3-3" /><path d="M17 17H5l3 3" /></Icon>
+)
+
+export const CardIcon = (p) => (
+  <Icon {...p}><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M8 15h8M8 18h5" /><circle cx="12" cy="9" r="2.5" /></Icon>
+)
+
+// Small US flag (every Horses Tour player is from the USA).
+export function UsaFlag({ width = 20 }) {
+  const stripes = Array.from({ length: 7 }, (_, i) => i * 2)
+  return (
+    <svg width={width} height={width * 0.6} viewBox="0 0 38 23" aria-label="United States flag" role="img" className="usa-flag">
+      <rect width="38" height="23" fill="#fff" />
+      {stripes.map((i) => (
+        <rect key={i} y={i * (23 / 13)} width="38" height={23 / 13} fill="#b22234" />
+      ))}
+      <rect width="16" height={23 * 7 / 13} fill="#3c3b6e" />
+    </svg>
+  )
+}
+
 export const ArrowRightIcon = (p) => (
   <Icon {...p}><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></Icon>
 )
