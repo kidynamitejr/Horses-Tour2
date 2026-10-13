@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
-import { createPortal } from "react-dom"
 import { Link } from "react-router-dom"
+import { TeamModal, TeamModalPlayer, TeamModalSection } from "./TeamModal"
 import confetti from "canvas-confetti"
 import { slugify } from "../utils/slugify"
 import { ordinal } from "../utils/ordinal"
@@ -48,125 +48,90 @@ function CourseBackground({ course }) {
 
 }
 
-// On the collapsed team card, the headshot is plain (clicking anywhere
-// on the card opens the match recap modal instead). Inside that modal,
-// the headshot + name become a link straight to the player's profile
-// page - that's the only place the link is available.
-function PlayerChip({ player, playerIds, large, linked }) {
-
-  const id = playerIds[player.name]
-
-  const content = (
-    <>
-      <div className="next-event-avatar-wrap">
-
-        <img
-          src={`${import.meta.env.BASE_URL}images/players/${id}.jpg`}
-          alt={player.name}
-          className="next-event-avatar"
-          onError={(e) => {
-            e.target.src = `${import.meta.env.BASE_URL}images/players/default.jpg`
-          }}
-        />
-
-        {linked && (
-          <span className="last-match-placement-badge">{player.individualPlacement}</span>
-        )}
-
-      </div>
-
-      <span>{player.name}</span>
-
-      {linked && (
-        <div className="last-match-player-stats">
-
-          <div className="last-match-stat-row">
-            <span className="last-match-stat-label">Individual Placement</span>
-            <span className="last-match-stat-value">{ordinal(player.individualPlacement)}</span>
-          </div>
-
-          <div className="last-match-stat-row">
-            <span className="last-match-stat-label">Match Points</span>
-            <span className="last-match-stat-value">{player.matchPoints.toFixed(2)}</span>
-          </div>
-
-          <div className="last-match-stat-row">
-            <span className="last-match-stat-label">Contributions</span>
-            <span className="last-match-stat-value">
-              {player.contributions} <em>({formatContributionPercent(player.contributionPercent)})</em>
-            </span>
-          </div>
-
-        </div>
-      )}
-    </>
-  )
-
-  const className = `next-event-player${large ? " next-event-player-large" : ""}`
-
-  if (!linked) {
-    return <div className={className}>{content}</div>
-  }
-
-  return (
-    <Link
-      to={`/player-profile/${id}`}
-      className={className}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {content}
-    </Link>
-  )
-
+function parsePercent(value) {
+  const str = String(value ?? "").trim()
+  if (!str) return 0
+  const num = str.endsWith("%") ? parseFloat(str) : parseFloat(str) * 100
+  return isNaN(num) ? 0 : num
 }
 
-function TeamRecapModal({ modalTeam, playerIds, onClose }) {
+function TeamRecapModal({ modalTeam, playerIds, eventName, teamCount, onClose }) {
 
   const isChampion = modalTeam.teamPlacement === 1
+  const players = modalTeam.players
+  const teamPoints = players.reduce((sum, p) => sum + p.matchPoints, 0)
+  const shares = players.map((p) => parsePercent(p.contributionPercent))
 
-  return createPortal(
+  return (
 
-    <div className="next-event-modal-overlay" onClick={onClose}>
-
-      <div className="next-event-modal" onClick={(e) => e.stopPropagation()}>
-
-        <button
-          type="button"
-          className="next-event-modal-close"
-          onClick={onClose}
-          aria-label="Close"
-        >
-          ×
-        </button>
-
-        <div className="next-event-modal-header">
-
-          <p className="next-event-modal-eyebrow">Match Recap</p>
-
-          <span className={`next-event-team-tag next-event-modal-team-tag${isChampion ? " last-match-champion-tag" : ""}`}>
-            {isChampion ? "🏆 Champions" : `${ordinal(modalTeam.teamPlacement)} Place`}
+    <TeamModal
+      eyebrow={`Match Recap · ${eventName}`}
+      title={isChampion ? "Champions" : `${ordinal(modalTeam.teamPlacement)} Place`}
+      onClose={onClose}
+      tags={
+        <>
+          <span className={`tm-tag${isChampion ? " tm-tag-gold" : ""}`}>
+            {isChampion ? "🏆 " : ""}{formatOverPar(modalTeam.teamScore)}
           </span>
+          {teamCount > 0 && <span className="tm-tag">{ordinal(modalTeam.teamPlacement)} of {teamCount}</span>}
+        </>
+      }
+    >
 
-        </div>
-
-        <div className="next-event-modal-players">
-
-          <PlayerChip player={modalTeam.players[0]} playerIds={playerIds} large linked />
-
-          {modalTeam.players.length > 1 && (
-            <>
-              <span className="next-event-teammate-divider next-event-modal-divider">&amp;</span>
-              <PlayerChip player={modalTeam.players[1]} playerIds={playerIds} large linked />
-            </>
-          )}
-
-        </div>
-
+      <div className="tm-players">
+        {players.map((p) => (
+          <TeamModalPlayer
+            key={p.name}
+            id={playerIds[p.name]}
+            name={p.name}
+            badge={<><small>Finish</small>{p.individualPlacement}</>}
+            stats={[
+              { label: "Points Earned", value: p.matchPoints.toFixed(2), highlight: true },
+              { label: "Contribution", value: formatContributionPercent(p.contributionPercent) },
+              { label: "Contributions", value: p.contributions || "-" },
+              {
+                label: "Movement",
+                value: p.movement === null || p.movement === undefined
+                  ? "—"
+                  : p.movement > 0 ? `▲ ${p.movement}` : p.movement < 0 ? `▼ ${Math.abs(p.movement)}` : "—",
+              },
+            ]}
+          />
+        ))}
       </div>
 
-    </div>,
+      {players.length > 1 && (
+        <TeamModalSection title="Contribution Split">
+          <div className="tm-split">
+            {players.map((p, i) => (
+              <span
+                key={p.name}
+                className={`tm-split-part tm-split-${i}`}
+                style={{ flexGrow: shares[i] || 1 }}
+                title={`${p.name}: ${formatContributionPercent(p.contributionPercent)}`}
+              >
+                {shares[i] >= 18 && `${Math.round(shares[i])}%`}
+              </span>
+            ))}
+          </div>
+          <div className="tm-split-legend">
+            {players.map((p, i) => (
+              <span key={p.name}><i className={`tm-split-${i}`} />{p.name}</span>
+            ))}
+          </div>
+        </TeamModalSection>
+      )}
 
-    document.body
+      <TeamModalSection title="Team Result">
+        <ul className="tm-list">
+          <li><span>Team finish</span><b className={isChampion ? "is-win" : ""}>{ordinal(modalTeam.teamPlacement)}</b></li>
+          <li><span>Team score</span><b>{formatOverPar(modalTeam.teamScore)}</b></li>
+          <li><span>Placement points available</span><b>{players[0] ? players[0].teamPointsAvailable : "-"}</b></li>
+          <li><span>Points earned by the team</span><b>{teamPoints.toFixed(2)}</b></li>
+        </ul>
+      </TeamModalSection>
+
+    </TeamModal>
 
   )
 
@@ -547,6 +512,8 @@ function MatchResultsView({ eventId, matchEntry, schedule, playerIds, eyebrow, o
         <TeamRecapModal
           modalTeam={modalTeam}
           playerIds={playerIds}
+          eventName={eventName}
+          teamCount={teams.length}
           onClose={() => setModalTeam(null)}
         />
       )}

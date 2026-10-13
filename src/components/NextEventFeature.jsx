@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react"
-import { createPortal } from "react-dom"
-import { Link } from "react-router-dom"
+import { TeamModal, TeamModalPlayer, TeamModalSection } from "./TeamModal"
 import {
   getPlayers,
   getSchedule,
@@ -84,169 +83,86 @@ function CourseBackground({ course }) {
 
 }
 
-// On the collapsed matchup card, the headshot is plain (clicking
-// anywhere on the card opens the team detail modal instead). Inside
-// that modal, the headshot + name become a link straight to the
-// player's profile page - that's the only place the link is available.
-function PlayerChip({ name, playerIds, large, linked, ranking }) {
+function TeamDetailModal({ modalTeam, highestCombined, eventNameById, playerIds, summaries, tourRankByName, eventName, onClose }) {
 
-  const id = playerIds[name]
-
-  const content = (
-    <>
-      <img
-        src={`${import.meta.env.BASE_URL}images/players/${id}.jpg`}
-        alt={name}
-        className="next-event-avatar"
-        onError={(e) => {
-          e.target.src = `${import.meta.env.BASE_URL}images/players/default.jpg`
-        }}
-      />
-      <span>{name}</span>
-      {ranking !== undefined && (
-        <span className="next-event-player-ranking">
-          {ranking.toFixed(1)} Ranking Factor
-        </span>
-      )}
-    </>
-  )
-
-  const className = `next-event-player${large ? " next-event-player-large" : ""}`
-
-  if (!linked) {
-    return <div className={className}>{content}</div>
-  }
+  const leaderGap = highestCombined - modalTeam.combined
 
   return (
-    <Link
-      to={`/player-profile/${id}`}
-      className={className}
-      onClick={(e) => e.stopPropagation()}
+
+    <TeamModal
+      eyebrow={`Matchup Preview · ${eventName}`}
+      title={modalTeam.team}
+      onClose={onClose}
+      tags={
+        <>
+          {modalTeam.isFavored && <span className="tm-tag tm-tag-gold">★ Favored</span>}
+          {modalTeam.isUnderdog && <span className="tm-tag">Underdog</span>}
+        </>
+      }
     >
-      {content}
-    </Link>
-  )
 
-}
-
-function TeamDetailModal({ modalTeam, highestCombined, eventNameById, playerIds, summaries, onClose }) {
-
-  return createPortal(
-
-    <div className="next-event-modal-overlay" onClick={onClose}>
-
-      <div className="next-event-modal" onClick={(e) => e.stopPropagation()}>
-
-        <button
-          type="button"
-          className="next-event-modal-close"
-          onClick={onClose}
-          aria-label="Close"
-        >
-          ×
-        </button>
-
-        <div className="next-event-modal-header">
-
-          <p className="next-event-modal-eyebrow">Matchup Preview</p>
-
-          <span className="next-event-team-tag next-event-modal-team-tag">
-            {modalTeam.team}
-          </span>
-
-          {modalTeam.isFavored && (
-            <span className="next-event-favored-badge next-event-modal-favored-badge">
-              ★ Favored to Win
-            </span>
-          )}
-
-          {modalTeam.isUnderdog && (
-            <span className="next-event-underdog-badge next-event-modal-underdog-badge">
-              Underdog
-            </span>
-          )}
-
-        </div>
-
-        <div className="next-event-modal-players">
-
-          <PlayerChip
-            name={modalTeam.teamPlayers[0]}
-            playerIds={playerIds}
-            large
-            linked
-            ranking={summaries[modalTeam.teamPlayers[0]]?.avgRankingPoints}
-          />
-
-          {modalTeam.teamPlayers.length > 1 && (
-            <>
-              <span className="next-event-teammate-divider next-event-modal-divider">&amp;</span>
-              <PlayerChip
-                name={modalTeam.teamPlayers[1]}
-                playerIds={playerIds}
-                large
-                linked
-                ranking={summaries[modalTeam.teamPlayers[1]]?.avgRankingPoints}
-              />
-            </>
-          )}
-
-        </div>
-
-        <p className="next-event-tagline">{getPairingTagline(modalTeam.combined)}</p>
-
-        <div className="next-event-detail-block">
-
-          <h4>
-            🏌️ {modalTeam.isFavored
-              ? "Favored to Win"
-              : modalTeam.isUnderdog
-                ? "Underdog"
-                : "Combined Ranking Factor"}
-          </h4>
-
-          <p>
-            This team's combined Ranking Factor is{" "}
-            <strong>{modalTeam.combined.toFixed(1)}</strong> — the average of
-            both players' season Ranking Factor.
-            {modalTeam.isFavored
-              ? " It's the highest combined average of any team in this matchup, making them the favorite to finish on top."
-              : modalTeam.isUnderdog
-                ? " It's the lowest combined average of any team in this matchup, making them the underdog heading into this event."
-                : ` ${modalTeam.leaderTeamLabel} leads the field at ${highestCombined.toFixed(1)}.`}
-          </p>
-
-        </div>
-
-        <div className="next-event-detail-block">
-
-          <h4>⛳ Partnership History</h4>
-
-          {modalTeam.history.length === 0 ? (
-            <p className="next-event-first-pairing">
-              🤝 First Time Teaming Up! No shared history yet — this is a
-              fresh pairing.
-            </p>
-          ) : (
-            <ul className="next-event-history-list">
-              {modalTeam.history.map((h) => (
-                <li key={h.eventId}>
-                  <span>{eventNameById[h.eventId] || `Event ${h.eventId}`}</span>
-                  <span className="next-event-history-placement">
-                    {placementBadge(h.placement)} {ordinal(h.placement)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-
-        </div>
-
+      <div className="tm-players">
+        {modalTeam.teamPlayers.map((name) => {
+          const s = summaries[name]
+          const rank = tourRankByName[name]
+          return (
+            <TeamModalPlayer
+              key={name}
+              id={playerIds[name]}
+              name={name}
+              badge={rank ? <><small>Rank</small>{rank}</> : <small>Unranked</small>}
+              stats={[
+                { label: "Ranking Factor", value: s ? s.avgRankingPoints.toFixed(2) : "-", highlight: true },
+                { label: "Events", value: s ? s.eventsPlayed : 0 },
+                { label: "Wins", value: s ? s.wins : 0 },
+                { label: "Top 3", value: s ? s.topThree : 0 },
+              ]}
+            />
+          )
+        })}
       </div>
 
-    </div>,
+      <TeamModalSection title="Team Strength">
+        <div className="tm-strength">
+          <div className="tm-strength-row">
+            <span>{modalTeam.team}</span>
+            <span className="tm-bar"><span style={{ width: `${highestCombined ? (modalTeam.combined / highestCombined) * 100 : 0}%` }} /></span>
+            <b>{modalTeam.combined.toFixed(2)}</b>
+          </div>
+          {!modalTeam.isFavored && (
+            <div className="tm-strength-row is-muted">
+              <span>{modalTeam.leaderTeamLabel} (favorite)</span>
+              <span className="tm-bar"><span style={{ width: "100%" }} /></span>
+              <b>{highestCombined.toFixed(2)}</b>
+            </div>
+          )}
+        </div>
+        <p className="tm-note">
+          {getPairingTagline(modalTeam.combined)} · Combined Ranking Factor is the average of both players&apos; season Ranking Factor.
+          {modalTeam.isFavored
+            ? " Highest in the field - this team is the favorite."
+            : ` ${leaderGap.toFixed(2)} behind the favorite.`}
+        </p>
+      </TeamModalSection>
 
-    document.body
+      <TeamModalSection title="Partnership History">
+        {modalTeam.history.length === 0 ? (
+          <p className="tm-note">First time teaming up - no shared history yet.</p>
+        ) : (
+          <ul className="tm-list">
+            {modalTeam.history.map((h) => (
+              <li key={h.eventId}>
+                <span>{eventNameById[h.eventId] || `Event ${h.eventId}`}</span>
+                <b className={Number(h.placement) === 1 ? "is-win" : ""}>
+                  {placementBadge(h.placement)} {ordinal(h.placement)}
+                </b>
+              </li>
+            ))}
+          </ul>
+        )}
+      </TeamModalSection>
+
+    </TeamModal>
 
   )
 
@@ -592,6 +508,8 @@ function NextEventFeature() {
           eventNameById={eventNameById}
           playerIds={playerIds}
           summaries={summaries}
+          tourRankByName={tourRankByName}
+          eventName={nextEvent ? nextEvent["Event Name"].trim() : ""}
           onClose={() => setModalTeam(null)}
         />
       )}
