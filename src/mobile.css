@@ -359,6 +359,96 @@
     font-size: 12px;
   }
 
+  /* --- Extra-compact pass --- */
+
+  .pp-hero {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .pp-hero-photo {
+    height: 118px;
+    padding-top: 8px;
+  }
+
+  .pp-hero-top {
+    gap: 6px;
+    padding: 10px 12px 6px 4px;
+  }
+
+  .pp-hero-top h1 {
+    font-size: 24px;
+  }
+
+  .pp-hero-club svg,
+  .pp-hero-club img {
+    width: 24px;
+    height: 24px;
+  }
+
+  .pp-hero-club {
+    font-size: 11px;
+  }
+
+  /* Facts become one short wrapped line: "Country USA · Age 26 · ..." */
+  .pp-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px 12px;
+    padding: 8px 0;
+  }
+
+  .pp-facts > div {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+
+  .pp-facts dt {
+    font-size: 10px;
+    font-weight: 700;
+    opacity: .7;
+  }
+
+  .pp-facts dd {
+    margin: 0;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: white;
+  }
+
+  /* All six big numbers on one row */
+  .pp-numbers {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 4px;
+    padding: 8px 0;
+    text-align: center;
+  }
+
+  .pp-numbers dt {
+    font-size: 8.5px;
+    line-height: 1.15;
+    letter-spacing: .02em;
+  }
+
+  .pp-numbers dd {
+    font-size: 19px;
+  }
+
+  .pp-tools {
+    padding: 8px 0 10px;
+  }
+
+  .pp-tools > span {
+    display: none;
+  }
+
+  .pp-tool {
+    flex: 1;
+    justify-content: center;
+    padding: 6px 8px;
+    font-size: 11.5px;
+  }
+
   .tm-player-art {
     height: 120px;
   }
