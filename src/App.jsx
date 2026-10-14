@@ -6,6 +6,7 @@ import "./compare.css"
 import "./gallery.css"
 import "./rules.css"
 import "./leaderboard.css"
+import "./schedule.css"
 import "./mobile.css"
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom"
 

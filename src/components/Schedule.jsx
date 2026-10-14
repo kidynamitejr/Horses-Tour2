@@ -1,59 +1,106 @@
 import { useEffect, useState } from "react"
-import { getSchedule, getMatchEntry, getEvents } from "../data/googleSheets"
+import { Link } from "react-router-dom"
+import { getEvents, getMatchEntry, getPlayers } from "../data/googleSheets"
+import { slugify } from "../utils/slugify"
+import { formatCurrency } from "../utils/winnings"
+import { CalendarIcon, FlagIcon, MapPinIcon, TrophyIcon } from "./Icons"
 
+const BASE = import.meta.env.BASE_URL
+const COURSE_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"]
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+// "M/D/YY" - parsed by hand since browsers disagree on 2-digit years.
+function parseDate(text) {
+  const parts = (text || "").split("/").map((p) => p.trim())
+  if (parts.length !== 3) return null
+  const year = parts[2].length === 2 ? 2000 + Number(parts[2]) : Number(parts[2])
+  const date = new Date(year, Number(parts[0]) - 1, Number(parts[1]))
+  return isNaN(date) ? null : date
+}
+
+function money(value) {
+  const num = parseFloat(String(value ?? "").replace(/[^0-9.-]/g, ""))
+  return isNaN(num) ? 0 : num
+}
+
+function formatToPar(value) {
+  const num = parseFloat(value)
+  if (isNaN(num)) return ""
+  if (num === 0) return "E"
+  return num > 0 ? `+${num}` : String(num)
+}
+
+function CoursePhoto({ course }) {
+  const [extIndex, setExtIndex] = useState(0)
+
+  if (!course || extIndex >= COURSE_IMAGE_EXTENSIONS.length) {
+    return <div className="sch-photo-fallback"><FlagIcon size={28} /></div>
+  }
+
+  return (
+    <img
+      src={`${BASE}images/courses/${slugify(course)}.${COURSE_IMAGE_EXTENSIONS[extIndex]}`}
+      alt={course}
+      loading="lazy"
+      onError={() => setExtIndex((i) => i + 1)}
+    />
+  )
+}
 
 function Schedule() {
 
   const [events, setEvents] = useState([])
   const [winnersByEventId, setWinnersByEventId] = useState({})
-  const [teeTimesByEventId, setTeeTimesByEventId] = useState({})
-
+  const [playerIds, setPlayerIds] = useState({})
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState("all")
 
   useEffect(() => {
 
     async function loadSchedule() {
 
-      const [data, matchEntry, eventDetails] = await Promise.all([
-        getSchedule(),
-        getMatchEntry(),
-        getEvents(),
-      ])
+      try {
 
-      setEvents(data)
+        const [eventRows, matchEntry, players] = await Promise.all([
+          getEvents(),
+          getMatchEntry(),
+          getPlayers(),
+        ])
 
-      // Tee times are kept on the Events tab's "Tee Time" column.
-      const teeTimes = {}
+        const ids = {}
+        players.forEach((p) => { ids[(p.Name || "").trim()] = p["Player ID"] })
+        setPlayerIds(ids)
 
-      eventDetails.forEach((row) => {
-        teeTimes[row["Event ID"]] = row["Tee Time"]?.trim()
-      })
+        // The winners come from Match Entry (whichever team has Placement
+        // 1) instead of the sheet's own Winner cell, since that cell is
+        // easy to forget updating after an event.
+        const winners = {}
 
-      setTeeTimesByEventId(teeTimes)
+        matchEntry.forEach((row) => {
 
-      // The Winner column is computed live from Match Entry (whichever
-      // team has Placement 1) instead of the sheet's own Winner cell,
-      // since that cell is easy to forget updating after an event.
-      const winningTeams = {}
+          if (!row.Player || !row.Contributions || Number(row.Placement) !== 1) return
 
-      matchEntry.forEach((row) => {
+          const eventId = row["Event ID"]
 
-        if (!row.Player || Number(row.Placement) !== 1) return
+          if (!winners[eventId]) winners[eventId] = { players: [], teamScore: row["Team Score"], totalTeams: Number(row["Total Teams"]) || null }
 
-        const eventId = row["Event ID"]
+          winners[eventId].players.push(row.Player.trim())
 
-        if (!winningTeams[eventId]) winningTeams[eventId] = []
+        })
 
-        winningTeams[eventId].push(row.Player.trim())
+        setWinnersByEventId(winners)
+        setEvents(eventRows.filter((e) => e["Event Name"]))
 
-      })
+      } catch (error) {
 
-      const winners = {}
+        console.error("Schedule Error:", error)
 
-      Object.entries(winningTeams).forEach(([eventId, players]) => {
-        winners[eventId] = players.join(" / ")
-      })
+      } finally {
 
-      setWinnersByEventId(winners)
+        setLoading(false)
+
+      }
 
     }
 
@@ -61,143 +108,228 @@ function Schedule() {
 
   }, [])
 
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
 
+  const winningsKey = events[0] ? Object.keys(events[0]).find((k) => /winnings/i.test(k)) : null
+
+  const list = events
+    .map((e) => {
+      const date = parseDate(e.Date)
+      const type = (e["Event Type"] || "Regular").trim()
+      const winner = winnersByEventId[e["Event ID"]]
+      const complete = Boolean(winner) || (date ? date < today : false)
+      return {
+        id: e["Event ID"],
+        name: e["Event Name"].trim(),
+        date,
+        dateText: e.Date,
+        course: (e.Course || "").trim(),
+        address: (e.Address || "").trim(),
+        teeTime: (e["Tee Time"] || "").trim(),
+        type,
+        isMajor: type.toLowerCase() === "major",
+        isChampionship: type.toLowerCase() === "championship",
+        buyIn: money(e["Buy in"]),
+        payout: winningsKey ? money(e[winningsKey]) : 0,
+        players: Number(e["Player Count"]) || null,
+        winner,
+        complete,
+        daysAway: date ? Math.round((date - today) / 86400000) : null,
+      }
+    })
+    .sort((a, b) => (a.date && b.date ? a.date - b.date : Number(a.id) - Number(b.id)))
+
+  const nextEvent = list.find((e) => !e.complete)
+  const completedCount = list.filter((e) => e.complete).length
+  const majorsCount = list.filter((e) => e.isMajor || e.isChampionship).length
+  const totalPurse = list.reduce((sum, e) => sum + (e.winner ? e.payout * e.winner.players.length : 0), 0)
+  const seasonYear = list.find((e) => e.date)?.date.getFullYear() ?? new Date().getFullYear()
+
+  const shown = list.filter((e) =>
+    filter === "all" ? true : filter === "upcoming" ? !e.complete : e.complete
+  )
 
   return (
 
-    <section className="card">
+    <div className="sch">
 
+      <section className="sch-hero">
+        <div className="sch-hero-main">
+          <span className="sch-eyebrow">{seasonYear} Season</span>
+          <h2>Tour Schedule</h2>
+          <p>
+            {list.length} events across {new Set(list.map((e) => e.course)).size} host courses
+            {list.length > 0 && `, ending with ${/^the\s/i.test(list[list.length - 1].name) ? "" : "the "}${list[list.length - 1].name}`}.
+          </p>
 
-      <h2>
-        Tour Schedule
-      </h2>
+          <div className="sch-progress" aria-label={`${completedCount} of ${list.length} events complete`}>
+            <div className="sch-progress-bar">
+              <span style={{ width: `${list.length ? (completedCount / list.length) * 100 : 0}%` }} />
+            </div>
+            <span>{completedCount} of {list.length} complete</span>
+          </div>
+        </div>
 
+        <dl className="sch-hero-stats">
+          <div>
+            <dt><CalendarIcon size={16} /> Events</dt>
+            <dd>{loading ? "–" : list.length}</dd>
+          </div>
+          <div>
+            <dt><TrophyIcon size={16} /> Majors</dt>
+            <dd>{loading ? "–" : majorsCount}</dd>
+          </div>
+          <div>
+            <dt><FlagIcon size={16} /> Next Event</dt>
+            <dd>
+              {!nextEvent
+                ? "Season over"
+                : nextEvent.daysAway === 0
+                  ? "Today"
+                  : nextEvent.daysAway === 1
+                    ? "Tomorrow"
+                    : `${nextEvent.daysAway} days`}
+            </dd>
+          </div>
+          <div>
+            <dt>$ Paid Out</dt>
+            <dd>{loading ? "–" : formatCurrency(totalPurse)}</dd>
+          </div>
+        </dl>
+      </section>
 
-      <div className="table-scroll">
-
-      <table className="leaderboard-table">
-
-
-        <thead>
-
-          <tr>
-
-            <th>Event</th>
-            <th>Date</th>
-            <th className="hide-on-phone">Course</th>
-            <th>
-              <span className="label-full">Classification</span>
-              <span className="label-short">Type</span>
-            </th>
-            <th>Winner</th>
-            <th>
-              <span className="label-full">Tee Times</span>
-              <span className="label-short">Tee</span>
-            </th>
-
-          </tr>
-
-        </thead>
-
-
-        <tbody>
-
-
-          {events.map((event, index) => (
-
-            <tr key={index}>
-
-
-              <td className="schedule-event-name">
-                {event["Event Name"]}
-              </td>
-
-
-              <td>
-                {event.Date}
-              </td>
-
-
-              <td className="hide-on-phone">
-                {event.Course}
-              </td>
-
-
-              <td>
-                {event.Status && (() => {
-
-                  const statusText = event.Status.trim()
-                  const statusLower = statusText.toLowerCase()
-                  // Major and Championship both get special treatment,
-                  // but with their own distinct colors.
-                  const isMajor = statusLower === "major"
-                  const isChampionship = statusLower === "championship"
-                  const isSpecial = isMajor || isChampionship
-
-                  const badgeClass = isMajor
-                    ? "status-major"
-                    : isChampionship
-                      ? "status-championship"
-                      : statusLower === "played"
-                        ? "status-played"
-                        : statusLower === "regular"
-                          ? "status-regular"
-                          : "status-planned"
-
-                  return (
-                    <span className={`status-badge ${badgeClass}`}>
-                      {isSpecial && <span className="status-major-star">★</span>}
-                      {isChampionship ? (
-                        <>
-                          <span className="label-full">{statusText}</span>
-                          <span className="label-short">Champ</span>
-                        </>
-                      ) : statusText}
-                    </span>
-                  )
-
-                })()}
-              </td>
-
-
-              <td>
-                {(() => {
-
-                  const winner = winnersByEventId[event["Event ID"]]
-
-                  return (
-                    <span className={`schedule-winner${winner ? "" : " schedule-winner-pending"}`}>
-                      {winner || "TBD"}
-                    </span>
-                  )
-
-                })()}
-              </td>
-
-
-              <td>
-                {teeTimesByEventId[event["Event ID"]] || "TBD"}
-              </td>
-
-
-            </tr>
-
-          ))}
-
-
-        </tbody>
-
-
-      </table>
-
+      <div className="sch-filters" role="tablist" aria-label="Filter events">
+        {[
+          ["all", "All Events", list.length],
+          ["upcoming", "Upcoming", list.length - completedCount],
+          ["completed", "Completed", completedCount],
+        ].map(([key, label, count]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={filter === key}
+            className={filter === key ? "active" : ""}
+            onClick={() => setFilter(key)}
+          >
+            {label} <span>{count}</span>
+          </button>
+        ))}
       </div>
 
+      {loading && <p className="sch-empty">Loading schedule...</p>}
 
-    </section>
+      <ol className="sch-list">
+
+        {shown.map((e) => {
+
+          const isNext = nextEvent && e.id === nextEvent.id
+
+          return (
+
+            <li
+              key={e.id}
+              className={`sch-event${e.complete ? " is-complete" : ""}${isNext ? " is-next" : ""}${e.isMajor ? " is-major" : ""}${e.isChampionship ? " is-championship" : ""}`}
+            >
+
+              <div className="sch-date">
+                {e.date ? (
+                  <>
+                    <span>{MONTHS[e.date.getMonth()]}</span>
+                    <b>{e.date.getDate()}</b>
+                    <small>{WEEKDAYS[e.date.getDay()]}</small>
+                  </>
+                ) : (
+                  <b>TBD</b>
+                )}
+              </div>
+
+              <div className="sch-photo">
+                <CoursePhoto course={e.course} />
+                {isNext && <span className="sch-ribbon">Up Next</span>}
+              </div>
+
+              <div className="sch-info">
+                <div className="sch-tags">
+                  <span className={`sch-type${e.isMajor ? " is-major" : ""}${e.isChampionship ? " is-championship" : ""}`}>
+                    {(e.isMajor || e.isChampionship) && "★ "}{e.type}
+                  </span>
+                  <span className={`sch-status${e.complete ? " is-complete" : ""}`}>
+                    {e.complete ? "Final" : "Upcoming"}
+                  </span>
+                </div>
+
+                <h3>{e.name}</h3>
+
+                <ul className="sch-meta">
+                  <li><MapPinIcon size={14} /> {e.course}</li>
+                  {e.teeTime && e.teeTime !== "TBD" && <li><CalendarIcon size={14} /> {e.teeTime} tee time</li>}
+                  {e.buyIn > 0 && <li>${e.buyIn} buy-in</li>}
+                </ul>
+
+                {e.address && (
+                  <a
+                    className="sch-map"
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(e.address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {e.address} ↗
+                  </a>
+                )}
+              </div>
+
+              <div className="sch-result">
+                {e.winner ? (
+                  <>
+                    <span className="sch-result-label"><TrophyIcon size={14} /> Champions</span>
+                    <div className="sch-winners">
+                      {e.winner.players.map((name) => (
+                        <Link key={name} to={`/player-profile/${playerIds[name]}`} className="sch-winner">
+                          <img
+                            src={`${BASE}images/players/${playerIds[name] || "default"}.jpg`}
+                            alt=""
+                            onError={(ev) => {
+                              ev.target.src = `${BASE}images/players/default.jpg`
+                            }}
+                          />
+                          <span>{name}</span>
+                        </Link>
+                      ))}
+                    </div>
+                    <div className="sch-result-foot">
+                      <span><b>{formatToPar(e.winner.teamScore)}</b> team score</span>
+                      {e.payout > 0 && <span><b>{formatCurrency(e.payout)}</b> each</span>}
+                    </div>
+                  </>
+                ) : e.complete ? (
+                  <span className="sch-result-label">Results pending</span>
+                ) : (
+                  <div className="sch-countdown">
+                    <b>{e.daysAway === 0 ? "Today" : e.daysAway === 1 ? "1" : e.daysAway}</b>
+                    <span>{e.daysAway === 0 ? "Tee it up!" : e.daysAway === 1 ? "day to go" : "days to go"}</span>
+                    {isNext && (
+                      <Link to="/next-event" className="sch-preview-link">Matchup preview →</Link>
+                    )}
+                  </div>
+                )}
+              </div>
+
+            </li>
+
+          )
+
+        })}
+
+      </ol>
+
+      {!loading && shown.length === 0 && <p className="sch-empty">No events here yet.</p>}
+
+    </div>
 
   )
 
 }
-
 
 export default Schedule

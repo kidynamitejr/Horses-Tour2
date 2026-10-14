@@ -10,6 +10,9 @@ import { UsaFlag } from "./Icons"
 
 const BASE = import.meta.env.BASE_URL
 
+// Phones get the share sheet (Save Image -> camera roll) instead of a file download.
+const isPhone = typeof navigator !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+
 // A collectible-style trading card (front + back) for a player profile.
 // `profile` comes from buildPlayerProfiles (utils/playerProfile.js).
 function TradingCardModal({ profile, onClose }) {
@@ -48,10 +51,28 @@ function TradingCardModal({ profile, onClose }) {
         useCORS: true,
       })
 
+      const fileName = `${profile.name.replace(/\s+/g, "-").toLowerCase()}-trading-card${flipped ? "-back" : ""}.png`
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"))
+      const file = blob ? new File([blob], fileName, { type: "image/png" }) : null
+
+      // Phones: open the share sheet, which has "Save Image" (camera roll)
+      // on iPhone and "Save to device"/Photos on Android.
+      if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: `${profile.name} - Horses Tour trading card` })
+          return
+        } catch (shareError) {
+          // Closing the share sheet isn't an error worth reporting.
+          if (shareError.name === "AbortError") return
+        }
+      }
+
+      // Computers (or phones without file sharing): regular download.
       const link = document.createElement("a")
-      link.download = `${profile.name.replace(/\s+/g, "-").toLowerCase()}-trading-card${flipped ? "-back" : ""}.png`
-      link.href = canvas.toDataURL("image/png")
+      link.download = fileName
+      link.href = blob ? URL.createObjectURL(blob) : canvas.toDataURL("image/png")
       link.click()
+      if (blob) setTimeout(() => URL.revokeObjectURL(link.href), 4000)
 
     } catch (error) {
 
@@ -229,7 +250,11 @@ function TradingCardModal({ profile, onClose }) {
             ↻ Flip Card
           </button>
           <button type="button" className="btn btn-primary tc-download" onClick={handleDownload} disabled={downloading}>
-            {downloading ? "Preparing..." : `⬇ Download ${flipped ? "Back" : "Front"}`}
+            {downloading
+              ? "Preparing..."
+              : isPhone
+                ? `⬇ Save ${flipped ? "Back" : "Front"} to Photos`
+                : `⬇ Download ${flipped ? "Back" : "Front"}`}
           </button>
         </div>
 

@@ -1,0 +1,14 @@
+{
+  "name": "Horses Tour",
+  "short_name": "Horses Tour",
+  "description": "Competitive scramble golf - standings, schedule, players and stats.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#002140",
+  "icons": [
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
