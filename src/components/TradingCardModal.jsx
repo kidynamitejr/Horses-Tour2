@@ -45,10 +45,43 @@ function TradingCardModal({ profile, onClose }) {
 
     try {
 
+      // Capture at the card's real layout size. html2canvas copies the card
+      // into a hidden page where the flip-in animation restarts (leaving it
+      // turned edge-on, which saved a skinny sliver), and where the photo
+      // area's flexible height can collapse - so freeze both in the copy.
+      const width = face.offsetWidth
+      const height = face.offsetHeight
+      const art = face.querySelector(".tc-art")
+      const artHeight = art ? art.offsetHeight : null
+      const faceSelector = flipped ? ".tc-back" : ".tc-front"
+
       const canvas = await html2canvas(face, {
         backgroundColor: null,
         scale: 3,
         useCORS: true,
+        width,
+        height,
+        onclone: (doc) => {
+          doc.querySelectorAll(".tc-face").forEach((f) => {
+            f.style.animation = "none"
+            f.style.transform = "none"
+          })
+
+          const copy = doc.querySelector(faceSelector)
+          if (!copy) return
+
+          copy.style.width = `${width}px`
+          copy.style.height = `${height}px`
+
+          const frame = copy.querySelector(".tc-frame")
+          if (frame) frame.style.boxShadow = "none"
+
+          const copyArt = copy.querySelector(".tc-art")
+          if (copyArt && artHeight) {
+            copyArt.style.flex = "none"
+            copyArt.style.height = `${artHeight}px`
+          }
+        },
       })
 
       const fileName = `${profile.name.replace(/\s+/g, "-").toLowerCase()}-trading-card${flipped ? "-back" : ""}.png`
