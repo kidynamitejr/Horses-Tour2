@@ -32,6 +32,7 @@ import ComparePlayersPage from "./pages/ComparePlayersPage"
 import HallOfChampionsPage from "./pages/HallOfChampionsPage"
 import CourseHistoryPage from "./pages/CourseHistoryPage"
 import NextEventPage from "./pages/NextEventPage"
+import CoursesPage from "./pages/CoursesPage"
 
 function getPageHero(pathname) {
   if (PAGE_HEROES[pathname]) return PAGE_HEROES[pathname]
@@ -83,6 +84,8 @@ function Layout() {
           <Route path="/course-history" element={<CourseHistoryPage />} />
 
           <Route path="/next-event" element={<NextEventPage />} />
+
+          <Route path="/courses" element={<CoursesPage />} />
 
           <Route
             path="/player-profile/:name"

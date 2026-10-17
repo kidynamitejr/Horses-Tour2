@@ -59,6 +59,7 @@ export const PRIMARY_NAV = [
 
 export const MORE_NAV = [
   { to: "/past-matches", label: "Past Matches", note: "Every result, round by round" },
+  { to: "/courses", label: "Courses", note: "Maps and photos of every course" },
   { to: "/course-history", label: "Course History", note: "Hole-by-hole scoring" },
   { to: "/hall-of-champions", label: "Hall of Champions", note: "Every champion crowned" },
   { to: "/gallery", label: "Gallery", note: "Photos from the tour" },
@@ -133,6 +134,12 @@ export const PAGE_HEROES = {
     title: "Hall of Champions",
     subtitle: "Every champion crowned across Horses Tour history.",
     image: PHOTOS.ballAtCup,
+  },
+  "/courses": {
+    eyebrow: "Host Courses",
+    title: "Courses",
+    subtitle: "Every course on the Horses Tour - maps, photos, past winners and course records.",
+    image: PHOTOS.courseOverlook,
   },
   "/course-history": {
     eyebrow: "Course Intelligence",

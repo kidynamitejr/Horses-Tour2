@@ -193,7 +193,7 @@ function Stats() {
         const combined = []
 
         combined.push({
-          Record: "Best Team Score",
+          Record: "Lowest Round Ever",
           Score: formatOverPar(lowestTeamScore.score),
           Team: lowestTeamScore.players.join(", "),
         })
