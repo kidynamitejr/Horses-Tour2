@@ -10,6 +10,8 @@
  *   Course Pars  - Course | Hole 1 .. Hole 18
  *   Live Scores  - one row per team per hole while a round is in progress
  *   Hole by Hole - finished cards are written here as score to par
+ *   Match Entry  - finished cards fill in each player's Team Score,
+ *                  Contributions and Placement (formula cells are left alone)
  *
  * Scores can only be saved or submitted on the event's date (from the
  * Events tab), so past rounds can't be changed from the website. The
@@ -24,6 +26,7 @@ const PARS_SHEET = "Course Pars"
 const LIVE_SHEET = "Live Scores"
 const HOLE_SHEET = "Hole by Hole"
 const EVENTS_SHEET_ID = 898289286 // the Events tab (gid in its URL)
+const MATCH_SHEET_ID = 1996241982 // the Match Entry tab
 const PRACTICE_ID = "practice"
 
 const LIVE_HEADERS = [
@@ -85,6 +88,7 @@ function doPost(e) {
   try {
     if (body.action === "save") return json(saveHole(body))
     if (body.action === "submit") return json(submitCard(body))
+    if (body.action === "submitAll") return json(submitAll(body))
     if (body.action === "clearPractice") return json(clearPractice())
     return json({ ok: false, error: "Unknown action" })
   } catch (err) {
@@ -236,41 +240,205 @@ function saveHole(body) {
   return { ok: true }
 }
 
-// Writes a finished card into Hole by Hole (score to par per hole),
-// replacing that team's row for the event if it was submitted before.
-function submitCard(body) {
-  const eventId = clean(body.event)
-  const team = clean(body.team)
-  const eventName = clean(body.eventName)
-  if (eventId === PRACTICE_ID) return { ok: false, error: "Practice cards can't be submitted - this was only a test." }
-  if (!isGameDay(eventId)) return { ok: false, locked: true, error: LOCKED_MESSAGE }
-  const pars = getPars(body.course)
-  if (!pars) return { ok: false, error: "Pars for this course aren't filled in on the Course Pars tab." }
+// ---- Submitting cards ----
+//
+// A finished card goes to two places:
+//   Hole by Hole - score to par per hole (one row per team, replaced on resubmit)
+//   Match Entry  - each player's Team Score and Contributions on that event's
+//                  existing rows, plus Placement for every team with a score.
+// Match Entry cells that hold a formula are never overwritten, and no rows
+// are added there - the event's player rows must already exist.
 
-  const strokesByHole = {}
+function sheetById(id) {
+  return SpreadsheetApp.getActive().getSheets().find((s) => s.getSheetId() === id) || null
+}
+
+// Everything Live Scores holds for one team: strokes and contributions per
+// hole, and the two players' names.
+function liveCard(eventId, team) {
+  const card = { strokes: {}, contributions: [0, 0], players: [] }
   liveRows().values.slice(1).forEach((r) => {
-    if (clean(r[0]) === eventId && clean(r[1]) === team) strokesByHole[Number(r[3])] = Number(r[4])
+    if (clean(r[0]) !== eventId || clean(r[1]) !== team) return
+    card.strokes[Number(r[3])] = Number(r[4])
+    card.contributions[0] += Number(r[8]) || 0
+    card.contributions[1] += Number(r[10]) || 0
+    if (clean(r[7])) card.players = [clean(r[7]), clean(r[9])].filter(Boolean)
   })
+  return card
+}
 
+function teamsWithScores(eventId) {
+  const teams = []
+  liveRows().values.slice(1).forEach((r) => {
+    const team = clean(r[1])
+    if (clean(r[0]) === eventId && team && teams.indexOf(team) < 0) teams.push(team)
+  })
+  return teams.sort()
+}
+
+// Builds what would be written for one team, or { error } if the card
+// isn't finished.
+function planTeam(eventId, team, pars) {
+  const card = liveCard(eventId, team)
   const toPar = []
   for (let h = 1; h <= 18; h++) {
-    if (!strokesByHole[h]) return { ok: false, error: "Hole " + h + " has no score yet." }
-    toPar.push(strokesByHole[h] - pars[h - 1])
+    if (!card.strokes[h]) {
+      return { team: team, error: "Hole " + h + " has no score yet.", holes: Object.keys(card.strokes).length }
+    }
+    toPar.push(card.strokes[h] - pars[h - 1])
   }
+  return {
+    team: team,
+    players: card.players,
+    toPar: toPar,
+    teamScore: toPar.reduce((a, b) => a + b, 0),
+    contributions: card.contributions,
+  }
+}
 
+function writeHoleByHole(eventName, plan) {
   const sheet = SpreadsheetApp.getActive().getSheetByName(HOLE_SHEET)
-  if (!sheet) return { ok: false, error: "The Hole by Hole tab is missing." }
-
-  const row = [eventName, team, (body.players || []).join(" / ")].concat(toPar)
+  if (!sheet) throw new Error("The Hole by Hole tab is missing.")
+  const row = [eventName, plan.team, plan.players.join(" / ")].concat(plan.toPar)
   const values = sheet.getDataRange().getValues()
   for (let i = 1; i < values.length; i++) {
-    if (clean(values[i][0]).toLowerCase() === eventName.toLowerCase() && clean(values[i][1]) === team) {
+    if (clean(values[i][0]).toLowerCase() === eventName.toLowerCase() && clean(values[i][1]) === plan.team) {
       sheet.getRange(i + 1, 1, 1, row.length).setValues([row])
-      return { ok: true }
+      return
     }
   }
   sheet.appendRow(row)
-  return { ok: true }
+}
+
+function matchEntryTable() {
+  const sheet = sheetById(MATCH_SHEET_ID)
+  if (!sheet) throw new Error("The Match Entry tab is missing.")
+  const range = sheet.getDataRange()
+  const values = range.getValues()
+  const header = values[0].map(clean)
+  const cols = {
+    event: header.indexOf("Event ID"),
+    player: header.indexOf("Player"),
+    team: header.indexOf("Team"),
+    score: header.indexOf("Team Score"),
+    contributions: header.indexOf("Contributions"),
+    placement: header.indexOf("Placement"),
+  }
+  if (cols.event < 0 || cols.player < 0 || cols.score < 0 || cols.contributions < 0) {
+    throw new Error("Match Entry is missing an Event ID, Player, Team Score or Contributions column.")
+  }
+  return { sheet: sheet, values: values, formulas: range.getFormulas(), cols: cols }
+}
+
+// Cell changes for one team's players: [{ row, col, value, label }].
+// Cells with formulas are skipped.
+function matchEntryChanges(table, matchEventId, plan) {
+  const changes = []
+  const missing = []
+  plan.players.forEach((name, i) => {
+    const r = table.values.findIndex((row, idx) =>
+      idx > 0 && clean(row[table.cols.event]) === matchEventId && clean(row[table.cols.player]) === name)
+    if (r < 0) {
+      missing.push(name)
+      return
+    }
+    const set = (col, value, label) => {
+      if (col < 0 || table.formulas[r][col]) return
+      changes.push({ row: r, col: col, value: value, label: name + " " + label + " = " + value })
+    }
+    set(table.cols.score, plan.teamScore, "Team Score")
+    set(table.cols.contributions, plan.contributions[i], "Contributions")
+  })
+  return { changes: changes, missing: missing }
+}
+
+// Placement for every team in the event that has a Team Score, ranked by
+// score with ties sharing a place (1, 2, 2, 4...).
+function placementChanges(table, matchEventId, newScores) {
+  const c = table.cols
+  if (c.placement < 0) return []
+  const scoreByTeam = {}
+  table.values.forEach((row, idx) => {
+    if (idx === 0 || clean(row[c.event]) !== matchEventId) return
+    const team = c.team >= 0 ? clean(row[c.team]) : ""
+    const score = row[c.score]
+    if (team && score !== "" && !isNaN(Number(score))) scoreByTeam[team] = Number(score)
+  })
+  Object.keys(newScores).forEach((team) => { scoreByTeam[team] = newScores[team] })
+
+  const scores = Object.keys(scoreByTeam).map((t) => scoreByTeam[t])
+  const changes = []
+  table.values.forEach((row, idx) => {
+    if (idx === 0 || clean(row[c.event]) !== matchEventId) return
+    const team = c.team >= 0 ? clean(row[c.team]) : ""
+    if (!(team in scoreByTeam) || table.formulas[idx][c.placement]) return
+    const place = 1 + scores.filter((s) => s < scoreByTeam[team]).length
+    changes.push({ row: idx, col: c.placement, value: place, label: clean(row[c.player]) + " Placement = " + place })
+  })
+  return changes
+}
+
+function applyChanges(table, changes) {
+  changes.forEach((ch) => table.sheet.getRange(ch.row + 1, ch.col + 1).setValue(ch.value))
+}
+
+// Submits the given teams (or every team with scores). With dryRun, nothing
+// is written - it returns what would be written. `matchEvent` lets a dry run
+// of the practice round be checked against a real event's Match Entry rows.
+function submitTeams(body, onlyTeam) {
+  const eventId = clean(body.event)
+  const eventName = clean(body.eventName)
+  const dryRun = Boolean(body.dryRun)
+  const matchEventId = clean(body.matchEvent || eventId)
+
+  if (!dryRun) {
+    if (eventId === PRACTICE_ID) return { ok: false, error: "Practice cards can't be submitted - this was only a test." }
+    if (!isGameDay(eventId)) return { ok: false, locked: true, error: LOCKED_MESSAGE }
+  }
+  const pars = getPars(body.course)
+  if (!pars) return { ok: false, error: "Pars for this course aren't filled in on the Course Pars tab." }
+
+  const teams = onlyTeam ? [onlyTeam] : teamsWithScores(eventId)
+  const plans = teams.map((team) => planTeam(eventId, team, pars))
+  const finished = plans.filter((p) => !p.error)
+  const unfinished = plans.filter((p) => p.error).map((p) => ({ team: p.team, holes: p.holes, error: p.error }))
+  if (onlyTeam && unfinished.length) return { ok: false, error: unfinished[0].error }
+
+  const table = matchEntryTable()
+  let changes = []
+  const missing = []
+  const newScores = {}
+  finished.forEach((plan) => {
+    const result = matchEntryChanges(table, matchEventId, plan)
+    changes = changes.concat(result.changes)
+    result.missing.forEach((name) => missing.push(name))
+    newScores[plan.team] = plan.teamScore
+  })
+  changes = changes.concat(placementChanges(table, matchEventId, newScores))
+
+  if (!dryRun) {
+    finished.forEach((plan) => writeHoleByHole(eventName, plan))
+    applyChanges(table, changes)
+  }
+
+  return {
+    ok: true,
+    dryRun: dryRun,
+    submitted: finished.map((p) => p.team),
+    unfinished: unfinished,
+    missingPlayers: missing,
+    matchEntry: changes.map((ch) => ch.label),
+  }
+}
+
+function submitCard(body) {
+  const team = clean(body.team)
+  if (!team) return { ok: false, error: "Missing team" }
+  return submitTeams(body, team)
+}
+
+function submitAll(body) {
+  return submitTeams(body, null)
 }
 
 // Deletes every practice-round row from Live Scores.

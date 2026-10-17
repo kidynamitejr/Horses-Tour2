@@ -225,7 +225,7 @@ function LiveScorecardPage() {
   }
 
   async function submit() {
-    if (!window.confirm(`Submit ${team.label}'s final card? It will be added to the Hole by Hole results.`)) return
+    if (!window.confirm(`Submit ${team.label}'s final card? It will be added to Hole by Hole and Match Entry.`)) return
     setSubmitting(true)
     setMessage("")
     try {
@@ -233,7 +233,7 @@ function LiveScorecardPage() {
       if (left > 0) throw new Error("Some holes haven't sent yet - try again when you have signal.")
       await submitCard({ ...basePayload, eventName })
       await refresh()
-      setMessage("Card submitted. Nice round!")
+      setMessage("Card submitted to Hole by Hole and Match Entry. Nice round!")
     } catch (err) {
       setMessage(err.message || "Couldn't submit the card.")
     } finally {
@@ -308,7 +308,7 @@ function LiveScorecardPage() {
       )}
 
       {editable && !practice && <section className="lsc-submit">
-        {submitted && <p className="lsc-submitted">✓ Card submitted to Hole by Hole{complete ? " - resubmit if you fix a hole" : ""}</p>}
+        {submitted && <p className="lsc-submitted">✓ Card submitted{complete ? " - resubmit if you fix a hole" : ""}</p>}
         <button type="button" className="lsc-submit-btn" disabled={!complete || !pars || submitting} onClick={submit}>
           {submitting ? "Submitting..." : submitted ? "Resubmit final card" : "Submit final card"}
         </button>

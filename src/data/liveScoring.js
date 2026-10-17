@@ -124,6 +124,22 @@ function mockRequest(payload) {
   if (payload.action === "submit") {
     db.submitted[payload.event] = [...new Set([...(db.submitted[payload.event] || []), payload.team])]
   }
+  if (payload.action === "submitAll") {
+    const teams = [...new Set(db.scores.filter((s) => s.event === payload.event).map((s) => s.team))]
+    const done = teams.filter((t) => db.scores.filter((s) => s.event === payload.event && s.team === t).length === 18)
+    db.submitted[payload.event] = [...new Set([...(db.submitted[payload.event] || []), ...done])]
+    writeStore(MOCK_KEY, db)
+    return {
+      ok: true,
+      submitted: done,
+      unfinished: teams.filter((t) => !done.includes(t)).map((t) => ({
+        team: t,
+        holes: db.scores.filter((s) => s.event === payload.event && s.team === t).length,
+      })),
+      missingPlayers: [],
+      matchEntry: [],
+    }
+  }
   writeStore(MOCK_KEY, db)
   return { ok: true }
 }
@@ -228,6 +244,11 @@ export function pendingSaves(eventId, team) {
 
 export function submitCard(payload) {
   return post({ action: "submit", ...payload })
+}
+
+// Submits every team with all 18 holes entered (for when someone forgets).
+export function submitAll(payload) {
+  return post({ action: "submitAll", ...payload })
 }
 
 export function clearPractice() {

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import { ContributionSplit, LiveBoardCard } from "../components/LiveBoard"
 import { CalendarIcon, MapPinIcon } from "../components/Icons"
-import { PRACTICE_ID, clearPractice, flushQueue, liveScoringReady } from "../data/liveScoring"
+import { PRACTICE_ID, clearPractice, flushQueue, liveScoringReady, submitAll } from "../data/liveScoring"
 import {
   isToday,
   parseEventDate,
@@ -33,8 +33,10 @@ function secondsAgo(date, now) {
 function LiveScoringPage() {
   const [params, setParams] = useSearchParams()
   const live = useLiveEvent(params.get("event"))
-  const { events, event, eventId, editable, practice, teams, state, pars, error, loadedAt, refresh } = live
+  const { events, event, eventId, eventName, course, editable, practice, teams, state, pars, error, loadedAt, refresh } = live
   const [now, setNow] = useState(() => Date.now())
+  const [submittingAll, setSubmittingAll] = useState(false)
+  const [submitAllMessage, setSubmitAllMessage] = useState("")
 
   // Refresh the board every 20 seconds while the page is open.
   useEffect(() => {
@@ -91,6 +93,36 @@ function LiveScoringPage() {
     const tied = rows.filter((x) => scoreOf(x) === score).length > 1
     r.pos = `${tied ? "T" : ""}${first + 1}`
   })
+
+  const labelFor = (letter) => teams.find((t) => t.letter === letter)?.label || `Team ${letter}`
+
+  async function handleSubmitAll() {
+    if (!window.confirm(
+      "Submit every finished card to Hole by Hole and Match Entry? Teams that already submitted are just updated.",
+    )) return
+    setSubmittingAll(true)
+    setSubmitAllMessage("")
+    try {
+      await flushQueue()
+      const result = await submitAll({ event: eventId, eventName, course })
+      const parts = []
+      parts.push(result.submitted.length
+        ? `Submitted ${result.submitted.map(labelFor).join(", ")}.`
+        : "No finished cards to submit yet.")
+      if (result.unfinished.length) {
+        parts.push(`Not finished: ${result.unfinished.map((u) => `${labelFor(u.team)} (${u.holes} holes)`).join(", ")}.`)
+      }
+      if (result.missingPlayers.length) {
+        parts.push(`Not found in Match Entry: ${result.missingPlayers.join(", ")} - add them there by hand.`)
+      }
+      setSubmitAllMessage(parts.join(" "))
+      refresh()
+    } catch (err) {
+      setSubmitAllMessage(err.message || "Couldn't submit the cards.")
+    } finally {
+      setSubmittingAll(false)
+    }
+  }
 
   const liveNow = isToday(event)
   const anyScores = rows.some((r) => r.thru > 0)
@@ -200,6 +232,22 @@ function LiveScoringPage() {
           <p className="live-empty-row">No scores yet - they'll show up here as teams enter them.</p>
         )}
       </section>
+
+      {editable && !practice && teams.length > 0 && (
+        <section className="live-submit-all">
+          <div>
+            <h3>Finish the event</h3>
+            <p>
+              Sends every team with all 18 holes entered to Hole by Hole and Match Entry
+              (Team Score, Contributions and Placement) - in case anyone forgot to submit.
+            </p>
+          </div>
+          <button type="button" onClick={handleSubmitAll} disabled={submittingAll}>
+            {submittingAll ? "Submitting..." : "Submit all finished cards"}
+          </button>
+          {submitAllMessage && <p className="live-submit-all-msg">{submitAllMessage}</p>}
+        </section>
+      )}
 
       {teams.length > 0 && (
         <section className="live-board">
