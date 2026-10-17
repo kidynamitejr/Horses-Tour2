@@ -102,7 +102,7 @@ function ProfileHero({ profile, season, onTradingCard, heroRef }) {
           {profile.homeCourse && (
             <div className="pp-hero-club">
               <span>{profile.homeCourse}</span>
-              <CourseCrest course={profile.homeCourse} playerId={profile.id} size={46} />
+              <CourseCrest course={profile.homeCourse} playerId={profile.id} size={46} onDark />
             </div>
           )}
         </div>

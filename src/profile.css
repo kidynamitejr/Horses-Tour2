@@ -97,15 +97,12 @@ html[data-theme="dark"] .pp-hero {
   box-shadow: 0 4px 12px rgba(0, 0, 0, .25);
 }
 
-/* A real course logo (transparent PNG) on a small white badge */
+/* A real course logo (transparent PNG), straight on the page. */
 .course-logo-plate {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  box-sizing: border-box;
-  background: white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, .25);
   vertical-align: middle;
 }
 
@@ -115,6 +112,7 @@ html[data-theme="dark"] .pp-hero {
   max-width: 100%;
   height: 100%;
   object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .22));
 }
 
 .pp-facts,

@@ -117,7 +117,7 @@ function Players() {
 
                 {p.homeCourse && (
                   <span className="pc-crest" title={p.homeCourse}>
-                    <CourseCrest course={p.homeCourse} playerId={p.id} size={34} />
+                    <CourseCrest course={p.homeCourse} playerId={p.id} size={34} onDark />
                   </span>
                 )}
 

@@ -48,18 +48,22 @@ export const LIVE_SCORING_URL =
 // trading card), keyed by the Players tab's Home Course (case doesn't
 // matter). Without an entry, a generated crest with the course's initials
 // is used. To add one: put a transparent PNG in public/images/course-logos/
-// and add a line here.
-const courseLogo = (file) => `${BASE}images/course-logos/${file}.png`
+// and add a line here. Logos with dark lettering also have a "-dark" file
+// (light lettering) for the dark grey profile header.
+const courseLogo = (file, hasDarkVersion = false) => ({
+  src: `${BASE}images/course-logos/${file}.png`,
+  dark: `${BASE}images/course-logos/${file}${hasDarkVersion ? "-dark" : ""}.png`,
+})
 
 export const COURSE_LOGOS = {
-  "Copper Mill Golf Course": courseLogo("copper-mill"),
-  "Greystone Golf & Country Club": courseLogo("greystone"),
-  "J.S. Clark Golf Course": courseLogo("js-clark"),
-  "The Pines at North Park": courseLogo("the-pines"),
-  "City Park Golf Course": courseLogo("city-park"),
-  "Bayou Oaks at City Park": courseLogo("bayou-oaks"),
-  "Webb Memorial Golf Course": courseLogo("webb-memorial"),
-  "Oak Lake": courseLogo("oak-lake"),
+  "Copper Mill Golf Course": courseLogo("copper-mill", true),
+  "Greystone Golf & Country Club": courseLogo("greystone", true),
+  "J.S. Clark Golf Course": courseLogo("js-clark", true),
+  "The Pines at North Park": courseLogo("the-pines", true),
+  "City Park Golf Course": courseLogo("city-park", true),
+  "Bayou Oaks at City Park": courseLogo("bayou-oaks", true),
+  "Webb Memorial Golf Course": courseLogo("webb-memorial", true),
+  "Oak Lake": courseLogo("oak-lake", true),
   "Carter Plantation": courseLogo("carter-plantation"),
   "Beaver Creek Golf Course": courseLogo("beaver-creek"),
 }
@@ -67,7 +71,7 @@ export const COURSE_LOGOS = {
 // Per-player logo, for players whose Home Course name is shared by two
 // courses. Keyed by Player ID. (Adam's "City Park" is Bayou Oaks.)
 export const PLAYER_COURSE_LOGOS = {
-  6: courseLogo("bayou-oaks"),
+  6: courseLogo("bayou-oaks", true),
 }
 
 export function findCourseLogo(course, playerId) {
