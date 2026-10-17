@@ -623,6 +623,53 @@ html[data-theme="dark"] .lsc-score-row .sc-double {
   box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px #7fb6e8;
 }
 
+.lsc-contrib-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  padding: 9px 12px;
+  border-top: 1px solid #d9d2bd;
+  color: var(--ink);
+  font-size: 13.5px;
+}
+
+html[data-theme="dark"] .lsc-contrib-summary {
+  border-color: var(--line);
+}
+
+.lsc-contrib-summary > span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.lsc-contrib-summary b {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.lsc-contrib-summary em {
+  color: var(--navy);
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+html[data-theme="dark"] .lsc-contrib-summary em {
+  color: #7fd0ff;
+}
+
+.lsc-contrib-summary small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .lsc-card-foot {
   margin: 0;
   padding: 6px 10px;
@@ -632,7 +679,54 @@ html[data-theme="dark"] .lsc-score-row .sc-double {
   font-weight: 600;
 }
 
-html[data-theme="dark"] .lsc-card-foot {
+html[data-theme="dark"] .lsc-contrib-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  padding: 9px 12px;
+  border-top: 1px solid #d9d2bd;
+  color: var(--ink);
+  font-size: 13.5px;
+}
+
+html[data-theme="dark"] .lsc-contrib-summary {
+  border-color: var(--line);
+}
+
+.lsc-contrib-summary > span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.lsc-contrib-summary b {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.lsc-contrib-summary em {
+  color: var(--navy);
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+html[data-theme="dark"] .lsc-contrib-summary em {
+  color: #7fd0ff;
+}
+
+.lsc-contrib-summary small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.lsc-card-foot {
   border-color: var(--line);
 }
 

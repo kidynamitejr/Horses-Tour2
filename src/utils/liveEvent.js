@@ -78,24 +78,37 @@ export function teamCard(live, team) {
     return { strokes, contributions, contributionTotals: null, source: "live" }
   }
 
+  const entries = team.players.map((player) => matchEntry.find(
+    (r) => r["Event ID"] === baseId && (r.Player || "").trim() === player && (r.Team || "").trim() === letter
+  ))
+  const contributionTotals = entries.map((entry) => {
+    const value = parseFloat(entry?.Contributions)
+    return isNaN(value) ? null : value
+  })
+  // The official team score (to par) from Match Entry.
+  const officialToPar = parseFloat(entries.find((e) => e?.["Team Score"])?.["Team Score"])
+
   const name = eventName.toLowerCase()
   const row = holeRows.find(
     (r) => (r["Event Name"] || "").trim().toLowerCase() === name && (r["Team letter"] || "").trim() === letter
   )
-  if (!row) return { strokes, contributions, contributionTotals: null, source: "live" }
-
-  for (let h = 1; h <= 18; h++) {
-    const toPar = parseFloat(row[`Hole ${h}`])
-    if (!isNaN(toPar)) strokes[h - 1] = pars[h - 1] + toPar
+  if (row) {
+    for (let h = 1; h <= 18; h++) {
+      const toPar = parseFloat(row[`Hole ${h}`])
+      if (!isNaN(toPar)) strokes[h - 1] = pars[h - 1] + toPar
+    }
   }
-  const contributionTotals = team.players.map((player) => {
-    const entry = matchEntry.find(
-      (r) => r["Event ID"] === baseId && (r.Player || "").trim() === player && (r.Team || "").trim() === letter
-    )
-    const value = parseFloat(entry?.Contributions)
-    return isNaN(value) ? null : value
-  })
-  return { strokes, contributions: null, contributionTotals, source: "history" }
+
+  if (!row && contributionTotals.every((v) => v == null)) {
+    return { strokes, contributions, contributionTotals: null, source: "live" }
+  }
+  return {
+    strokes,
+    contributions: null,
+    contributionTotals,
+    officialToPar: isNaN(officialToPar) ? null : officialToPar,
+    source: "history",
+  }
 }
 
 export function summarizeCard(card, pars) {

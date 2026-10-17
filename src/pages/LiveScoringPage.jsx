@@ -15,6 +15,10 @@ import {
 
 const REFRESH_MS = 20000
 
+function sum(values) {
+  return values.reduce((a, b) => a + b, 0)
+}
+
 function isPast(event) {
   const date = parseEventDate(event?.Date)
   const today = new Date()
@@ -64,7 +68,12 @@ function LiveScoringPage() {
   const rows = teams
     .map((team) => {
       const card = teamCard(live, team)
-      return { ...team, card, ...summarizeCard(card, pars), submitted: card.source === "live" && submitted.includes(team.letter) }
+      const summary = summarizeCard(card, pars)
+      // Past rounds without hole scores: use the official final score.
+      if (!summary.thru && card.officialToPar != null) {
+        Object.assign(summary, { toPar: card.officialToPar, thru: 18, total: pars ? sum(pars) + card.officialToPar : 0 })
+      }
+      return { ...team, card, ...summary, submitted: card.source === "live" && submitted.includes(team.letter) }
     })
     .sort((a, b) => {
       if (!a.thru !== !b.thru) return a.thru ? -1 : 1

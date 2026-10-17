@@ -60,10 +60,15 @@ function LiveScorecardGrid({
     const entered = holes.filter((h) => strokes[h])
     return entered.length ? half(sum(entered.map((h) => contributions[h]?.[i]))) : ""
   }
-  const contributionTotal = (i) => {
-    if (contributionTotals) return contributionTotals[i] != null ? half(contributionTotals[i]) : ""
-    return contributionSum([...FRONT, ...BACK], i)
-  }
+  // Whole-round contributions as numbers (null when unknown).
+  const totalValues = players.map((_, i) => {
+    if (contributionTotals) return contributionTotals[i] ?? null
+    if (!contributions) return null
+    const entered = [...FRONT, ...BACK].filter((h) => strokes[h])
+    return entered.length ? sum(entered.map((h) => contributions[h]?.[i])) : null
+  })
+  const contributionTotal = (i) => (totalValues[i] != null ? half(totalValues[i]) : "")
+  const totalAll = sum(totalValues)
 
   const colClass = (h) => `lsc-col${selected === h ? " is-selected" : ""}`
   const pick = onSelect ? (h) => () => onSelect(h) : () => undefined
@@ -137,6 +142,19 @@ function LiveScorecardGrid({
           </tbody>
         </table>
       </div>
+      {players.length > 0 && (
+        <div className="lsc-contrib-summary">
+          <span>Contributions</span>
+          {players.map((name, i) => (
+            <b key={name}>
+              {name} <em>{contributionTotal(i) || "-"}</em>
+              {totalAll > 0 && totalValues[i] != null && (
+                <small>{Math.round((totalValues[i] / totalAll) * 100)}%</small>
+              )}
+            </b>
+          ))}
+        </div>
+      )}
       {players.length > 0 && (
         <p className="lsc-card-foot">
           {contributions
