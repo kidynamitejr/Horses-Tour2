@@ -21,15 +21,15 @@ const LIVE_HEADERS = [
   "Player 1", "Player 1 Contributions", "Player 2", "Player 2 Contributions", "Updated",
 ]
 
-// Pars known so far. City Park is a 9-hole course played twice.
+// Pars per hole. City Park and J.S. Clark are 9-hole courses played twice.
 const KNOWN_PARS = {
   "Santa Maria": [4, 3, 5, 4, 3, 4, 5, 4, 4, 4, 3, 4, 4, 4, 5, 4, 3, 5],
   "The Island": [4, 5, 3, 4, 4, 4, 5, 3, 4, 4, 4, 5, 3, 4, 4, 3, 4, 5],
   "City Park": [3, 4, 4, 4, 3, 4, 4, 3, 3, 3, 4, 4, 4, 3, 4, 4, 3, 3],
-  "J.S. Clark": [],
-  "Copper Mill": [],
-  "Oak Knoll": [],
-  "Beaver Creek": [],
+  "J.S. Clark": [4, 5, 4, 3, 3, 4, 4, 4, 5, 4, 5, 4, 3, 3, 4, 4, 4, 5],
+  "Copper Mill": [5, 3, 4, 5, 4, 3, 4, 3, 5, 4, 3, 5, 3, 5, 3, 4, 4, 5],
+  "Oak Knoll": [4, 4, 4, 3, 5, 3, 5, 3, 5, 4, 4, 4, 3, 4, 4, 4, 4, 5],
+  "Beaver Creek": [4, 5, 3, 4, 4, 5, 4, 3, 4, 4, 5, 4, 5, 4, 3, 4, 3, 4],
 }
 
 function setup() {
