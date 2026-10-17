@@ -2,8 +2,8 @@ import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import Headshot from "../components/Headshot"
 import LiveScorecardGrid from "../components/LiveScorecardGrid"
-import { flushQueue, liveScoringReady, pendingSaves, saveHole, submitCard } from "../data/liveScoring"
-import { formatToPar, summarizeCard, teamCard, useLiveEvent } from "../utils/liveEvent"
+import { flushQueue, liveScoringReady, pendingSaves, saveHole, submitCard, takeRejection } from "../data/liveScoring"
+import { formatToPar, parseEventDate, summarizeCard, teamCard, useLiveEvent } from "../utils/liveEvent"
 
 const RETRY_MS = 15000
 
@@ -93,7 +93,7 @@ function HoleEditor({ hole, par, players, playerIds, saved, onSave, onClear }) {
 function LiveScorecardPage() {
   const { eventId, team: letter } = useParams()
   const live = useLiveEvent(eventId)
-  const { event, course, eventName, teams, playerIds, state, pars, error, refresh } = live
+  const { event, course, eventName, date, editable, teams, playerIds, state, pars, error, refresh } = live
   const team = teams.find((t) => t.letter === letter)
 
   const [selected, setSelected] = useState(null)
@@ -105,6 +105,8 @@ function LiveScorecardPage() {
   // phone comes back online, then pick up the teammate's entries too.
   useEffect(() => {
     const retry = () => flushQueue().then(() => {
+      const refused = takeRejection()
+      if (refused) setMessage(refused)
       setVersion((v) => v + 1)
       return refresh()
     })
@@ -149,7 +151,14 @@ function LiveScorecardPage() {
   const contributionTotals = [0, 1].map((i) => card.contributions.reduce((t, c) => t + (Number(c[i]) || 0), 0))
   const contributionSum = contributionTotals[0] + contributionTotals[1]
 
-  const basePayload = { event: eventId, team: letter, course, players: team.players }
+  const basePayload = { event: eventId, team: letter, course, date, players: team.players }
+
+  // Scores can only be changed on game day - the Google script enforces
+  // this too, so a locked card can't be edited from anywhere.
+  const eventDay = parseEventDate(date)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const upcoming = eventDay && eventDay > today
 
   function save({ strokes, contributions }) {
     setMessage("")
@@ -159,6 +168,8 @@ function LiveScorecardPage() {
     const next = card.strokes.findIndex((s, i) => !s && i !== hole)
     setSelected(next === -1 ? hole : next)
     done.then(() => {
+      const refused = takeRejection()
+      if (refused) setMessage(refused)
       setVersion((v) => v + 1)
       refresh()
     })
@@ -206,21 +217,36 @@ function LiveScorecardPage() {
         </div>
       </section>
 
-      <p className="lsc-shared">
-        Shared team card · {team.players.map((p) => p.split(" ")[0]).join(" and ")} can both update any hole. Tap a hole to edit it.
-      </p>
+      {editable ? (
+        <p className="lsc-shared">
+          Shared team card · {team.players.map((p) => p.split(" ")[0]).join(" and ")} can both update any hole. Tap a hole to edit it.
+        </p>
+      ) : state ? (
+        <p className="lsc-locked">
+          🔒 {upcoming
+            ? `This card opens on game day (${date}).`
+            : "This round is closed - scores are final and can't be changed."}
+        </p>
+      ) : null}
 
-      <LiveScorecardGrid pars={pars} strokes={card.strokes} selected={hole} onSelect={setSelected} />
+      <LiveScorecardGrid
+        pars={pars}
+        strokes={card.strokes}
+        selected={editable ? hole : null}
+        onSelect={editable ? setSelected : null}
+      />
 
-      <p className={`lsc-sync${pending ? " is-pending" : ""}`}>
+      {editable && <p className={`lsc-sync${pending ? " is-pending" : ""}`}>
         {error
           ? error
           : pending
             ? `${pending} hole${pending > 1 ? "s" : ""} waiting to send - will keep retrying`
             : "All scores saved"}
-      </p>
+      </p>}
 
-      <HoleEditor
+      {message && !editable && <p className="lsc-message">{message}</p>}
+
+      {editable && <HoleEditor
         key={`${hole}-${card.strokes[hole] ?? "x"}`}
         hole={hole}
         par={pars?.[hole]}
@@ -229,7 +255,7 @@ function LiveScorecardPage() {
         saved={{ strokes: card.strokes[hole], contributions: card.contributions[hole] }}
         onSave={save}
         onClear={clear}
-      />
+      />}
 
       <section className="lsc-totals">
         <h3>Contributions</h3>
@@ -242,7 +268,7 @@ function LiveScorecardPage() {
         ))}
       </section>
 
-      <section className="lsc-submit">
+      {editable && <section className="lsc-submit">
         {submitted && <p className="lsc-submitted">✓ Card submitted to Hole by Hole{complete ? " - resubmit if you fix a hole" : ""}</p>}
         <button type="button" className="lsc-submit-btn" disabled={!complete || !pars || submitting} onClick={submit}>
           {submitting ? "Submitting..." : submitted ? "Resubmit final card" : "Submit final card"}
@@ -250,7 +276,7 @@ function LiveScorecardPage() {
         {!complete && <small>Enter all 18 holes to submit.</small>}
         {complete && !pars && <small>Pars for this course need to be added before submitting.</small>}
         {message && <p className="lsc-message">{message}</p>}
-      </section>
+      </section>}
 
     </div>
   )

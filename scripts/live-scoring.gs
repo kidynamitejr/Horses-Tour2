@@ -10,11 +10,18 @@
  *   Course Pars  - Course | Hole 1 .. Hole 18
  *   Live Scores  - one row per team per hole while a round is in progress
  *   Hole by Hole - finished cards are written here as score to par
+ *
+ * Scores can only be saved or submitted on the event's date (from the
+ * Events tab), so past rounds can't be changed from the website.
+ *
+ * After changing this file: Deploy > Manage deployments > edit (pencil) >
+ * Version: New version > Deploy. That keeps the same web app URL.
  */
 
 const PARS_SHEET = "Course Pars"
 const LIVE_SHEET = "Live Scores"
 const HOLE_SHEET = "Hole by Hole"
+const EVENTS_SHEET_ID = 898289286 // the Events tab (gid in its URL)
 
 const LIVE_HEADERS = [
   "Event ID", "Team", "Players", "Hole", "Strokes", "Par", "To Par",
@@ -125,6 +132,7 @@ function getState(eventId, course, eventName) {
 
   return {
     ok: true,
+    editable: isGameDay(eventId),
     pars: getPars(course),
     scores: scores,
     submitted: submittedTeams(eventName),
@@ -141,6 +149,40 @@ function submittedTeams(eventName) {
     .map((r) => clean(r[1]))
 }
 
+// ---- Game-day lock ----
+
+function sameDay(a, b) {
+  const tz = SpreadsheetApp.getActive().getSpreadsheetTimeZone()
+  return Utilities.formatDate(a, tz, "yyyy-MM-dd") === Utilities.formatDate(b, tz, "yyyy-MM-dd")
+}
+
+// The event's date from the Events tab, or null if it can't be found.
+function eventDate(eventId) {
+  const sheet = SpreadsheetApp.getActive().getSheets().find((s) => s.getSheetId() === EVENTS_SHEET_ID)
+  if (!sheet) return null
+  const values = sheet.getDataRange().getValues()
+  const header = values[0].map(clean)
+  const idCol = header.indexOf("Event ID")
+  const dateCol = header.indexOf("Date")
+  if (idCol < 0 || dateCol < 0) return null
+  const row = values.slice(1).find((r) => clean(r[idCol]) === clean(eventId))
+  if (!row) return null
+  const value = row[dateCol]
+  if (value instanceof Date) return value
+  // Text like "10/25/26".
+  const parts = clean(value).split("/").map(Number)
+  if (parts.length !== 3) return null
+  const year = parts[2] < 100 ? 2000 + parts[2] : parts[2]
+  return new Date(year, parts[0] - 1, parts[1], 12)
+}
+
+function isGameDay(eventId) {
+  const date = eventDate(eventId)
+  return Boolean(date) && sameDay(date, new Date())
+}
+
+const LOCKED_MESSAGE = "This round is locked - scores can only be entered on the day of the event."
+
 // ---- Writes ----
 
 function saveHole(body) {
@@ -150,6 +192,7 @@ function saveHole(body) {
   if (!eventId || !team || !(hole >= 1 && hole <= 18)) {
     return { ok: false, error: "Missing event, team or hole" }
   }
+  if (!isGameDay(eventId)) return { ok: false, locked: true, error: LOCKED_MESSAGE }
 
   const players = body.players || []
   const contributions = body.contributions || []
@@ -194,6 +237,7 @@ function submitCard(body) {
   const eventId = clean(body.event)
   const team = clean(body.team)
   const eventName = clean(body.eventName)
+  if (!isGameDay(eventId)) return { ok: false, locked: true, error: LOCKED_MESSAGE }
   const pars = getPars(body.course)
   if (!pars) return { ok: false, error: "Pars for this course aren't filled in on the Course Pars tab." }
 

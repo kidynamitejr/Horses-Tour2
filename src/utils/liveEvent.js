@@ -109,17 +109,18 @@ export function useLiveEvent(eventIdParam) {
   const eventId = event?.["Event ID"] || ""
   const course = (event?.Course || "").trim()
   const eventName = (event?.["Event Name"] || "").trim()
+  const date = (event?.Date || "").trim()
 
   const refresh = useCallback(() => {
     if (!eventId) return Promise.resolve()
-    return getLiveState({ eventId, course, eventName })
+    return getLiveState({ eventId, course, eventName, date })
       .then((data) => {
         setState(data)
         setError("")
         setLoadedAt(new Date())
       })
       .catch(() => setError("Couldn't reach live scoring - check your signal."))
-  }, [eventId, course, eventName])
+  }, [eventId, course, eventName, date])
 
   useEffect(() => {
     refresh()
@@ -131,6 +132,8 @@ export function useLiveEvent(eventIdParam) {
     eventId,
     course,
     eventName,
+    date,
+    editable: Boolean(state?.editable),
     teams: eventId ? buildTeams(matchEntry, eventId) : [],
     playerIds,
     state,

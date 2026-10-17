@@ -10,6 +10,8 @@ import { LIVE_SCORING_URL } from "../siteConfig"
 const QUEUE_KEY = "ht-live-queue"
 const MOCK_KEY = "ht-live-mock"
 
+export const LOCKED_MESSAGE = "This round is locked - scores can only be entered on the day of the event."
+
 // While developing locally without a deployed script, scores are kept in
 // this browser only so the pages can still be tried out.
 const useMock = !LIVE_SCORING_URL && import.meta.env.DEV
@@ -44,11 +46,22 @@ const MOCK_PARS = {
   "beaver creek": [4, 5, 3, 4, 4, 5, 4, 3, 4, 4, 5, 4, 5, 4, 3, 4, 3, 4],
 }
 
+function mockIsGameDay(date) {
+  const parts = (date || "").split("/").map(Number)
+  if (parts.length !== 3) return false
+  const day = new Date(parts[2] < 100 ? 2000 + parts[2] : parts[2], parts[0] - 1, parts[1])
+  return day.toDateString() === new Date().toDateString()
+}
+
 function mockRequest(payload) {
   const db = readStore(MOCK_KEY, { scores: [], submitted: {} })
+  if (payload.action !== "state" && !mockIsGameDay(payload.date)) {
+    return { ok: false, locked: true, error: LOCKED_MESSAGE }
+  }
   if (payload.action === "state") {
     return {
       ok: true,
+      editable: mockIsGameDay(payload.date),
       pars: MOCK_PARS[payload.course.trim().toLowerCase()] || Array(18).fill(4),
       scores: db.scores.filter((s) => s.event === payload.event),
       submitted: db.submitted[payload.event] || [],
@@ -76,8 +89,8 @@ function mockRequest(payload) {
 
 // ---- Requests ----
 
-export async function getLiveState({ eventId, course, eventName }) {
-  if (useMock) return mockRequest({ action: "state", event: eventId, course, eventName })
+export async function getLiveState({ eventId, course, eventName, date }) {
+  if (useMock) return mockRequest({ action: "state", event: eventId, course, eventName, date })
 
   const params = new URLSearchParams({ action: "state", event: eventId, course, eventName, t: Date.now() })
   const response = await fetch(`${LIVE_SCORING_URL}?${params}`)
@@ -86,8 +99,15 @@ export async function getLiveState({ eventId, course, eventName }) {
   return data
 }
 
+// A request the server answered with ok: false (e.g. a locked round).
+class RejectedError extends Error {}
+
 async function post(payload) {
-  if (useMock) return mockRequest(payload)
+  if (useMock) {
+    const result = mockRequest(payload)
+    if (!result.ok) throw new RejectedError(result.error)
+    return result
+  }
 
   const response = await fetch(LIVE_SCORING_URL, {
     method: "POST",
@@ -95,7 +115,7 @@ async function post(payload) {
     body: JSON.stringify(payload),
   })
   const data = await response.json()
-  if (!data.ok) throw new Error(data.error || "Couldn't save")
+  if (!data.ok) throw new RejectedError(data.error || "Couldn't save")
   return data
 }
 
@@ -111,6 +131,14 @@ export function saveHole(payload) {
 }
 
 let flushing = null
+let lastRejection = ""
+
+// Why the server last refused a queued save (shown on the scorecard).
+export function takeRejection() {
+  const message = lastRejection
+  lastRejection = ""
+  return message
+}
 
 export function flushQueue() {
   if (flushing) return flushing
@@ -121,8 +149,11 @@ export function flushQueue() {
       const { id, ...item } = queue[0]
       try {
         await post(item)
-      } catch {
-        break
+      } catch (err) {
+        // No signal: keep it queued and try later. Refused by the server
+        // (round locked): drop it so it doesn't block the queue.
+        if (!(err instanceof RejectedError)) break
+        lastRejection = err.message
       }
       // Re-read in case a newer save was queued while this one was sending.
       queue = readStore(QUEUE_KEY, []).filter((q) => q.id !== id)

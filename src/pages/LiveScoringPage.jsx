@@ -7,12 +7,20 @@ import { liveScoringReady } from "../data/liveScoring"
 import {
   formatToPar,
   isToday,
+  parseEventDate,
   summarizeCard,
   teamCard,
   useLiveEvent,
 } from "../utils/liveEvent"
 
 const REFRESH_MS = 20000
+
+function isPast(event) {
+  const date = parseEventDate(event?.Date)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return Boolean(date) && date < today
+}
 
 function secondsAgo(date, now) {
   if (!date) return ""
@@ -23,7 +31,7 @@ function secondsAgo(date, now) {
 function LiveScoringPage() {
   const [params, setParams] = useSearchParams()
   const live = useLiveEvent(params.get("event"))
-  const { events, event, eventId, teams, playerIds, state, pars, error, loadedAt, refresh } = live
+  const { events, event, eventId, editable, teams, playerIds, state, pars, error, loadedAt, refresh } = live
   const [open, setOpen] = useState(null)
   const [now, setNow] = useState(() => Date.now())
 
@@ -122,7 +130,15 @@ function LiveScoringPage() {
       )}
       {error && <p className="live-note live-note-error">{error}</p>}
 
-      {teams.length > 0 && (
+      {teams.length > 0 && state && !editable && (
+        <p className="live-note">
+          🔒 {liveNow || !isPast(event)
+            ? `Scorecards open on game day (${event.Date}).`
+            : "This round is closed - scores are final and can't be changed."}
+        </p>
+      )}
+
+      {teams.length > 0 && editable && (
         <section className="live-keep">
           <h3>Keep your team's card</h3>
           <p className="live-keep-note">
@@ -194,7 +210,7 @@ function LiveScoringPage() {
                     <div className="live-detail">
                       <LiveScorecardGrid pars={pars} strokes={r.card.strokes} />
                       <Link to={`/live/${eventId}/${r.letter}`} className="live-detail-link">
-                        Keep score for {r.label} →
+                        {editable ? `Keep score for ${r.label}` : "View full card"} →
                       </Link>
                     </div>
                   )}
