@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { Link } from "react-router-dom"
 import { TeamModal, TeamModalPlayer, TeamModalSection } from "./TeamModal"
 import {
   getPlayers,
@@ -416,6 +417,10 @@ function NextEventFeature() {
                 {nextEventTeams.length > 0 && (
                   <span className="ev-chip">{nextEventTeams.length} teams</span>
                 )}
+
+                <Link to="/live" className="ev-chip ev-chip-live">
+                  {daysUntilNextEvent === 0 ? "● Live scoring" : "Scorecards"} →
+                </Link>
 
               </div>
 

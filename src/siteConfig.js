@@ -40,6 +40,10 @@ export const COURSES = [
   { name: "The Island", image: `${BASE}images/courses/the-island.jpeg` },
 ]
 
+// Live scoring web app (Google Apps Script - see scripts/live-scoring.gs).
+// Leave empty until it's deployed.
+export const LIVE_SCORING_URL = ""
+
 // Optional real logos for players' home courses (shown on player profiles).
 // Without an entry, a generated crest with the course's initials is used.
 // To add one: put the image in public/images/course-logos/ and add a line
@@ -58,6 +62,7 @@ export const PRIMARY_NAV = [
 ]
 
 export const MORE_NAV = [
+  { to: "/live", label: "Live Scoring", note: "Scorecards and the live leaderboard" },
   { to: "/past-matches", label: "Past Matches", note: "Every result, round by round" },
   { to: "/course-history", label: "Course History", note: "Hole-by-hole scoring" },
   { to: "/hall-of-champions", label: "Hall of Champions", note: "Every champion crowned" },
@@ -133,6 +138,12 @@ export const PAGE_HEROES = {
     title: "Hall of Champions",
     subtitle: "Every champion crowned across Horses Tour history.",
     image: PHOTOS.ballAtCup,
+  },
+  "/live": {
+    eyebrow: "On the Course",
+    title: "Live Scoring",
+    subtitle: "Follow every team hole by hole, and keep your own card.",
+    image: PHOTOS.flagAndBall,
   },
   "/course-history": {
     eyebrow: "Course Intelligence",

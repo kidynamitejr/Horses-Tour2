@@ -7,6 +7,7 @@ import "./gallery.css"
 import "./rules.css"
 import "./leaderboard.css"
 import "./schedule.css"
+import "./live.css"
 import "./mobile.css"
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom"
 
@@ -32,6 +33,8 @@ import ComparePlayersPage from "./pages/ComparePlayersPage"
 import HallOfChampionsPage from "./pages/HallOfChampionsPage"
 import CourseHistoryPage from "./pages/CourseHistoryPage"
 import NextEventPage from "./pages/NextEventPage"
+import LiveScoringPage from "./pages/LiveScoringPage"
+import LiveScorecardPage from "./pages/LiveScorecardPage"
 
 function getPageHero(pathname) {
   if (PAGE_HEROES[pathname]) return PAGE_HEROES[pathname]
@@ -83,6 +86,10 @@ function Layout() {
           <Route path="/course-history" element={<CourseHistoryPage />} />
 
           <Route path="/next-event" element={<NextEventPage />} />
+
+          <Route path="/live" element={<LiveScoringPage />} />
+
+          <Route path="/live/:eventId/:team" element={<LiveScorecardPage />} />
 
           <Route
             path="/player-profile/:name"
