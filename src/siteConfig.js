@@ -40,23 +40,6 @@ export const COURSES = [
   { name: "The Island", image: `${BASE}images/courses/the-island.jpeg` },
 ]
 
-// Printable course layouts (public/course-layouts/), drawn from
-// OpenStreetMap data. `match` is checked against the Events tab's Course.
-export const COURSE_LAYOUTS = [
-  { name: "Santa Maria", match: "santa maria", slug: "santa-maria", holes: 18, yards: 6866, par: 72 },
-  { name: "The Island", match: "island", slug: "the-island", holes: 18, yards: 6321, par: 72 },
-  { name: "City Park", match: "city park", slug: "city-park", holes: 9, yards: 2276, par: 32 },
-].map((c) => ({
-  ...c,
-  pdf: `${BASE}course-layouts/${c.slug}.pdf`,
-  image: `${BASE}course-layouts/${c.slug}.jpg`,
-}))
-
-export function findCourseLayout(course) {
-  const name = (course || "").toLowerCase()
-  return COURSE_LAYOUTS.find((c) => name.includes(c.match)) || null
-}
-
 // Optional real logos for players' home courses (shown on player profiles).
 // Without an entry, a generated crest with the course's initials is used.
 // To add one: put the image in public/images/course-logos/ and add a line
