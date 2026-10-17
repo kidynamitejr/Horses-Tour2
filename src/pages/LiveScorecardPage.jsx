@@ -93,7 +93,7 @@ function HoleEditor({ hole, par, players, playerIds, saved, onSave, onClear }) {
 function LiveScorecardPage() {
   const { eventId, team: letter } = useParams()
   const live = useLiveEvent(eventId)
-  const { event, course, eventName, date, editable, teams, playerIds, state, pars, error, refresh } = live
+  const { event, course, eventName, date, editable, practice, teams, playerIds, state, pars, error, refresh } = live
   const team = teams.find((t) => t.letter === letter)
 
   const [selected, setSelected] = useState(null)
@@ -268,7 +268,11 @@ function LiveScorecardPage() {
         ))}
       </section>
 
-      {editable && <section className="lsc-submit">
+      {editable && practice && (
+        <p className="lsc-locked">Practice card - not counted and can't be submitted.</p>
+      )}
+
+      {editable && !practice && <section className="lsc-submit">
         {submitted && <p className="lsc-submitted">✓ Card submitted to Hole by Hole{complete ? " - resubmit if you fix a hole" : ""}</p>}
         <button type="button" className="lsc-submit-btn" disabled={!complete || !pars || submitting} onClick={submit}>
           {submitting ? "Submitting..." : submitted ? "Resubmit final card" : "Submit final card"}

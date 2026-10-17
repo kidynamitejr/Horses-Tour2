@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom"
 import LiveScorecardGrid from "../components/LiveScorecardGrid"
 import Headshot from "../components/Headshot"
 import { CalendarIcon, ChevronDownIcon, MapPinIcon } from "../components/Icons"
-import { liveScoringReady } from "../data/liveScoring"
+import { PRACTICE_ID, clearPractice, flushQueue, liveScoringReady } from "../data/liveScoring"
 import {
   formatToPar,
   isToday,
@@ -31,7 +31,7 @@ function secondsAgo(date, now) {
 function LiveScoringPage() {
   const [params, setParams] = useSearchParams()
   const live = useLiveEvent(params.get("event"))
-  const { events, event, eventId, editable, teams, playerIds, state, pars, error, loadedAt, refresh } = live
+  const { events, event, eventId, editable, practice, teams, playerIds, state, pars, error, loadedAt, refresh } = live
   const [open, setOpen] = useState(null)
   const [now, setNow] = useState(() => Date.now())
 
@@ -94,8 +94,8 @@ function LiveScoringPage() {
 
       <section className="live-head">
         <div className="live-head-main">
-          <span className={`live-badge${liveNow ? " is-live" : ""}`}>
-            {liveNow ? <><i /> Live</> : "Scorecards"}
+          <span className={`live-badge${liveNow && !practice ? " is-live" : ""}${practice ? " is-practice" : ""}`}>
+            {practice ? "Practice · not counted" : liveNow ? <><i /> Live</> : "Scorecards"}
           </span>
           <h2>{event ? event["Event Name"] : "Loading..."}</h2>
           {event && (
@@ -119,6 +119,7 @@ function LiveScoringPage() {
             {events.map((e) => (
               <option key={e["Event ID"]} value={e["Event ID"]}>{e["Event Name"]}</option>
             ))}
+            <option value={PRACTICE_ID}>Practice round (try the cards)</option>
           </select>
         </label>
       </section>
@@ -129,6 +130,26 @@ function LiveScoringPage() {
         </p>
       )}
       {error && <p className="live-note live-note-error">{error}</p>}
+
+      {practice && (
+        <div className="live-note live-practice">
+          <span>
+            Practice round on {event?.Course?.trim()} with the next event's teams. Scores here are only a test -
+            they never count and can't be submitted.
+          </span>
+          <button
+            type="button"
+            onClick={async () => {
+              if (!window.confirm("Clear all practice scores?")) return
+              await flushQueue()
+              await clearPractice()
+              refresh()
+            }}
+          >
+            Clear practice scores
+          </button>
+        </div>
+      )}
 
       {teams.length > 0 && state && !editable && (
         <p className="live-note">

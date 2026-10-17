@@ -10,6 +10,9 @@ import { LIVE_SCORING_URL } from "../siteConfig"
 const QUEUE_KEY = "ht-live-queue"
 const MOCK_KEY = "ht-live-mock"
 
+// Always-open test event - never written to Hole by Hole.
+export const PRACTICE_ID = "practice"
+
 export const LOCKED_MESSAGE = "This round is locked - scores can only be entered on the day of the event."
 
 // While developing locally without a deployed script, scores are kept in
@@ -55,13 +58,19 @@ function mockIsGameDay(date) {
 
 function mockRequest(payload) {
   const db = readStore(MOCK_KEY, { scores: [], submitted: {} })
-  if (payload.action !== "state" && !mockIsGameDay(payload.date)) {
+  const open = payload.event === PRACTICE_ID || mockIsGameDay(payload.date)
+  if (payload.action === "clearPractice") {
+    db.scores = db.scores.filter((s) => s.event !== PRACTICE_ID)
+    writeStore(MOCK_KEY, db)
+    return { ok: true }
+  }
+  if (payload.action !== "state" && !open) {
     return { ok: false, locked: true, error: LOCKED_MESSAGE }
   }
   if (payload.action === "state") {
     return {
       ok: true,
-      editable: mockIsGameDay(payload.date),
+      editable: open,
       pars: MOCK_PARS[payload.course.trim().toLowerCase()] || Array(18).fill(4),
       scores: db.scores.filter((s) => s.event === payload.event),
       submitted: db.submitted[payload.event] || [],
@@ -172,4 +181,8 @@ export function pendingSaves(eventId, team) {
 
 export function submitCard(payload) {
   return post({ action: "submit", ...payload })
+}
+
+export function clearPractice() {
+  return post({ action: "clearPractice" })
 }

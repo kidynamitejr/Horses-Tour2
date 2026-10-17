@@ -125,6 +125,33 @@
   font-weight: 600;
 }
 
+.live-badge.is-practice {
+  background: var(--gold);
+  color: #2a1f00;
+}
+
+.live-practice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.live-practice span {
+  flex: 1 1 260px;
+}
+
+.live-practice button {
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 800 13px var(--font-body);
+  cursor: pointer;
+}
+
 .live-note-error {
   background: rgba(214, 48, 49, .12);
 }

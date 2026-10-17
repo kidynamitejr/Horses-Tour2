@@ -12,7 +12,9 @@
  *   Hole by Hole - finished cards are written here as score to par
  *
  * Scores can only be saved or submitted on the event's date (from the
- * Events tab), so past rounds can't be changed from the website.
+ * Events tab), so past rounds can't be changed from the website. The
+ * "practice" event is always open for trying the cards out; it's never
+ * written to Hole by Hole and can be cleared from the website.
  *
  * After changing this file: Deploy > Manage deployments > edit (pencil) >
  * Version: New version > Deploy. That keeps the same web app URL.
@@ -22,6 +24,7 @@ const PARS_SHEET = "Course Pars"
 const LIVE_SHEET = "Live Scores"
 const HOLE_SHEET = "Hole by Hole"
 const EVENTS_SHEET_ID = 898289286 // the Events tab (gid in its URL)
+const PRACTICE_ID = "practice"
 
 const LIVE_HEADERS = [
   "Event ID", "Team", "Players", "Hole", "Strokes", "Par", "To Par",
@@ -82,6 +85,7 @@ function doPost(e) {
   try {
     if (body.action === "save") return json(saveHole(body))
     if (body.action === "submit") return json(submitCard(body))
+    if (body.action === "clearPractice") return json(clearPractice())
     return json({ ok: false, error: "Unknown action" })
   } catch (err) {
     return json({ ok: false, error: String(err) })
@@ -177,6 +181,7 @@ function eventDate(eventId) {
 }
 
 function isGameDay(eventId) {
+  if (clean(eventId) === PRACTICE_ID) return true
   const date = eventDate(eventId)
   return Boolean(date) && sameDay(date, new Date())
 }
@@ -237,6 +242,7 @@ function submitCard(body) {
   const eventId = clean(body.event)
   const team = clean(body.team)
   const eventName = clean(body.eventName)
+  if (eventId === PRACTICE_ID) return { ok: false, error: "Practice cards can't be submitted - this was only a test." }
   if (!isGameDay(eventId)) return { ok: false, locked: true, error: LOCKED_MESSAGE }
   const pars = getPars(body.course)
   if (!pars) return { ok: false, error: "Pars for this course aren't filled in on the Course Pars tab." }
@@ -264,5 +270,14 @@ function submitCard(body) {
     }
   }
   sheet.appendRow(row)
+  return { ok: true }
+}
+
+// Deletes every practice-round row from Live Scores.
+function clearPractice() {
+  const live = liveRows()
+  for (let i = live.values.length - 1; i >= 1; i--) {
+    if (clean(live.values[i][0]) === PRACTICE_ID) live.sheet.deleteRow(i + 1)
+  }
   return { ok: true }
 }

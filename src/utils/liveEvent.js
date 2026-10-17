@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { getEvents, getMatchEntry, getPlayers } from "../data/googleSheets"
-import { getLiveState, pendingSaves } from "../data/liveScoring"
+import { PRACTICE_ID, getLiveState, pendingSaves } from "../data/liveScoring"
 
 // "M/D/YY" from the Events tab.
 export function parseEventDate(text) {
@@ -84,6 +84,25 @@ export function summarizeCard(card, pars) {
   return { total, toPar: pars && thru ? toPar : thru ? null : 0, thru }
 }
 
+// The event a page is showing. The practice round borrows the next
+// event's course and teams under its own always-open ID.
+function resolveEvent(events, eventIdParam) {
+  const practice = eventIdParam === PRACTICE_ID
+  const base = eventIdParam && !practice
+    ? events.find((e) => e["Event ID"] === eventIdParam) || null
+    : pickDefaultEvent(events)
+  const eventName = practice ? "Practice Round" : (base?.["Event Name"] || "").trim()
+  return {
+    event: base && practice ? { ...base, "Event ID": PRACTICE_ID, "Event Name": eventName } : base,
+    baseId: base?.["Event ID"] || "",
+    practice,
+    eventId: base ? (practice ? PRACTICE_ID : base["Event ID"]) : "",
+    course: (base?.Course || "").trim(),
+    eventName,
+    date: (base?.Date || "").trim(),
+  }
+}
+
 export function useLiveEvent(eventIdParam) {
   const [events, setEvents] = useState([])
   const [matchEntry, setMatchEntry] = useState([])
@@ -102,14 +121,8 @@ export function useLiveEvent(eventIdParam) {
     })
   }, [])
 
-  const event = eventIdParam
-    ? events.find((e) => e["Event ID"] === eventIdParam) || null
-    : pickDefaultEvent(events)
-
-  const eventId = event?.["Event ID"] || ""
-  const course = (event?.Course || "").trim()
-  const eventName = (event?.["Event Name"] || "").trim()
-  const date = (event?.Date || "").trim()
+  const resolved = useMemo(() => resolveEvent(events, eventIdParam), [events, eventIdParam])
+  const { event, baseId, practice, eventId, course, eventName, date } = resolved
 
   const refresh = useCallback(() => {
     if (!eventId) return Promise.resolve()
@@ -134,7 +147,8 @@ export function useLiveEvent(eventIdParam) {
     eventName,
     date,
     editable: Boolean(state?.editable),
-    teams: eventId ? buildTeams(matchEntry, eventId) : [],
+    practice,
+    teams: baseId ? buildTeams(matchEntry, baseId) : [],
     playerIds,
     state,
     setState,
