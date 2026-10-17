@@ -443,6 +443,27 @@ html[data-theme="dark"] .lbd-team-row:nth-child(even) th {
   width: 42px;
 }
 
+/* Total column: light blue on every row */
+.lbd-par-row .lbd-tot,
+.lbd-team-row .lbd-tot,
+.lbd-team-row:nth-child(even) .lbd-tot,
+.lbd-team-row:hover .lbd-tot,
+.lsc-par-row .lsc-tot,
+.lsc-score-row .lsc-tot,
+.lsc-contrib-line .lsc-tot {
+  background-color: #d3ebfa;
+}
+
+html[data-theme="dark"] .lbd-par-row .lbd-tot,
+html[data-theme="dark"] .lbd-team-row .lbd-tot,
+html[data-theme="dark"] .lbd-team-row:nth-child(even) .lbd-tot,
+html[data-theme="dark"] .lbd-team-row:hover .lbd-tot,
+html[data-theme="dark"] .lsc-par-row .lsc-tot,
+html[data-theme="dark"] .lsc-score-row .lsc-tot,
+html[data-theme="dark"] .lsc-contrib-line .lsc-tot {
+  background-color: rgba(26, 159, 224, .22);
+}
+
 html[data-theme="dark"] .lbd-table .lbd-sum,
 html[data-theme="dark"] .lbd-team-row:nth-child(even) .lbd-sum,
 html[data-theme="dark"] .lbd-team-row:hover .lbd-sum {
