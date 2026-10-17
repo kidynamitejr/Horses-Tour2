@@ -45,9 +45,9 @@ export const LIVE_SCORING_URL =
   "https://script.google.com/macros/s/AKfycbyl5PTgyfjfhu3Mq01EmbWQCaqzkkmNFsrqZYwbA97c7UWkfUdVDhSFuLlFJYd82z6N/exec"
 
 // Logos for players' home courses (profiles, player cards, compare page,
-// trading card), keyed by the Players tab's Home Course (case doesn't
-// matter). Without an entry, a generated crest with the course's initials
-// is used. To add one: put a transparent PNG in public/images/course-logos/
+// trading card), keyed by the Players tab's Home Course (case and words
+// like "Golf Course" don't matter). Without an entry, a generated crest
+// with the course's initials is used. To add one: put a transparent PNG in public/images/course-logos/
 // and add a line here. Logos with dark lettering also have a "-dark" file
 // (light lettering) for the dark grey profile header.
 const courseLogo = (file, hasDarkVersion = false) => ({
@@ -74,11 +74,26 @@ export const PLAYER_COURSE_LOGOS = {
   6: courseLogo("bayou-oaks", true),
 }
 
+// "Oak Lake Golf Course", "Oak Lake" and "oak lake golf club" all count as
+// the same course - filler words, punctuation and case are ignored.
+const FILLER_WORDS = new Set(["golf", "course", "club", "country", "and", "the", "at", "cc", "gc"])
+
+function courseKey(name) {
+  return (name || "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9 ]/g, "")
+    .split(/\s+/)
+    .filter((w) => w && !FILLER_WORDS.has(w))
+    .join(" ")
+}
+
 export function findCourseLogo(course, playerId) {
   if (playerId != null && PLAYER_COURSE_LOGOS[playerId]) return PLAYER_COURSE_LOGOS[playerId]
-  const name = (course || "").trim().toLowerCase()
-  const key = Object.keys(COURSE_LOGOS).find((k) => k.toLowerCase() === name)
-  return key ? COURSE_LOGOS[key] : null
+  const key = courseKey(course)
+  if (!key) return null
+  const match = Object.keys(COURSE_LOGOS).find((name) => courseKey(name) === key)
+  return match ? COURSE_LOGOS[match] : null
 }
 
 // Main header links - everything else lives under "More".
