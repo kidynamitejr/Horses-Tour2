@@ -41,8 +41,8 @@ export const COURSES = [
 ]
 
 // Live scoring web app (Google Apps Script - see scripts/live-scoring.gs).
-// Leave empty until it's deployed.
-export const LIVE_SCORING_URL = ""
+export const LIVE_SCORING_URL =
+  "https://script.google.com/macros/s/AKfycbyl5PTgyfjfhu3Mq01EmbWQCaqzkkmNFsrqZYwbA97c7UWkfUdVDhSFuLlFJYd82z6N/exec"
 
 // Optional real logos for players' home courses (shown on player profiles).
 // Without an entry, a generated crest with the course's initials is used.
