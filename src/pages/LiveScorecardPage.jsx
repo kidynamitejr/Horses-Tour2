@@ -71,7 +71,6 @@ function HoleEditor({ hole, par, players, playerIds, saved, onSave, onClear }) {
             <Stepper
               value={contributions[i] || 0}
               onChange={(v) => setContribution(i, v)}
-              step={0.5}
               max={strokes}
               size="sm"
               label={`${name} contributions`}
