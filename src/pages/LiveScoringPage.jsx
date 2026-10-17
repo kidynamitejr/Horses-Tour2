@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
-import LiveScorecardGrid from "../components/LiveScorecardGrid"
-import Headshot from "../components/Headshot"
-import { CalendarIcon, ChevronDownIcon, MapPinIcon } from "../components/Icons"
+import { ContributionSplit, LiveBoardCard } from "../components/LiveBoard"
+import { CalendarIcon, MapPinIcon } from "../components/Icons"
 import { PRACTICE_ID, clearPractice, flushQueue, liveScoringReady } from "../data/liveScoring"
 import {
-  formatToPar,
   isToday,
   parseEventDate,
   summarizeCard,
@@ -36,7 +34,6 @@ function LiveScoringPage() {
   const [params, setParams] = useSearchParams()
   const live = useLiveEvent(params.get("event"))
   const { events, event, eventId, editable, practice, teams, playerIds, state, pars, error, loadedAt, refresh } = live
-  const [open, setOpen] = useState(null)
   const [now, setNow] = useState(() => Date.now())
 
   // Refresh the board every 20 seconds while the page is open.
@@ -121,7 +118,6 @@ function LiveScoringPage() {
           <select
             value={eventId}
             onChange={(e) => {
-              setOpen(null)
               setParams({ event: e.target.value })
             }}
           >
@@ -188,7 +184,7 @@ function LiveScoringPage() {
 
       <section className="live-board">
         <div className="live-board-head">
-          <h3>Leaderboard</h3>
+          <h3>Scoreboard</h3>
           <span>{loadedAt ? `Updated ${secondsAgo(loadedAt, now)}` : "Loading..."}</span>
         </div>
 
@@ -197,69 +193,23 @@ function LiveScoringPage() {
         )}
 
         {teams.length > 0 && (
-          <div className="live-table" role="table" aria-label="Live leaderboard">
-            <div className="live-row live-row-head" role="row">
-              <span>Pos</span>
-              <span>Team</span>
-              <span>To Par</span>
-              <span>Thru</span>
-              <span className="live-col-total">Total</span>
-              <span />
-            </div>
-
-            {rows.map((r) => {
-              const isOpen = open === r.letter
-              return (
-                <div key={r.letter} className={`live-entry${isOpen ? " is-open" : ""}`}>
-                  <button
-                    type="button"
-                    className="live-row"
-                    role="row"
-                    onClick={() => setOpen(isOpen ? null : r.letter)}
-                    aria-expanded={isOpen}
-                  >
-                    <span className="live-pos">{r.pos}</span>
-                    <span className="live-team">
-                      <span className="live-heads">
-                        {r.players.map((p) => <Headshot key={p} id={playerIds[p]} />)}
-                      </span>
-                      <span className="live-names">
-                        <b>{r.players.join(" / ")}</b>
-                        <small>{r.label}{r.submitted ? " · Card submitted" : ""}</small>
-                      </span>
-                    </span>
-                    <span className={`live-topar${r.toPar < 0 ? " is-under" : ""}`}>
-                      {r.thru ? formatToPar(r.toPar) : "-"}
-                    </span>
-                    <span className="live-thru">{r.thru === 18 ? "F" : r.thru || "-"}</span>
-                    <span className="live-col-total">{r.total || "-"}</span>
-                    <span className="live-chev"><ChevronDownIcon size={16} /></span>
-                  </button>
-
-                  {isOpen && (
-                    <div className="live-detail">
-                      <LiveScorecardGrid
-                        pars={pars}
-                        strokes={r.card.strokes}
-                        players={r.players}
-                        contributions={r.card.contributions}
-                        contributionTotals={r.card.contributionTotals}
-                      />
-                      <Link to={`/live/${eventId}/${r.letter}`} className="live-detail-link">
-                        {editable ? `Keep score for ${r.label}` : "View full card"} →
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+          <LiveBoardCard rows={rows} pars={pars} eventId={eventId} playerIds={playerIds} />
         )}
 
         {teams.length > 0 && !anyScores && (
           <p className="live-empty-row">No scores yet - they'll show up here as teams enter them.</p>
         )}
       </section>
+
+      {teams.length > 0 && (
+        <section className="live-board">
+          <div className="live-board-head">
+            <h3>Contribution Split</h3>
+            <span>Share of each team's shots that counted</span>
+          </div>
+          <ContributionSplit rows={rows} playerIds={playerIds} />
+        </section>
+      )}
 
     </div>
   )
