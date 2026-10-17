@@ -1049,6 +1049,14 @@ html[data-theme="dark"] .lsc-sync {
   background: var(--surface-2);
 }
 
+.lsc-unsaved {
+  margin: -6px 0 -4px;
+  color: #c0790a;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+
 .lsc-save {
   padding: 16px;
   border: 0;

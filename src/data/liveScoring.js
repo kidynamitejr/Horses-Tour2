@@ -21,6 +21,38 @@ const useMock = !LIVE_SCORING_URL && import.meta.env.DEV
 
 export const liveScoringReady = Boolean(LIVE_SCORING_URL) || useMock
 
+// Last scores loaded for an event, kept on the phone so the card still
+// shows (and can be added to) when there's no signal.
+export function readCachedState(eventId) {
+  return readStore(`ht-live-state-${eventId}`, null)
+}
+
+function cacheState(eventId, data) {
+  writeStore(`ht-live-state-${eventId}`, data)
+}
+
+// A hole's +/- changes that haven't been saved yet, so backing out of the
+// page doesn't lose them.
+function draftKey(eventId, team, hole) {
+  return `ht-live-draft-${eventId}-${team}-${hole}`
+}
+
+export function readDraft(eventId, team, hole) {
+  return readStore(draftKey(eventId, team, hole), null)
+}
+
+export function writeDraft(eventId, team, hole, draft) {
+  writeStore(draftKey(eventId, team, hole), draft)
+}
+
+export function clearDraft(eventId, team, hole) {
+  try {
+    localStorage.removeItem(draftKey(eventId, team, hole))
+  } catch {
+    // Storage blocked - nothing to clear.
+  }
+}
+
 function readStore(key, fallback) {
   try {
     return JSON.parse(localStorage.getItem(key)) ?? fallback
@@ -102,10 +134,19 @@ export async function getLiveState({ eventId, course, eventName, date }) {
   if (useMock) return mockRequest({ action: "state", event: eventId, course, eventName, date })
 
   const params = new URLSearchParams({ action: "state", event: eventId, course, eventName, t: Date.now() })
-  const response = await fetch(`${LIVE_SCORING_URL}?${params}`)
+  const response = await fetchWithTimeout(`${LIVE_SCORING_URL}?${params}`)
   const data = await response.json()
   if (!data.ok) throw new Error(data.error || "Couldn't load live scores")
+  cacheState(eventId, data)
   return data
+}
+
+// Weak signal can leave a request hanging for minutes, which would hold
+// up every retry behind it - give up after 20 seconds instead.
+function fetchWithTimeout(url, options = {}, ms = 20000) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), ms)
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer))
 }
 
 // A request the server answered with ok: false (e.g. a locked round).
@@ -118,7 +159,7 @@ async function post(payload) {
     return result
   }
 
-  const response = await fetch(LIVE_SCORING_URL, {
+  const response = await fetchWithTimeout(LIVE_SCORING_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify(payload),
@@ -149,30 +190,36 @@ export function takeRejection() {
   return message
 }
 
+// Sends queued saves one at a time. Only one send runs at once; callers
+// share it. (`flushing` is cleared in .finally, which always runs after
+// the assignment - clearing it inside the async body could happen before
+// the assignment when the queue is empty, leaving it stuck forever.)
 export function flushQueue() {
-  if (flushing) return flushing
-
-  flushing = (async () => {
-    let queue = readStore(QUEUE_KEY, [])
-    while (queue.length > 0) {
-      const { id, ...item } = queue[0]
-      try {
-        await post(item)
-      } catch (err) {
-        // No signal: keep it queued and try later. Refused by the server
-        // (round locked): drop it so it doesn't block the queue.
-        if (!(err instanceof RejectedError)) break
-        lastRejection = err.message
-      }
-      // Re-read in case a newer save was queued while this one was sending.
-      queue = readStore(QUEUE_KEY, []).filter((q) => q.id !== id)
-      writeStore(QUEUE_KEY, queue)
-    }
-    flushing = null
-    return queue.length
-  })()
-
+  if (!flushing) {
+    flushing = sendQueued().finally(() => {
+      flushing = null
+    })
+  }
   return flushing
+}
+
+async function sendQueued() {
+  let queue = readStore(QUEUE_KEY, [])
+  while (queue.length > 0) {
+    const { id, ...item } = queue[0]
+    try {
+      await post(item)
+    } catch (err) {
+      // No signal: keep it queued and try later. Refused by the server
+      // (round locked): drop it so it doesn't block the queue.
+      if (!(err instanceof RejectedError)) break
+      lastRejection = err.message
+    }
+    // Re-read in case a newer save was queued while this one was sending.
+    queue = readStore(QUEUE_KEY, []).filter((q) => q.id !== id)
+    writeStore(QUEUE_KEY, queue)
+  }
+  return queue.length
 }
 
 export function pendingSaves(eventId, team) {

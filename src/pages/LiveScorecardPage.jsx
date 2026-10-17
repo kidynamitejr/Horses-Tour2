@@ -2,7 +2,17 @@ import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import Headshot from "../components/Headshot"
 import LiveScorecardGrid from "../components/LiveScorecardGrid"
-import { flushQueue, liveScoringReady, pendingSaves, saveHole, submitCard, takeRejection } from "../data/liveScoring"
+import {
+  clearDraft,
+  flushQueue,
+  liveScoringReady,
+  pendingSaves,
+  readDraft,
+  saveHole,
+  submitCard,
+  takeRejection,
+  writeDraft,
+} from "../data/liveScoring"
 import { formatToPar, parseEventDate, summarizeCard, teamCard, useLiveEvent } from "../utils/liveEvent"
 
 const RETRY_MS = 15000
@@ -32,12 +42,28 @@ function Stepper({ value, onChange, step = 1, min = 0, max = 15, size = "lg", la
 
 // The entry panel for one hole. It's re-mounted (via key) whenever the
 // selected hole changes, so its draft starts from that hole's saved score.
-function HoleEditor({ hole, par, players, playerIds, saved, onSave, onClear }) {
-  const [strokes, setStrokes] = useState(saved.strokes || par || 4)
-  const [contributions, setContributions] = useState(saved.contributions || [0, 0])
+function HoleEditor({ eventId, team, hole, par, players, playerIds, saved, onSave, onClear }) {
+  // Unsaved +/- changes are kept on the phone, so backing out of the page
+  // and coming back picks up where you left off.
+  const [draft] = useState(() => readDraft(eventId, team, hole))
+  const [strokes, setStrokesState] = useState(draft?.strokes ?? (saved.strokes || par || 4))
+  const [contributions, setContributionsState] = useState(draft?.contributions ?? (saved.contributions || [0, 0]))
+  const [unsaved, setUnsaved] = useState(Boolean(draft))
+
+  const remember = (nextStrokes, nextContributions) => {
+    writeDraft(eventId, team, hole, { strokes: nextStrokes, contributions: nextContributions })
+    setUnsaved(true)
+  }
+
+  const setStrokes = (value) => {
+    setStrokesState(value)
+    remember(value, contributions)
+  }
 
   const setContribution = (index, value) => {
-    setContributions((c) => c.map((v, i) => (i === index ? value : v)))
+    const next = contributions.map((v, i) => (i === index ? value : v))
+    setContributionsState(next)
+    remember(strokes, next)
   }
 
   return (
@@ -79,11 +105,30 @@ function HoleEditor({ hole, par, players, playerIds, saved, onSave, onClear }) {
         ))}
       </div>
 
-      <button type="button" className="lsc-save" onClick={() => onSave({ strokes, contributions })}>
+      {unsaved && <p className="lsc-unsaved">Not saved yet - tap Save to send this hole.</p>}
+
+      <button
+        type="button"
+        className="lsc-save"
+        onClick={() => {
+          clearDraft(eventId, team, hole)
+          onSave({ strokes, contributions })
+        }}
+      >
         Save hole {hole + 1}
       </button>
       {saved.strokes ? (
-        <button type="button" className="lsc-clear" onClick={onClear}>Clear this hole</button>
+        <button
+          type="button"
+          className="lsc-clear"
+          onClick={() => {
+            if (!window.confirm(`Clear the score for hole ${hole + 1}? This removes it for your partner too.`)) return
+            clearDraft(eventId, team, hole)
+            onClear()
+          }}
+        >
+          Clear this hole
+        </button>
       ) : null}
     </section>
   )
@@ -109,6 +154,8 @@ function LiveScorecardPage() {
       setVersion((v) => v + 1)
       return refresh()
     })
+    // Send anything left over from last time straight away.
+    flushQueue().then(() => setVersion((v) => v + 1))
     const timer = setInterval(retry, RETRY_MS)
     window.addEventListener("online", retry)
     document.addEventListener("visibilitychange", retry)
@@ -236,17 +283,17 @@ function LiveScorecardPage() {
       />
 
       {editable && <p className={`lsc-sync${pending ? " is-pending" : ""}`}>
-        {error
-          ? error
-          : pending
-            ? `${pending} hole${pending > 1 ? "s" : ""} waiting to send - will keep retrying`
-            : "All scores saved"}
+        {pending
+          ? `${pending} hole${pending > 1 ? "s" : ""} saved on this phone - will send automatically${error ? " when you have signal" : ""}`
+          : error || "All scores saved"}
       </p>}
 
       {message && !editable && <p className="lsc-message">{message}</p>}
 
       {editable && <HoleEditor
         key={`${hole}-${card.strokes[hole] ?? "x"}`}
+        eventId={eventId}
+        team={letter}
         hole={hole}
         par={pars?.[hole]}
         players={team.players}

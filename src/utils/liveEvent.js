@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { getEvents, getHoleByHole, getMatchEntry, getPlayers } from "../data/googleSheets"
-import { PRACTICE_ID, getLiveState, pendingSaves } from "../data/liveScoring"
+import { PRACTICE_ID, getLiveState, pendingSaves, readCachedState } from "../data/liveScoring"
 
 // "M/D/YY" from the Events tab.
 export function parseEventDate(text) {
@@ -174,7 +174,14 @@ export function useLiveEvent(eventIdParam) {
         setError("")
         setLoadedAt(new Date())
       })
-      .catch(() => setError("Couldn't reach live scoring - check your signal."))
+      .catch(() => {
+        // No signal: fall back to the copy saved on this phone.
+        const cached = readCachedState(eventId)
+        if (cached) setState((current) => current || cached)
+        setError(cached
+          ? "No signal - showing the scores saved on this phone. New holes will send when you're back in range."
+          : "Couldn't reach live scoring - check your signal.")
+      })
   }, [eventId, course, eventName, date])
 
   useEffect(() => {
