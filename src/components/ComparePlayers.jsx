@@ -182,7 +182,7 @@ function PlayerSlot({ profile, side, profiles, otherId, onSelect }) {
             </span>
             {profile.homeCourse && (
               <span className="cmp-slot-crest" title={profile.homeCourse}>
-                <CourseCrest course={profile.homeCourse} size={36} />
+                <CourseCrest course={profile.homeCourse} playerId={profile.id} size={36} />
               </span>
             )}
             <Cutout key={profile.id} id={profile.id} name={profile.name} />

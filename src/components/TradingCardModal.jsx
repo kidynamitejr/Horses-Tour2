@@ -206,7 +206,7 @@ function TradingCardModal({ profile, onClose }) {
                   <dt>Home Course</dt>
                   <dd>
                     {profile.homeCourse ? (
-                      <><CourseCrest course={profile.homeCourse} size={18} /> {profile.homeCourse}</>
+                      <><CourseCrest course={profile.homeCourse} playerId={profile.id} size={18} /> {profile.homeCourse}</>
                     ) : "-"}
                   </dd>
                 </div>

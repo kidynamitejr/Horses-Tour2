@@ -91,16 +91,30 @@ html[data-theme="dark"] .pp-hero {
   text-align: right;
 }
 
-.course-crest,
-.course-crest-img {
+.course-crest {
   flex-shrink: 0;
   border-radius: 50%;
   box-shadow: 0 4px 12px rgba(0, 0, 0, .25);
 }
 
-.course-crest-img {
-  object-fit: contain;
+/* A real course logo (transparent PNG) on a small white badge */
+.course-logo-plate {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .25);
+  vertical-align: middle;
+}
+
+.course-logo-plate img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .pp-facts,

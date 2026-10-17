@@ -44,12 +44,37 @@ export const COURSES = [
 export const LIVE_SCORING_URL =
   "https://script.google.com/macros/s/AKfycbyl5PTgyfjfhu3Mq01EmbWQCaqzkkmNFsrqZYwbA97c7UWkfUdVDhSFuLlFJYd82z6N/exec"
 
-// Optional real logos for players' home courses (shown on player profiles).
-// Without an entry, a generated crest with the course's initials is used.
-// To add one: put the image in public/images/course-logos/ and add a line
-// like the example below - the name must match the Players tab exactly.
+// Logos for players' home courses (profiles, player cards, compare page,
+// trading card), keyed by the Players tab's Home Course (case doesn't
+// matter). Without an entry, a generated crest with the course's initials
+// is used. To add one: put a transparent PNG in public/images/course-logos/
+// and add a line here.
+const courseLogo = (file) => `${BASE}images/course-logos/${file}.png`
+
 export const COURSE_LOGOS = {
-  // "Copper Mill Golf Course": `${BASE}images/course-logos/copper-mill.png`,
+  "Copper Mill Golf Course": courseLogo("copper-mill"),
+  "Greystone Golf & Country Club": courseLogo("greystone"),
+  "J.S. Clark Golf Course": courseLogo("js-clark"),
+  "The Pines at North Park": courseLogo("the-pines"),
+  "City Park Golf Course": courseLogo("city-park"),
+  "Bayou Oaks at City Park": courseLogo("bayou-oaks"),
+  "Webb Memorial Golf Course": courseLogo("webb-memorial"),
+  "Oak Lake": courseLogo("oak-lake"),
+  "Carter Plantation": courseLogo("carter-plantation"),
+  "Beaver Creek Golf Course": courseLogo("beaver-creek"),
+}
+
+// Per-player logo, for players whose Home Course name is shared by two
+// courses. Keyed by Player ID. (Adam's "City Park" is Bayou Oaks.)
+export const PLAYER_COURSE_LOGOS = {
+  6: courseLogo("bayou-oaks"),
+}
+
+export function findCourseLogo(course, playerId) {
+  if (playerId != null && PLAYER_COURSE_LOGOS[playerId]) return PLAYER_COURSE_LOGOS[playerId]
+  const name = (course || "").trim().toLowerCase()
+  const key = Object.keys(COURSE_LOGOS).find((k) => k.toLowerCase() === name)
+  return key ? COURSE_LOGOS[key] : null
 }
 
 // Main header links - everything else lives under "More".

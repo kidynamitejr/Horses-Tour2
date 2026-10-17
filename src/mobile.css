@@ -258,10 +258,15 @@
     right: 8px;
   }
 
-  .pc-crest svg,
-  .pc-crest img {
+  .pc-crest svg {
     width: 26px;
     height: 26px;
+  }
+
+  .pc-crest .course-logo-plate {
+    height: 26px !important;
+    max-width: 88px !important;
+    padding: 3px 5px !important;
   }
 
   /* Profile header on phones: photo beside the name instead of above it,

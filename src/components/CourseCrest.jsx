@@ -1,8 +1,8 @@
-import { COURSE_LOGOS } from "../siteConfig"
+import { findCourseLogo } from "../siteConfig"
 
 // Club-style crest for a player's home course. If a real logo has been
-// added for the course in siteConfig.js (COURSE_LOGOS), that image is used
-// instead.
+// added for the course in siteConfig.js (COURSE_LOGOS), that image is shown
+// instead, on a small white badge so every logo reads on any background.
 
 const CREST_COLORS = ["#1f5c3f", "#002140", "#6b2c2c", "#3d4f7a", "#7a5a1f", "#245b63"]
 
@@ -25,13 +25,27 @@ function pickColor(name) {
   return CREST_COLORS[hash % CREST_COLORS.length]
 }
 
-function CourseCrest({ course, size = 52 }) {
+function CourseCrest({ course, playerId = null, size = 52 }) {
   if (!course) return null
 
-  const logo = COURSE_LOGOS[course]
+  const logo = findCourseLogo(course, playerId)
 
   if (logo) {
-    return <img src={logo} alt={`${course} logo`} className="course-crest-img" width={size} height={size} />
+    const padY = Math.max(2, Math.round(size * 0.1))
+    const padX = Math.max(3, Math.round(size * 0.16))
+    return (
+      <span
+        className="course-logo-plate"
+        style={{
+          height: size,
+          maxWidth: Math.round(size * 3.4),
+          padding: `${padY}px ${padX}px`,
+          borderRadius: Math.max(4, Math.round(size * 0.22)),
+        }}
+      >
+        <img src={logo} alt={`${course} logo`} />
+      </span>
+    )
   }
 
   const color = pickColor(course)
