@@ -206,6 +206,10 @@ function LiveScorecardPage() {
         </div>
       </section>
 
+      <p className="lsc-shared">
+        Shared team card · {team.players.map((p) => p.split(" ")[0]).join(" and ")} can both update any hole. Tap a hole to edit it.
+      </p>
+
       <LiveScorecardGrid pars={pars} strokes={card.strokes} selected={hole} onSelect={setSelected} />
 
       <p className={`lsc-sync${pending ? " is-pending" : ""}`}>

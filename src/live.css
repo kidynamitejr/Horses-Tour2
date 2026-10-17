@@ -149,6 +149,19 @@
   font-weight: 800;
 }
 
+.live-keep-note,
+.lsc-shared {
+  margin: -6px 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.lsc-shared {
+  margin: -4px 0 -6px;
+  text-align: center;
+}
+
 .live-keep-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));

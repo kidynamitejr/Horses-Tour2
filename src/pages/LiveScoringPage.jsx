@@ -125,6 +125,10 @@ function LiveScoringPage() {
       {teams.length > 0 && (
         <section className="live-keep">
           <h3>Keep your team's card</h3>
+          <p className="live-keep-note">
+            One shared card per team - either player can enter scores and contributions for both of you,
+            so the passenger can keep score while the other drives.
+          </p>
           <div className="live-keep-grid">
             {teams.map((team) => (
               <Link key={team.letter} to={`/live/${eventId}/${team.letter}`} className="live-keep-btn">
