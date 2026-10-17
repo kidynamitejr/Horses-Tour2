@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { getEvents, getMatchEntry, getPlayers } from "../data/googleSheets"
+import { COURSE_LAYOUTS, findCourseLayout } from "../siteConfig"
 import { slugify } from "../utils/slugify"
 import { formatCurrency } from "../utils/winnings"
 import { CalendarIcon, FlagIcon, MapPinIcon, TrophyIcon } from "./Icons"
@@ -278,6 +279,17 @@ function Schedule() {
                     {e.address} ↗
                   </a>
                 )}
+
+                {findCourseLayout(e.course) && (
+                  <a
+                    className="sch-layout-link"
+                    href={findCourseLayout(e.course).pdf}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <FlagIcon size={13} /> Course layout (PDF)
+                  </a>
+                )}
               </div>
 
               <div className="sch-result">
@@ -325,6 +337,30 @@ function Schedule() {
       </ol>
 
       {!loading && shown.length === 0 && <p className="sch-empty">No events here yet.</p>}
+
+      <section className="sch-guides">
+        <div className="sch-guides-head">
+          <span className="sch-eyebrow">Course Guides</span>
+          <h2>Know the layout before you tee off</h2>
+          <p>Hole-by-hole maps with yardages, hazards and 200/150/100 markers. Tap one to open the printable PDF.</p>
+        </div>
+        <div className="sch-guides-grid">
+          {COURSE_LAYOUTS.map((c) => (
+            <a key={c.slug} className="sch-guide" href={c.pdf} target="_blank" rel="noopener noreferrer">
+              <img src={c.image} alt={`${c.name} course layout`} loading="lazy" />
+              <div className="sch-guide-info">
+                <h3>{c.name}</h3>
+                <span>{c.holes} holes · {c.yards.toLocaleString()} yds · Par {c.par}</span>
+                <b>Open PDF ↗</b>
+              </div>
+            </a>
+          ))}
+        </div>
+        <p className="sch-guides-credit">
+          Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>.
+          Yardages are approximate.
+        </p>
+      </section>
 
     </div>
 
