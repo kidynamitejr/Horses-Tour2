@@ -33,7 +33,7 @@ function secondsAgo(date, now) {
 function LiveScoringPage() {
   const [params, setParams] = useSearchParams()
   const live = useLiveEvent(params.get("event"))
-  const { events, event, eventId, editable, practice, teams, playerIds, state, pars, error, loadedAt, refresh } = live
+  const { events, event, eventId, editable, practice, teams, state, pars, error, loadedAt, refresh } = live
   const [now, setNow] = useState(() => Date.now())
 
   // Refresh the board every 20 seconds while the page is open.
@@ -193,7 +193,7 @@ function LiveScoringPage() {
         )}
 
         {teams.length > 0 && (
-          <LiveBoardCard rows={rows} pars={pars} eventId={eventId} playerIds={playerIds} />
+          <LiveBoardCard rows={rows} pars={pars} eventId={eventId} />
         )}
 
         {teams.length > 0 && !anyScores && (
@@ -207,7 +207,7 @@ function LiveScoringPage() {
             <h3>Contribution Split</h3>
             <span>Share of each team's shots that counted</span>
           </div>
-          <ContributionSplit rows={rows} playerIds={playerIds} />
+          <ContributionSplit rows={rows} />
         </section>
       )}
 

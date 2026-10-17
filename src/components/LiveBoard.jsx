@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom"
-import Headshot from "./Headshot"
 import { formatToPar } from "../utils/liveEvent"
 
 // The event board: one big scorecard with a row per team, plus a panel
@@ -39,7 +38,7 @@ function contributionTotals(card) {
   return [0, 1].map((i) => total(played.map((h) => card.contributions[h]?.[i])))
 }
 
-export function LiveBoardCard({ rows, pars, eventId, playerIds }) {
+export function LiveBoardCard({ rows, pars, eventId }) {
   const nineSum = (strokes, holes) => {
     const played = holes.filter((h) => strokes[h])
     return played.length ? total(played.map((h) => strokes[h])) : ""
@@ -85,9 +84,6 @@ export function LiveBoardCard({ rows, pars, eventId, playerIds }) {
                   <th className="lbd-pos">{r.pos}</th>
                   <th className="lbd-team">
                     <Link to={`/live/${eventId}/${r.letter}`}>
-                      <span className="lbd-heads">
-                        {r.players.map((p) => <Headshot key={p} id={playerIds[p]} />)}
-                      </span>
                       <span className="lbd-names">
                         {r.players.map((p) => <b key={p}>{p}</b>)}
                         <small>{r.label}{r.submitted ? " · Submitted" : ""}</small>
@@ -120,7 +116,7 @@ export function LiveBoardCard({ rows, pars, eventId, playerIds }) {
   )
 }
 
-export function ContributionSplit({ rows, playerIds }) {
+export function ContributionSplit({ rows }) {
   return (
     <div className="csp">
       {rows.map((r) => {
@@ -135,7 +131,6 @@ export function ContributionSplit({ rows, playerIds }) {
             </div>
             <div className="csp-players">
               <span className="csp-player">
-                <Headshot id={playerIds[r.players[0]]} />
                 <span>
                   <b>{r.players[0]}</b>
                   {totals && <small>{half(totals[0])} · {share}%</small>}
@@ -146,7 +141,6 @@ export function ContributionSplit({ rows, playerIds }) {
                   <b>{r.players[1] || ""}</b>
                   {totals && r.players[1] && <small>{half(totals[1])} · {100 - share}%</small>}
                 </span>
-                {r.players[1] && <Headshot id={playerIds[r.players[1]]} />}
               </span>
             </div>
             <div className="csp-bar" role="img" aria-label={totals ? `${share}% / ${100 - share}%` : "No contributions yet"}>
