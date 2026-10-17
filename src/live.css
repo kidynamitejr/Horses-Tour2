@@ -625,20 +625,19 @@ html[data-theme="dark"] .lsc-score-row .sc-double {
 
 .lsc-contrib-summary {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 16px;
-  padding: 9px 12px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
   border-top: 1px solid #d9d2bd;
-  color: var(--ink);
-  font-size: 13.5px;
+  text-align: left;
 }
 
 html[data-theme="dark"] .lsc-contrib-summary {
   border-color: var(--line);
 }
 
-.lsc-contrib-summary > span {
+.lsc-contrib-summary h4 {
+  margin: 0;
   color: var(--muted);
   font-size: 11px;
   font-weight: 800;
@@ -646,28 +645,56 @@ html[data-theme="dark"] .lsc-contrib-summary {
   text-transform: uppercase;
 }
 
-.lsc-contrib-summary b {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  font-weight: 700;
+.lsc-contrib-player-row {
+  display: grid;
+  grid-template-columns: minmax(0, 9.5em) minmax(40px, 1fr) 76px;
+  align-items: center;
+  gap: 10px;
 }
 
-.lsc-contrib-summary em {
-  color: var(--navy);
+.lsc-contrib-name {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lsc-contrib-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.lsc-contrib-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--sky), var(--navy-3));
+}
+
+.lsc-contrib-value {
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lsc-contrib-value b {
+  color: var(--ink);
   font-size: 16px;
-  font-style: normal;
   font-weight: 800;
 }
 
-html[data-theme="dark"] .lsc-contrib-summary em {
-  color: #7fd0ff;
-}
-
-.lsc-contrib-summary small {
+.lsc-contrib-value small {
+  min-width: 34px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 700;
+  text-align: right;
 }
 
 .lsc-card-foot {

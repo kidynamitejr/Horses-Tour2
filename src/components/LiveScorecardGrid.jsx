@@ -144,15 +144,22 @@ function LiveScorecardGrid({
       </div>
       {players.length > 0 && (
         <div className="lsc-contrib-summary">
-          <span>Contributions</span>
-          {players.map((name, i) => (
-            <b key={name}>
-              {name} <em>{contributionTotal(i) || "-"}</em>
-              {totalAll > 0 && totalValues[i] != null && (
-                <small>{Math.round((totalValues[i] / totalAll) * 100)}%</small>
-              )}
-            </b>
-          ))}
+          <h4>Contributions</h4>
+          {players.map((name, i) => {
+            const share = totalAll > 0 && totalValues[i] != null ? Math.round((totalValues[i] / totalAll) * 100) : null
+            return (
+              <div key={name} className="lsc-contrib-player-row">
+                <span className="lsc-contrib-name">{name}</span>
+                <span className="lsc-contrib-bar" aria-hidden="true">
+                  <i style={{ width: `${share ?? 0}%` }} />
+                </span>
+                <span className="lsc-contrib-value">
+                  <b>{contributionTotal(i) || "-"}</b>
+                  <small>{share != null ? `${share}%` : ""}</small>
+                </span>
+              </div>
+            )
+          })}
         </div>
       )}
       {players.length > 0 && (

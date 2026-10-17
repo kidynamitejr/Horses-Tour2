@@ -147,11 +147,6 @@ function LiveScorecardPage() {
   const submitted = (state?.submitted || []).includes(letter)
   const complete = firstEmpty === -1
 
-  const contributionTotals = card.contributionTotals
-    ? card.contributionTotals.map((v) => v ?? 0)
-    : [0, 1].map((i) => card.contributions.reduce((t, c) => t + (Number(c[i]) || 0), 0))
-  const contributionSum = contributionTotals[0] + contributionTotals[1]
-
   const basePayload = { event: eventId, team: letter, course, date, players: team.players }
 
   // Scores can only be changed on game day - the Google script enforces
@@ -260,17 +255,6 @@ function LiveScorecardPage() {
         onSave={save}
         onClear={clear}
       />}
-
-      <section className="lsc-totals">
-        <h3>Contributions</h3>
-        {team.players.map((name, i) => (
-          <div key={name} className="lsc-total-row">
-            <span>{name}</span>
-            <b>{contributionTotals[i]}</b>
-            <small>{contributionSum ? `${Math.round((contributionTotals[i] / contributionSum) * 100)}%` : "-"}</small>
-          </div>
-        ))}
-      </section>
 
       {editable && practice && (
         <p className="lsc-locked">Practice card - not counted and can't be submitted.</p>
