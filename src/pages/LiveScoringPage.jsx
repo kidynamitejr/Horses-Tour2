@@ -63,8 +63,8 @@ function LiveScoringPage() {
 
   const rows = teams
     .map((team) => {
-      const card = teamCard(state, eventId, team.letter)
-      return { ...team, card, ...summarizeCard(card, pars), submitted: submitted.includes(team.letter) }
+      const card = teamCard(live, team)
+      return { ...team, card, ...summarizeCard(card, pars), submitted: card.source === "live" && submitted.includes(team.letter) }
     })
     .sort((a, b) => {
       if (!a.thru !== !b.thru) return a.thru ? -1 : 1
@@ -229,7 +229,13 @@ function LiveScoringPage() {
 
                   {isOpen && (
                     <div className="live-detail">
-                      <LiveScorecardGrid pars={pars} strokes={r.card.strokes} />
+                      <LiveScorecardGrid
+                        pars={pars}
+                        strokes={r.card.strokes}
+                        players={r.players}
+                        contributions={r.card.contributions}
+                        contributionTotals={r.card.contributionTotals}
+                      />
                       <Link to={`/live/${eventId}/${r.letter}`} className="live-detail-link">
                         {editable ? `Keep score for ${r.label}` : "View full card"} →
                       </Link>

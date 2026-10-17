@@ -140,7 +140,7 @@ function LiveScorecardPage() {
     )
   }
 
-  const card = teamCard(state, eventId, letter)
+  const card = teamCard(live, team)
   const summary = summarizeCard(card, pars)
   const firstEmpty = card.strokes.findIndex((s) => !s)
   const hole = selected ?? (firstEmpty === -1 ? 17 : firstEmpty)
@@ -148,7 +148,9 @@ function LiveScorecardPage() {
   const submitted = (state?.submitted || []).includes(letter)
   const complete = firstEmpty === -1
 
-  const contributionTotals = [0, 1].map((i) => card.contributions.reduce((t, c) => t + (Number(c[i]) || 0), 0))
+  const contributionTotals = card.contributionTotals
+    ? card.contributionTotals.map((v) => v ?? 0)
+    : [0, 1].map((i) => card.contributions.reduce((t, c) => t + (Number(c[i]) || 0), 0))
   const contributionSum = contributionTotals[0] + contributionTotals[1]
 
   const basePayload = { event: eventId, team: letter, course, date, players: team.players }
@@ -232,6 +234,9 @@ function LiveScorecardPage() {
       <LiveScorecardGrid
         pars={pars}
         strokes={card.strokes}
+        players={team.players}
+        contributions={card.contributions}
+        contributionTotals={card.contributionTotals}
         selected={editable ? hole : null}
         onSelect={editable ? setSelected : null}
       />
@@ -252,7 +257,7 @@ function LiveScorecardPage() {
         par={pars?.[hole]}
         players={team.players}
         playerIds={playerIds}
-        saved={{ strokes: card.strokes[hole], contributions: card.contributions[hole] }}
+        saved={{ strokes: card.strokes[hole], contributions: card.contributions?.[hole] }}
         onSave={save}
         onClear={clear}
       />}

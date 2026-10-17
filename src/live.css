@@ -418,44 +418,76 @@
 }
 
 /* --------------------------------------------------------------------------
-   Scorecard grid
+   Scorecard - one wide card like the paper ones, scrolls sideways on phones
    -------------------------------------------------------------------------- */
 
-.lsc {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.lsc-card {
+  overflow: hidden;
+  border: 2px solid var(--navy);
+  border-radius: 12px;
+  background: #fffdf6;
+  box-shadow: var(--shadow-md);
+}
+
+html[data-theme="dark"] .lsc-card {
+  border-color: #2b4f78;
+  background: var(--surface);
+}
+
+.lsc-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .lsc-table {
   width: 100%;
+  min-width: 760px;
   border-collapse: collapse;
-  overflow: hidden;
-  border-radius: 10px;
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
   table-layout: fixed;
+  font-variant-numeric: tabular-nums;
 }
 
 .lsc-table th,
 .lsc-table td {
   padding: 0;
-  border: 1px solid var(--line);
+  border-right: 1px solid #d9d2bd;
+  border-bottom: 1px solid #d9d2bd;
   text-align: center;
   font-size: 13px;
 }
 
-.lsc-table th {
-  width: 54px;
+html[data-theme="dark"] .lsc-table th,
+html[data-theme="dark"] .lsc-table td {
+  border-color: var(--line);
+}
+
+/* Sticky row labels */
+.lsc-table .lsc-label {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  width: 70px;
+  padding: 0 8px;
   background: var(--navy);
   color: white;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: .06em;
+  text-align: left;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.lsc-hole-row td {
+.lsc-table .lsc-player {
+  overflow: hidden;
+  background: #12406e;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  text-transform: none;
+  font-size: 12px;
+}
+
+.lsc-hole-row th {
   height: 30px;
   background: var(--navy);
   color: white;
@@ -472,48 +504,88 @@
   cursor: pointer;
 }
 
-.lsc-hole-row button.is-selected {
+.lsc-hole-row th.is-selected {
   background: var(--sky);
 }
 
 .lsc-par-row td {
   height: 26px;
-  background: var(--page);
-  color: var(--muted);
+  color: #6b6450;
   font-weight: 700;
 }
 
+html[data-theme="dark"] .lsc-par-row td {
+  color: var(--muted);
+}
+
 .lsc-score-row td {
-  height: 40px;
+  height: 42px;
+  color: var(--ink);
   font-size: 15px;
   font-weight: 800;
-  color: var(--ink);
+}
+
+.lsc-score-row td,
+.lsc-contrib-line td {
+  cursor: default;
+}
+
+.lsc-table td.is-selected {
+  background: var(--sky-soft);
 }
 
 .lsc-score-row td.is-selected {
-  background: var(--sky-soft);
   box-shadow: inset 0 0 0 2px var(--sky);
 }
 
-.lsc-table td.lsc-sum {
-  width: 44px;
-  background: var(--gold-soft);
+/* The split between the team score and the players' contributions */
+.lsc-contrib-line.is-first th,
+.lsc-contrib-line.is-first td {
+  border-top: 3px double var(--navy);
+}
+
+html[data-theme="dark"] .lsc-contrib-line.is-first th,
+html[data-theme="dark"] .lsc-contrib-line.is-first td {
+  border-top-color: #7fb6e8;
+}
+
+.lsc-contrib-line td {
+  height: 30px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.lsc-table .lsc-sum {
+  width: 42px;
+  background: #f3e9c6;
   color: var(--ink);
   font-weight: 800;
 }
 
-.lsc-hole-row td.lsc-sum {
+.lsc-table .lsc-tot {
+  width: 46px;
+  background: #ead9a0;
+}
+
+html[data-theme="dark"] .lsc-table .lsc-sum {
+  background: var(--gold-soft);
+}
+
+.lsc-hole-row th.lsc-sum {
   background: var(--navy-2);
   color: white;
   font-size: 11px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
 }
 
 .lsc-score-row span {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 27px;
+  height: 27px;
 }
 
 .lsc-score-row .sc-birdie {
@@ -525,7 +597,7 @@
 .lsc-score-row .sc-eagle {
   border: 2px solid #d63031;
   border-radius: 50%;
-  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px #d63031;
+  box-shadow: 0 0 0 2px #fffdf6, 0 0 0 4px #d63031;
   color: #d63031;
 }
 
@@ -535,7 +607,7 @@
 
 .lsc-score-row .sc-double {
   border: 2px solid var(--navy-3);
-  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--navy-3);
+  box-shadow: 0 0 0 2px #fffdf6, 0 0 0 4px var(--navy-3);
 }
 
 html[data-theme="dark"] .lsc-score-row .sc-bogey,
@@ -543,8 +615,25 @@ html[data-theme="dark"] .lsc-score-row .sc-double {
   border-color: #7fb6e8;
 }
 
+html[data-theme="dark"] .lsc-score-row .sc-eagle {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px #d63031;
+}
+
 html[data-theme="dark"] .lsc-score-row .sc-double {
   box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px #7fb6e8;
+}
+
+.lsc-card-foot {
+  margin: 0;
+  padding: 6px 10px;
+  border-top: 1px solid #d9d2bd;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+html[data-theme="dark"] .lsc-card-foot {
+  border-color: var(--line);
 }
 
 /* --------------------------------------------------------------------------
@@ -950,11 +1039,8 @@ html[data-theme="dark"] .lsc-message {
   .live-names small { font-size: 11px; }
   .live-topar { font-size: 16px; }
 
-  .lsc-table th { width: 40px; font-size: 9.5px; letter-spacing: 0; }
-  .lsc-table td { font-size: 12px; }
-  .lsc-table td.lsc-sum { width: 34px; }
-  .lsc-score-row td { height: 34px; font-size: 13px; }
-  .lsc-score-row span { width: 22px; height: 22px; }
+  .lsc-table { min-width: 680px; }
+  .lsc-table .lsc-label { width: 58px; padding: 0 6px; }
   .lsc-team { padding: 14px; gap: 10px; }
   .lsc-team-heads img { width: 40px; height: 40px; }
   .lsc-team-info h2 { font-size: 16px; }

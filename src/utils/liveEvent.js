@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { getEvents, getMatchEntry, getPlayers } from "../data/googleSheets"
+import { getEvents, getHoleByHole, getMatchEntry, getPlayers } from "../data/googleSheets"
 import { PRACTICE_ID, getLiveState, pendingSaves } from "../data/liveScoring"
 
 // "M/D/YY" from the Events tab.
@@ -54,9 +54,14 @@ function buildTeams(matchEntry, eventId) {
   }))
 }
 
-// Score per hole (index 0-17) for one team, with unsent saves from this
-// phone laid over what the server has.
-export function teamCard(state, eventId, letter) {
+// One team's card: score per hole (index 0-17), contributions per hole
+// and contribution totals. Live entries (plus unsent saves from this
+// phone) come first; a past event with no live entries is filled in from
+// the Hole by Hole tab (score to par) and Match Entry (contribution
+// totals - Hole by Hole has no per-hole contributions).
+export function teamCard(live, team) {
+  const { state, eventId, pars, practice, eventName, baseId, holeRows = [], matchEntry = [] } = live
+  const letter = team.letter
   const strokes = Array(18).fill(null)
   const contributions = Array.from({ length: 18 }, () => [0, 0])
   ;(state?.scores || []).forEach((s) => {
@@ -68,7 +73,29 @@ export function teamCard(state, eventId, letter) {
     strokes[q.hole - 1] = q.strokes ?? null
     contributions[q.hole - 1] = q.contributions || [0, 0]
   })
-  return { strokes, contributions }
+
+  if (strokes.some(Boolean) || practice || !pars) {
+    return { strokes, contributions, contributionTotals: null, source: "live" }
+  }
+
+  const name = eventName.toLowerCase()
+  const row = holeRows.find(
+    (r) => (r["Event Name"] || "").trim().toLowerCase() === name && (r["Team letter"] || "").trim() === letter
+  )
+  if (!row) return { strokes, contributions, contributionTotals: null, source: "live" }
+
+  for (let h = 1; h <= 18; h++) {
+    const toPar = parseFloat(row[`Hole ${h}`])
+    if (!isNaN(toPar)) strokes[h - 1] = pars[h - 1] + toPar
+  }
+  const contributionTotals = team.players.map((player) => {
+    const entry = matchEntry.find(
+      (r) => r["Event ID"] === baseId && (r.Player || "").trim() === player && (r.Team || "").trim() === letter
+    )
+    const value = parseFloat(entry?.Contributions)
+    return isNaN(value) ? null : value
+  })
+  return { strokes, contributions: null, contributionTotals, source: "history" }
 }
 
 export function summarizeCard(card, pars) {
@@ -106,6 +133,7 @@ function resolveEvent(events, eventIdParam) {
 export function useLiveEvent(eventIdParam) {
   const [events, setEvents] = useState([])
   const [matchEntry, setMatchEntry] = useState([])
+  const [holeRows, setHoleRows] = useState([])
   const [playerIds, setPlayerIds] = useState({})
   const [state, setState] = useState(null)
   const [error, setError] = useState("")
@@ -114,6 +142,7 @@ export function useLiveEvent(eventIdParam) {
   useEffect(() => {
     getEvents().then(setEvents)
     getMatchEntry().then(setMatchEntry)
+    getHoleByHole().then(setHoleRows)
     getPlayers().then((rows) => {
       const ids = {}
       rows.forEach((p) => { ids[p.Name] = p["Player ID"] })
@@ -148,6 +177,9 @@ export function useLiveEvent(eventIdParam) {
     date,
     editable: Boolean(state?.editable),
     practice,
+    baseId,
+    holeRows,
+    matchEntry,
     teams: baseId ? buildTeams(matchEntry, baseId) : [],
     playerIds,
     state,
