@@ -112,6 +112,7 @@ function LiveScoringPage() {
       if (result.unfinished.length) {
         parts.push(`Not finished: ${result.unfinished.map((u) => `${labelFor(u.team)} (${u.holes} holes)`).join(", ")}.`)
       }
+      if (result.winner) parts.push(`Winner entered in Events: ${result.winner}.`)
       if (result.missingPlayers.length) {
         parts.push(`Not found in Match Entry: ${result.missingPlayers.join(", ")} - add them there by hand.`)
       }
@@ -238,8 +239,9 @@ function LiveScoringPage() {
           <div>
             <h3>Finish the event</h3>
             <p>
-              Sends every team with all 18 holes entered to Hole by Hole and Match Entry
-              (Team Score, Contributions and Placement) - in case anyone forgot to submit.
+              Sends every team with all 18 holes entered to Hole by Hole (holes) and Match Entry
+              (Team Score and Contributions), and fills in the Winner on the Events tab once
+              every team is in - in case anyone forgot to submit.
             </p>
           </div>
           <button type="button" onClick={handleSubmitAll} disabled={submittingAll}>

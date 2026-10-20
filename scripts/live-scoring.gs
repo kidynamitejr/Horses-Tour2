@@ -9,9 +9,11 @@
  * Tabs it uses (created by `setup` if missing):
  *   Course Pars  - Course | Hole 1 .. Hole 18
  *   Live Scores  - one row per team per hole while a round is in progress
- *   Hole by Hole - finished cards are written here as score to par
- *   Match Entry  - finished cards fill in each player's Team Score,
- *                  Contributions and Placement (formula cells are left alone)
+ *   Hole by Hole - finished cards fill columns D-U (score to par per hole)
+ *   Match Entry  - finished cards fill columns D (Team Score) and
+ *                  E (Contributions) on each player's row
+ *   Events       - column G (Winner) once every team has a score
+ * Formula cells are never overwritten.
  *
  * Scores can only be saved or submitted on the event's date (from the
  * Events tab), so past rounds can't be changed from the website. The
@@ -153,7 +155,7 @@ function submittedTeams(eventName) {
   if (!sheet || !eventName) return []
   const wanted = clean(eventName).toLowerCase()
   return sheet.getDataRange().getValues().slice(1)
-    .filter((r) => clean(r[0]).toLowerCase() === wanted)
+    .filter((r) => clean(r[0]).toLowerCase() === wanted && clean(r[HOLE_FIRST_COL - 1]) !== "")
     .map((r) => clean(r[1]))
 }
 
@@ -242,12 +244,18 @@ function saveHole(body) {
 
 // ---- Submitting cards ----
 //
-// A finished card goes to two places:
-//   Hole by Hole - score to par per hole (one row per team, replaced on resubmit)
-//   Match Entry  - each player's Team Score and Contributions on that event's
-//                  existing rows, plus Placement for every team with a score.
-// Match Entry cells that hold a formula are never overwritten, and no rows
-// are added there - the event's player rows must already exist.
+// A finished card fills in:
+//   Hole by Hole - columns D-U (Hole 1-18, score to par) on the team's row
+//   Match Entry  - column D (Team Score) and E (Contributions) on each
+//                  player's row for the event
+//   Events       - column G (Winner), once every team in the event has a
+//                  Team Score
+// Cells holding a formula are never overwritten, and Match Entry / Events
+// rows are never added - they must already exist.
+
+const HOLE_FIRST_COL = 4 // D (1-based)
+const MATCH_COLS = { event: 0, player: 1, team: 2, score: 3, contributions: 4 } // A, B, C, D, E
+const EVENTS_COLS = { event: 0, winner: 6 } // A, G
 
 function sheetById(id) {
   return SpreadsheetApp.getActive().getSheets().find((s) => s.getSheetId() === id) || null
@@ -276,8 +284,7 @@ function teamsWithScores(eventId) {
   return teams.sort()
 }
 
-// Builds what would be written for one team, or { error } if the card
-// isn't finished.
+// What would be written for one team, or { error } if the card isn't finished.
 function planTeam(eventId, team, pars) {
   const card = liveCard(eventId, team)
   const toPar = []
@@ -296,100 +303,89 @@ function planTeam(eventId, team, pars) {
   }
 }
 
-function writeHoleByHole(eventName, plan) {
-  const sheet = SpreadsheetApp.getActive().getSheetByName(HOLE_SHEET)
-  if (!sheet) throw new Error("The Hole by Hole tab is missing.")
-  const row = [eventName, plan.team, plan.players.join(" / ")].concat(plan.toPar)
-  const values = sheet.getDataRange().getValues()
-  for (let i = 1; i < values.length; i++) {
-    if (clean(values[i][0]).toLowerCase() === eventName.toLowerCase() && clean(values[i][1]) === plan.team) {
-      sheet.getRange(i + 1, 1, 1, row.length).setValues([row])
-      return
-    }
-  }
-  sheet.appendRow(row)
-}
-
-function matchEntryTable() {
-  const sheet = sheetById(MATCH_SHEET_ID)
-  if (!sheet) throw new Error("The Match Entry tab is missing.")
+function readTable(sheet) {
   const range = sheet.getDataRange()
-  const values = range.getValues()
-  const header = values[0].map(clean)
-  const cols = {
-    event: header.indexOf("Event ID"),
-    player: header.indexOf("Player"),
-    team: header.indexOf("Team"),
-    score: header.indexOf("Team Score"),
-    contributions: header.indexOf("Contributions"),
-    placement: header.indexOf("Placement"),
-  }
-  if (cols.event < 0 || cols.player < 0 || cols.score < 0 || cols.contributions < 0) {
-    throw new Error("Match Entry is missing an Event ID, Player, Team Score or Contributions column.")
-  }
-  return { sheet: sheet, values: values, formulas: range.getFormulas(), cols: cols }
+  return { sheet: sheet, values: range.getValues(), formulas: range.getFormulas() }
 }
 
-// Cell changes for one team's players: [{ row, col, value, label }].
-// Cells with formulas are skipped.
-function matchEntryChanges(table, matchEventId, plan) {
-  const changes = []
-  const missing = []
-  plan.players.forEach((name, i) => {
-    const r = table.values.findIndex((row, idx) =>
-      idx > 0 && clean(row[table.cols.event]) === matchEventId && clean(row[table.cols.player]) === name)
-    if (r < 0) {
-      missing.push(name)
-      return
-    }
-    const set = (col, value, label) => {
-      if (col < 0 || table.formulas[r][col]) return
-      changes.push({ row: r, col: col, value: value, label: name + " " + label + " = " + value })
-    }
-    set(table.cols.score, plan.teamScore, "Team Score")
-    set(table.cols.contributions, plan.contributions[i], "Contributions")
-  })
-  return { changes: changes, missing: missing }
+// Collects a single-cell write unless that cell holds a formula.
+function queueCell(changes, table, row, col, value, label) {
+  if (table.formulas[row] && table.formulas[row][col]) return
+  changes.push({ table: table, row: row, col: col, value: value, label: label })
 }
 
-// Placement for every team in the event that has a Team Score, ranked by
-// score with ties sharing a place (1, 2, 2, 4...).
-function placementChanges(table, matchEventId, newScores) {
-  const c = table.cols
-  if (c.placement < 0) return []
-  const scoreByTeam = {}
-  table.values.forEach((row, idx) => {
-    if (idx === 0 || clean(row[c.event]) !== matchEventId) return
-    const team = c.team >= 0 ? clean(row[c.team]) : ""
-    const score = row[c.score]
-    if (team && score !== "" && !isNaN(Number(score))) scoreByTeam[team] = Number(score)
-  })
-  Object.keys(newScores).forEach((team) => { scoreByTeam[team] = newScores[team] })
-
-  const scores = Object.keys(scoreByTeam).map((t) => scoreByTeam[t])
+// Hole by Hole: the team's row for the event (same event name and team
+// letter) gets columns D-U. With no row for the team, a full row is added.
+function holeByHoleChanges(holeTable, eventName, plan, appends) {
   const changes = []
-  table.values.forEach((row, idx) => {
-    if (idx === 0 || clean(row[c.event]) !== matchEventId) return
-    const team = c.team >= 0 ? clean(row[c.team]) : ""
-    if (!(team in scoreByTeam) || table.formulas[idx][c.placement]) return
-    const place = 1 + scores.filter((s) => s < scoreByTeam[team]).length
-    changes.push({ row: idx, col: c.placement, value: place, label: clean(row[c.player]) + " Placement = " + place })
+  const name = eventName.toLowerCase()
+  const r = holeTable.values.findIndex((row, idx) =>
+    idx > 0 && clean(row[0]).toLowerCase() === name && clean(row[1]) === plan.team)
+  if (r < 0) {
+    appends.push({ row: [eventName, plan.team, plan.players.join(" / ")].concat(plan.toPar), label: "Hole by Hole: new row for team " + plan.team })
+    return changes
+  }
+  plan.toPar.forEach((value, i) => {
+    queueCell(changes, holeTable, r, HOLE_FIRST_COL - 1 + i, value, "Hole by Hole " + plan.team + " hole " + (i + 1) + " = " + value)
   })
   return changes
 }
 
-function applyChanges(table, changes) {
-  changes.forEach((ch) => table.sheet.getRange(ch.row + 1, ch.col + 1).setValue(ch.value))
+// Match Entry: each player's row for the event gets D (Team Score) and E
+// (Contributions).
+function matchEntryChanges(matchTable, matchEventId, plan, missing) {
+  const changes = []
+  plan.players.forEach((name, i) => {
+    const r = matchTable.values.findIndex((row, idx) =>
+      idx > 0 && clean(row[MATCH_COLS.event]) === matchEventId && clean(row[MATCH_COLS.player]) === name)
+    if (r < 0) {
+      missing.push(name)
+      return
+    }
+    queueCell(changes, matchTable, r, MATCH_COLS.score, plan.teamScore, name + " Team Score (D) = " + plan.teamScore)
+    queueCell(changes, matchTable, r, MATCH_COLS.contributions, plan.contributions[i], name + " Contributions (E) = " + plan.contributions[i])
+  })
+  return changes
 }
 
-// Submits the given teams (or every team with scores). With dryRun, nothing
-// is written - it returns what would be written. `matchEvent` lets a dry run
-// of the practice round be checked against a real event's Match Entry rows.
+// Events: column G gets the winning team ("Name / Name", ties joined with
+// " & ") once every team in the event's Match Entry rows has a Team Score.
+function winnerChange(eventsTable, matchTable, matchEventId, newScores) {
+  const teams = {}
+  matchTable.values.forEach((row, idx) => {
+    if (idx === 0 || clean(row[MATCH_COLS.event]) !== matchEventId) return
+    const team = clean(row[MATCH_COLS.team])
+    if (!team) return
+    if (!teams[team]) teams[team] = { players: [], score: null }
+    teams[team].players.push(clean(row[MATCH_COLS.player]))
+    const score = row[MATCH_COLS.score]
+    if (score !== "" && !isNaN(Number(score))) teams[team].score = Number(score)
+  })
+  Object.keys(newScores).forEach((team) => { if (teams[team]) teams[team].score = newScores[team] })
+
+  const letters = Object.keys(teams)
+  if (!letters.length) return { pending: "no teams found in Match Entry" }
+  const waiting = letters.filter((t) => teams[t].score == null)
+  if (waiting.length) return { pending: "waiting on team " + waiting.join(", ") }
+
+  const best = Math.min.apply(null, letters.map((t) => teams[t].score))
+  const winner = letters.filter((t) => teams[t].score === best).map((t) => teams[t].players.join(" / ")).join(" & ")
+
+  const r = eventsTable.values.findIndex((row, idx) => idx > 0 && clean(row[EVENTS_COLS.event]) === matchEventId)
+  if (r < 0) return { pending: "event " + matchEventId + " not found in Events" }
+  const changes = []
+  queueCell(changes, eventsTable, r, EVENTS_COLS.winner, winner, "Events Winner (G) = " + winner)
+  return { changes: changes, winner: winner }
+}
+
+// Submits one team (or every team with scores). With dryRun nothing is
+// written - it reports what would be. `matchEvent` lets a dry run of the
+// practice round be checked against a real event's rows.
 function submitTeams(body, onlyTeam) {
   const eventId = clean(body.event)
-  const eventName = clean(body.eventName)
   const dryRun = Boolean(body.dryRun)
   const matchEventId = clean(body.matchEvent || eventId)
+  const eventName = clean(body.matchEventName || body.eventName)
 
   if (!dryRun) {
     if (eventId === PRACTICE_ID) return { ok: false, error: "Practice cards can't be submitted - this was only a test." }
@@ -404,21 +400,29 @@ function submitTeams(body, onlyTeam) {
   const unfinished = plans.filter((p) => p.error).map((p) => ({ team: p.team, holes: p.holes, error: p.error }))
   if (onlyTeam && unfinished.length) return { ok: false, error: unfinished[0].error }
 
-  const table = matchEntryTable()
+  const holeSheet = SpreadsheetApp.getActive().getSheetByName(HOLE_SHEET)
+  const matchSheet = sheetById(MATCH_SHEET_ID)
+  const eventsSheet = sheetById(EVENTS_SHEET_ID)
+  if (!holeSheet || !matchSheet || !eventsSheet) return { ok: false, error: "Hole by Hole, Match Entry or Events tab is missing." }
+  const holeTable = readTable(holeSheet)
+  const matchTable = readTable(matchSheet)
+  const eventsTable = readTable(eventsSheet)
+
   let changes = []
+  const appends = []
   const missing = []
   const newScores = {}
   finished.forEach((plan) => {
-    const result = matchEntryChanges(table, matchEventId, plan)
-    changes = changes.concat(result.changes)
-    result.missing.forEach((name) => missing.push(name))
+    changes = changes.concat(holeByHoleChanges(holeTable, eventName, plan, appends))
+    changes = changes.concat(matchEntryChanges(matchTable, matchEventId, plan, missing))
     newScores[plan.team] = plan.teamScore
   })
-  changes = changes.concat(placementChanges(table, matchEventId, newScores))
+  const winner = finished.length ? winnerChange(eventsTable, matchTable, matchEventId, newScores) : { pending: "no finished cards" }
+  if (winner.changes) changes = changes.concat(winner.changes)
 
   if (!dryRun) {
-    finished.forEach((plan) => writeHoleByHole(eventName, plan))
-    applyChanges(table, changes)
+    changes.forEach((ch) => ch.table.sheet.getRange(ch.row + 1, ch.col + 1).setValue(ch.value))
+    appends.forEach((a) => holeSheet.appendRow(a.row))
   }
 
   return {
@@ -427,7 +431,9 @@ function submitTeams(body, onlyTeam) {
     submitted: finished.map((p) => p.team),
     unfinished: unfinished,
     missingPlayers: missing,
-    matchEntry: changes.map((ch) => ch.label),
+    winner: winner.winner || null,
+    winnerPending: winner.pending || null,
+    writes: changes.map((ch) => ch.label).concat(appends.map((a) => a.label)),
   }
 }
 

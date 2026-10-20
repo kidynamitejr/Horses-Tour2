@@ -2,7 +2,13 @@ import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { getNews } from "../data/googleSheets"
 
-function News() {
+// "Yes" (or Y / True / X / 1) in the News tab's Featured column.
+function isFeatured(article) {
+  return /^(yes|y|true|x|1)$/i.test((article.Featured || "").trim())
+}
+
+// featuredOnly: the home page shows just the articles marked Featured.
+function News({ featuredOnly = false }) {
   const [articles, setArticles] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -15,7 +21,7 @@ function News() {
           (a, b) => Number(b["Article ID"]) - Number(a["Article ID"])
         )
 
-        setArticles(sorted)
+        setArticles(featuredOnly ? sorted.filter(isFeatured) : sorted)
       } catch (error) {
         console.error(error)
       } finally {
@@ -24,7 +30,7 @@ function News() {
     }
 
     loadNews()
-  }, [])
+  }, [featuredOnly])
 
   if (loading) {
     return (
@@ -38,6 +44,8 @@ function News() {
   return (
     <section className="card">
       <h2>Latest News</h2>
+
+      {articles.length === 0 && <p>No featured stories right now.</p>}
 
       <div className="news-grid">
         {articles.map((article) => (

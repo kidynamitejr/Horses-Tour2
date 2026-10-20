@@ -245,7 +245,7 @@ function Home() {
           />
 
           <div className="home-news-grid">
-            <News />
+            <News featuredOnly />
             <HottestPlayer />
           </div>
         </div>
