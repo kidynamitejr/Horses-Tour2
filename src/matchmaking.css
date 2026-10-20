@@ -49,13 +49,13 @@
 }
 
 .mm-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-  align-items: start;
+  display: flex;
+  flex-direction: column;
   gap: 18px;
 }
 
 .mm-card {
+  overflow: hidden;
   padding: 18px;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -89,8 +89,20 @@
 /* Players table */
 .mm-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
   font-size: 13.5px;
+}
+
+.mm-table th:nth-child(1) { width: 40px; }
+.mm-table th:nth-child(3) { width: 130px; }
+.mm-table th:nth-child(4) { width: 150px; }
+
+.mm-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mm-table th {
@@ -148,6 +160,10 @@
   font-weight: 700;
 }
 
+.mm-table select {
+  width: 100%;
+}
+
 .mm-table select,
 .mm-sub select {
   padding: 6px 8px;
@@ -193,61 +209,17 @@
   font-weight: 600;
 }
 
-.mm-teams {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+/* Pairings board uses the home page groupings styles (ev-*) */
+.mm-board .ev-board-head {
+  margin-bottom: 12px;
 }
 
-.mm-teams li {
-  display: grid;
-  grid-template-columns: 70px minmax(0, 1fr) minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-left: 4px solid var(--sky);
-  border-radius: 12px;
-  background: var(--page);
-}
-
-.mm-letter {
-  color: var(--navy);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-}
-
-html[data-theme="dark"] .mm-letter {
-  color: #7fd0ff;
-}
-
-.mm-player {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.mm-player b {
-  overflow: hidden;
-  color: var(--ink);
-  font-size: 13.5px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mm-player small {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.mm-player.is-sub b {
+.mm-is-sub .ev-player-name {
   color: #b07a00;
+}
+
+html[data-theme="dark"] .mm-is-sub .ev-player-name {
+  color: #e9c75a;
 }
 
 .mm-save {
@@ -283,12 +255,6 @@ html[data-theme="dark"] .mm-letter {
   font-weight: 700;
 }
 
-@media (max-width: 860px) {
-  .mm-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (max-width: 640px) {
   .mm-head {
     padding: 18px 16px;
@@ -314,11 +280,12 @@ html[data-theme="dark"] .mm-letter {
     font-size: 12px;
   }
 
-  .mm-teams li {
-    grid-template-columns: 1fr 1fr;
-  }
+  .mm-table th:nth-child(1) { width: 26px; }
+  .mm-table th:nth-child(3) { width: 74px; }
+  .mm-table th:nth-child(4) { width: 112px; }
 
-  .mm-letter {
-    grid-column: 1 / -1;
+  .mm-table th {
+    font-size: 9.5px;
+    letter-spacing: .04em;
   }
 }

@@ -10,6 +10,7 @@ import {
 import { getPlayerSummaries } from "../utils/matchEntry"
 import { slugify } from "../utils/slugify"
 import { ordinal } from "../utils/ordinal"
+import { getPartnershipHistory, partnershipLabel } from "../utils/partnership"
 import { getEventForecast } from "../utils/weather"
 
 const COURSE_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"]
@@ -30,37 +31,6 @@ function placementBadge(placement) {
   if (num === 2) return "🥈"
   if (num === 3) return "🥉"
   return null
-}
-
-// Finds every past played event where both of these two players were on
-// the same team, and what place that team finished.
-function getPartnershipHistory(matchEntry, playerA, playerB) {
-
-  const byEventTeam = {}
-
-  matchEntry.forEach((row) => {
-
-    if (!row.Player || !row.Contributions) return
-
-    const key = `${row["Event ID"]}|${row.Team}`
-
-    if (!byEventTeam[key]) byEventTeam[key] = []
-
-    byEventTeam[key].push(row)
-
-  })
-
-  return Object.values(byEventTeam)
-    .filter((rows) => {
-      const names = rows.map((r) => r.Player.trim())
-      return names.includes(playerA) && names.includes(playerB)
-    })
-    .map((rows) => ({
-      eventId: rows[0]["Event ID"],
-      placement: rows[0].Placement,
-    }))
-    .sort((a, b) => Number(a.eventId) - Number(b.eventId))
-
 }
 
 function CourseBackground({ course }) {
@@ -354,12 +324,6 @@ function NextEventFeature() {
     .forEach(([n], index) => {
       tourRankByName[n] = index + 1
     })
-
-  function partnershipLabel(history) {
-    if (history.length === 0) return "First pairing"
-    const best = Math.min(...history.map((h) => Number(h.placement) || 99))
-    return `${history.length} event${history.length > 1 ? "s" : ""} · best ${ordinal(best)}`
-  }
 
   return (
 

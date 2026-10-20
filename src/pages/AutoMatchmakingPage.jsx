@@ -3,6 +3,9 @@ import { getEvents, getMatchEntry, getPlayers } from "../data/googleSheets"
 import { liveScoringReady, setTeams } from "../data/liveScoring"
 import { getPlayerSummaries } from "../utils/matchEntry"
 import { parseEventDate } from "../utils/liveEvent"
+import { getPartnershipHistory, partnershipLabel } from "../utils/partnership"
+
+const BASE = import.meta.env.BASE_URL
 
 // Auto Matchmaking: every active player ranked by ranking points from the
 // last match (or their average if they missed it), a Playing dropdown for
@@ -69,6 +72,16 @@ function AutoMatchmakingPage() {
 
   const summaries = getPlayerSummaries(matchEntry)
 
+  const playerIds = {}
+  players.forEach((p) => { playerIds[(p.Name || "").trim()] = p["Player ID"] })
+
+  // Current tour rank by Ranking Factor (shown next to names, as on the home page).
+  const tourRankByName = {}
+  Object.entries(summaries)
+    .filter(([n, s]) => !/\(sub\)/i.test(n) && s.eventsPlayed > 0)
+    .sort((a, b) => b[1].avgRankingPoints - a[1].avgRankingPoints)
+    .forEach(([n], index) => { tourRankByName[n] = index + 1 })
+
   const ranked = players
     .filter((p) => /^active$/i.test((p.Active || "").trim()) && p.Name && !/\(sub\)/i.test(p.Name))
     .map((p) => {
@@ -126,6 +139,17 @@ function AutoMatchmakingPage() {
     teams.push({ letter: LETTERS[i], players: [field[i], field[field.length - 1 - i]] })
   }
   const leftOver = field.length % 2 === 1 ? field[Math.floor(field.length / 2)] : null
+
+  // Same numbers as the home page groupings: combined Ranking Factor is
+  // the average of both players' season Ranking Factor.
+  const boardTeams = teams.map((t) => {
+    const names = t.players.map((p) => p.name)
+    const combined = names.reduce((sum, n) => sum + (summaries[n]?.avgRankingPoints ?? 0), 0) / names.length
+    return { ...t, names, combined, history: getPartnershipHistory(matchEntry, names[0], names[1]) }
+  })
+  const highest = boardTeams.length ? Math.max(...boardTeams.map((t) => t.combined)) : 0
+  const lowest = boardTeams.length ? Math.min(...boardTeams.map((t) => t.combined)) : 0
+  const hasSpread = boardTeams.length > 1 && highest > lowest
 
   function setPlayerStatus(name, value) {
     const next = { ...readStore(storeKey), ...status, [name]: value }
@@ -210,10 +234,10 @@ function AutoMatchmakingPage() {
           </table>
         </section>
 
-        <section className="mm-card">
-          <div className="mm-card-head">
+        <section className="mm-card mm-board">
+          <div className="ev-board-head">
             <h3>Pairings</h3>
-            <span>{teams.length} teams · 1st with last, 2nd with second to last</span>
+            <span>{teams.length} teams · 1st with last, 2nd with second to last · Favorite by combined Ranking Factor</span>
           </div>
 
           {needsSub && missing.length > 0 && (
@@ -233,19 +257,59 @@ function AutoMatchmakingPage() {
             </p>
           )}
 
-          <ol className="mm-teams">
-            {teams.map((t) => (
-              <li key={t.letter}>
-                <span className="mm-letter">Team {t.letter}</span>
-                {t.players.map((p) => (
-                  <span key={p.name} className={`mm-player${p.isSub ? " is-sub" : ""}`}>
-                    <b>{p.name}</b>
-                    <small>{p.seed.toFixed(2)}{p.isSub ? ` · ${p.source}` : ""}</small>
+          <div className="ev-table" role="table" aria-label="Pairings">
+            <div className="ev-row ev-row-head" role="row">
+              <span role="columnheader">Team</span>
+              <span role="columnheader">Players</span>
+              <span role="columnheader">Ranking Factor</span>
+              <span role="columnheader" className="ev-col-together">Together</span>
+              <span role="columnheader" aria-label="Status" />
+            </div>
+
+            {boardTeams.map((t) => {
+              const favored = t.combined === highest && t.combined > 0
+              const underdog = hasSpread && t.combined === lowest
+              return (
+                <div
+                  key={t.letter}
+                  role="row"
+                  className={`ev-row${favored ? " is-favored" : ""}${underdog ? " is-underdog" : ""}`}
+                >
+                  <span className="ev-team" role="cell">{t.letter}</span>
+
+                  <span className="ev-players" role="cell">
+                    {t.players.map((p) => (
+                      <span className={`ev-player${p.isSub ? " mm-is-sub" : ""}`} key={p.name}>
+                        <img
+                          src={`${BASE}images/players/${playerIds[p.name] || "default"}.jpg`}
+                          alt=""
+                          onError={(e) => {
+                            e.target.src = `${BASE}images/players/default.jpg`
+                          }}
+                        />
+                        <span className="ev-player-name">{p.name}</span>
+                        {tourRankByName[p.name] && <span className="ev-player-rank">#{tourRankByName[p.name]}</span>}
+                      </span>
+                    ))}
                   </span>
-                ))}
-              </li>
-            ))}
-          </ol>
+
+                  <span className="ev-rf" role="cell">
+                    <b>{t.combined.toFixed(2)}</b>
+                    <span className="ev-rf-track">
+                      <span style={{ width: `${highest ? (t.combined / highest) * 100 : 0}%` }} />
+                    </span>
+                  </span>
+
+                  <span className="ev-together ev-col-together" role="cell">{partnershipLabel(t.history)}</span>
+
+                  <span className="ev-status" role="cell">
+                    {favored && <span className="ev-tag ev-tag-favored">★ Favored</span>}
+                    {underdog && <span className="ev-tag ev-tag-underdog">Underdog</span>}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
 
           {liveScoringReady && nextEvent && teams.length > 0 && (
             <div className="mm-save">
