@@ -881,11 +881,6 @@ html[data-theme="dark"] .card .ev-title {
   font-weight: 700;
 }
 
-.ev-chip-money {
-  border-color: rgba(111, 207, 151, .55);
-  background: rgba(45, 106, 79, .55);
-}
-
 .ev-chip-gold {
   border-color: transparent;
   background: #e9c75a;
@@ -2030,5 +2025,97 @@ html[data-theme="dark"] .tm-list b.is-win {
 
   .pod-gold .pod-score {
     font-size: 21px;
+  }
+}
+
+/* Up Next: winnings per winner, on the right of the photo header */
+.ev-purse {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin: 0 36px 30px 0;
+  padding: 14px 22px 12px;
+  border: 1px solid rgba(233, 199, 90, .6);
+  border-radius: 16px;
+  background: rgba(0, 18, 36, .55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: white;
+  text-align: center;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .3);
+}
+
+.ev-purse-label {
+  color: #e9c75a;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+.ev-purse b {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
+  color: #f4d374;
+}
+
+.ev-purse-per {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ev-purse small {
+  margin-top: 4px;
+  color: rgba(255, 255, 255, .7);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+/* Phones: a one-line badge under the chips instead */
+@media (max-width: 640px) {
+  .ev-hero:has(.ev-purse) {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-end;
+  }
+
+  .ev-hero:has(.ev-purse) .ev-hero-content {
+    padding-bottom: 12px;
+  }
+
+  .ev-purse {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    align-self: flex-start;
+    gap: 6px;
+    margin: 0 18px 18px;
+    padding: 8px 14px;
+    border-radius: 12px;
+  }
+
+  .ev-purse b {
+    font-size: 24px;
+  }
+
+  .ev-purse-label {
+    font-size: 9.5px;
+  }
+
+  .ev-purse-per {
+    font-size: 12px;
+  }
+
+  .ev-purse small {
+    margin: 0;
+    font-size: 11px;
+  }
+
+  .ev-purse small::before {
+    content: "· ";
   }
 }

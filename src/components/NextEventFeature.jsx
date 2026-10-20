@@ -392,13 +392,6 @@ function NextEventFeature() {
                   </span>
                 )}
 
-                {nextEventPayout && (
-                  <span className="ev-chip ev-chip-money">
-                    💰 Winners get {nextEventPayout} each
-                    {nextEventBuyIn && ` · ${nextEventBuyIn} buy-in`}
-                  </span>
-                )}
-
                 {nextEventTeams.length > 0 && (
                   <span className="ev-chip">{nextEventTeams.length} teams</span>
                 )}
@@ -414,6 +407,15 @@ function NextEventFeature() {
           )}
 
         </div>
+
+        {nextEvent && nextEventPayout && (
+          <div className="ev-purse">
+            <span className="ev-purse-label">Winnings</span>
+            <b>{nextEventPayout}</b>
+            <span className="ev-purse-per">per winner</span>
+            {nextEventBuyIn && <small>{nextEventBuyIn} buy-in</small>}
+          </div>
+        )}
 
       </div>
 
