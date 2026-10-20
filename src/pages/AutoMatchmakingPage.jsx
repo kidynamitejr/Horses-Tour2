@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { getEvents, getMatchEntry, getPlayers } from "../data/googleSheets"
-import { liveScoringReady, planTeams, setTeams } from "../data/liveScoring"
+import { getAttendance, liveScoringReady, planTeams, saveAttendance, setTeams } from "../data/liveScoring"
+import { completedEventIds } from "../utils/eventStatus"
 import { getPlayerSummaries } from "../utils/matchEntry"
 import { parseEventDate } from "../utils/liveEvent"
 import { getPartnershipHistory, partnershipLabel } from "../utils/partnership"
@@ -12,6 +13,10 @@ const BASE = import.meta.env.BASE_URL
 // each, and the resulting pairings - 1st with last, 2nd with second to
 // last, and so on. With an odd number playing, a sub fills in for one of
 // the missing players at that player's spot.
+//
+// Who's playing is saved to the sheet's Matchmaking tab, so when the
+// current event's last card is in, the Apps Script pairs the next event
+// the same way and sets up Match Entry automatically.
 
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
@@ -40,10 +45,12 @@ function AutoMatchmakingPage() {
   const [players, setPlayers] = useState([])
   const [matchEntry, setMatchEntry] = useState([])
   const [events, setEvents] = useState([])
-  const [status, setStatus] = useState({})
-  const [subFor, setSubFor] = useState("")
+  const [pickedId, setPickedId] = useState("")
+  const [attendance, setAttendance] = useState({ eventId: "", statuses: {}, subFor: "", subName: "" })
+  const [sync, setSync] = useState("")
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState("")
+  const saveTimer = useRef(null)
 
   useEffect(() => {
     getPlayers().then(setPlayers)
@@ -59,16 +66,44 @@ function AutoMatchmakingPage() {
     .filter((x) => x.date)
     .sort((a, b) => a.date - b.date)
 
-  const nextEvent = dated.find((x) => x.date >= today)?.e || null
+  // Upcoming = no Winner yet. The first one is the event about to be
+  // played; later ones can be prepared ahead of time.
+  const finished = completedEventIds(events)
+  const upcoming = dated.filter((x) => x.date >= today && !finished.has(x.e["Event ID"].trim())).map((x) => x.e)
+  const nextEvent = upcoming.find((e) => e["Event ID"] === pickedId) || upcoming[0] || null
   const nextId = nextEvent?.["Event ID"] || ""
+  const isNextUp = Boolean(nextEvent) && nextEvent === upcoming[0]
+  const playedFirst = isNextUp ? null : upcoming[0]
 
-  // The last match = the most recent event that has scores in Match Entry.
+  // The last match = the most recent finished event with scores.
   const scoredIds = new Set(matchEntry.filter((r) => num(r["Team Score"]) != null).map((r) => r["Event ID"]))
-  const lastEvent = [...dated].reverse().find((x) => x.date < today && scoredIds.has(x.e["Event ID"]))?.e || null
+  const lastEvent = [...dated].reverse()
+    .find((x) => finished.has(x.e["Event ID"].trim()) && scoredIds.has(x.e["Event ID"]))?.e || null
   const lastId = lastEvent?.["Event ID"] || ""
 
-  const storeKey = `ht-matchmaking-${nextId}`
-  const statusFor = (name) => status[name] || readStore(storeKey)[name] || "playing"
+  // Load the saved choices for the event (from the sheet, or this browser
+  // when live scoring isn't connected).
+  useEffect(() => {
+    if (!nextId) return undefined
+    let cancelled = false
+    const load = liveScoringReady
+      ? getAttendance(nextId)
+      : Promise.resolve(readStore(`ht-matchmaking-${nextId}`))
+    load
+      .then((a) => {
+        if (!cancelled) {
+          setAttendance({ eventId: nextId, statuses: a.statuses || {}, subFor: a.subFor || "", subName: a.subName || "" })
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setAttendance({ eventId: nextId, statuses: {}, subFor: "", subName: "" })
+      })
+    return () => { cancelled = true }
+  }, [nextId])
+
+  const loaded = attendance.eventId === nextId
+  const statusFor = (name) => (loaded && attendance.statuses[name]) || "playing"
+  const subFor = loaded ? attendance.subFor : ""
 
   const summaries = getPlayerSummaries(matchEntry)
 
@@ -128,9 +163,11 @@ function AutoMatchmakingPage() {
     }
   }
 
+  const defaultSubName = subTarget ? subName(subTarget.name) : ""
+  const typedSubName = subTarget && attendance.subFor === subTarget.name ? attendance.subName : ""
   const field = playing.map((p) => ({ ...p, isSub: false }))
   if (subTarget) {
-    field.push({ name: subName(subTarget.name), seed: subTarget.seed, source: `${subTarget.name}'s spot`, isSub: true })
+    field.push({ name: typedSubName || defaultSubName, seed: subTarget.seed, source: `${subTarget.name}'s spot`, isSub: true })
     field.sort((a, b) => b.seed - a.seed)
   }
 
@@ -151,11 +188,33 @@ function AutoMatchmakingPage() {
   const lowest = boardTeams.length ? Math.min(...boardTeams.map((t) => t.combined)) : 0
   const hasSpread = boardTeams.length > 1 && highest > lowest
 
-  function setPlayerStatus(name, value) {
-    const next = { ...readStore(storeKey), ...status, [name]: value }
-    setStatus(next)
-    writeStore(storeKey, next)
+  // Save choices to the sheet a moment after the last change.
+  function updateAttendance(changes) {
+    const statuses = {}
+    ranked.forEach((p) => { statuses[p.name] = statusFor(p.name) })
+    const next = {
+      ...attendance,
+      eventId: nextId,
+      statuses: { ...statuses, ...(changes.statuses || {}) },
+      ...(changes.sub || {}),
+    }
+    setAttendance(next)
     setMessage("")
+    setSync("saving")
+    clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => {
+      const payload = { event: nextId, statuses: next.statuses, subFor: next.subFor, subName: next.subName }
+      if (!liveScoringReady) {
+        writeStore(`ht-matchmaking-${nextId}`, payload)
+        setSync("saved")
+        return
+      }
+      saveAttendance(payload).then(() => setSync("saved")).catch(() => setSync("error"))
+    }, 700)
+  }
+
+  function setPlayerStatus(name, value) {
+    updateAttendance({ statuses: { [name]: value } })
   }
 
   async function save() {
@@ -196,13 +255,42 @@ function AutoMatchmakingPage() {
     <div className="mm-page">
 
       <section className="mm-head">
-        <span className="mm-eyebrow">Next event</span>
-        <h2>{nextEvent ? nextEvent["Event Name"] : loading ? "Loading..." : "No upcoming event"}</h2>
-        {nextEvent && (
-          <p>
-            {nextEvent.Date} · {nextEvent.Course}
-            {lastEvent && <> · Seeded from <b>{lastEvent["Event Name"].trim()}</b> (last match)</>}
+        <div className="mm-head-row">
+          <div>
+            <span className="mm-eyebrow">{isNextUp ? "Next event" : "Upcoming event"}</span>
+            <h2>{nextEvent ? nextEvent["Event Name"] : loading ? "Loading..." : "No upcoming event"}</h2>
+            {nextEvent && (
+              <p>
+                {nextEvent.Date} · {nextEvent.Course}
+                {lastEvent && <> · Seeded from <b>{lastEvent["Event Name"].trim()}</b> (last match)</>}
+              </p>
+            )}
+          </div>
+          {upcoming.length > 1 && (
+            <label className="mm-picker">
+              <span>Pairing for</span>
+              <select value={nextId} onChange={(e) => setPickedId(e.target.value)}>
+                {upcoming.map((e) => (
+                  <option key={e["Event ID"]} value={e["Event ID"]}>{e["Event Name"].trim()}</option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+        {playedFirst && (
+          <p className="mm-auto">
+            These teams are set up automatically the moment every card from <b>{playedFirst["Event Name"].trim()}</b> is
+            in - seeded from that round - so everyone sees their matchup right after it. Until then this is a preview.
           </p>
+        )}
+        {sync && (
+          <span className={`mm-sync is-${sync}`}>
+            {sync === "saving"
+              ? "Saving choices..."
+              : sync === "saved"
+                ? "✓ Choices saved to the sheet"
+                : "Couldn't save choices - check your connection"}
+          </span>
         )}
       </section>
 
@@ -256,14 +344,28 @@ function AutoMatchmakingPage() {
           </div>
 
           {needsSub && missing.length > 0 && (
-            <label className="mm-sub">
-              <span>Odd number playing - the sub fills in for:</span>
-              <select value={subTarget?.name || ""} onChange={(e) => setSubFor(e.target.value)}>
-                {missing.map((m) => (
-                  <option key={m.name} value={m.name}>{m.name} ({m.seed.toFixed(2)})</option>
-                ))}
-              </select>
-            </label>
+            <div className="mm-sub">
+              <label>
+                <span>Odd number playing - the sub fills in for:</span>
+                <select
+                  value={subTarget?.name || ""}
+                  onChange={(e) => updateAttendance({ sub: { subFor: e.target.value, subName: "" } })}
+                >
+                  {missing.map((m) => (
+                    <option key={m.name} value={m.name}>{m.name} ({m.seed.toFixed(2)})</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Sub&apos;s name:</span>
+                <input
+                  type="text"
+                  value={typedSubName}
+                  placeholder={defaultSubName}
+                  onChange={(e) => updateAttendance({ sub: { subFor: subTarget.name, subName: e.target.value } })}
+                />
+              </label>
+            </div>
           )}
           {leftOver && (
             <p className="mm-warn">
@@ -326,7 +428,7 @@ function AutoMatchmakingPage() {
             })}
           </div>
 
-          {liveScoringReady && nextEvent && teams.length > 0 && (
+          {liveScoringReady && isNextUp && teams.length > 0 && (
             <div className="mm-save">
               <button type="button" onClick={save} disabled={saving}>
                 {saving ? "Saving..." : "Save teams to Match Entry"}

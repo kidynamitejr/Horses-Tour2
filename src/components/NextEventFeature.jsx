@@ -11,6 +11,7 @@ import { getPlayerSummaries } from "../utils/matchEntry"
 import { slugify } from "../utils/slugify"
 import { ordinal } from "../utils/ordinal"
 import { getPartnershipHistory, partnershipLabel } from "../utils/partnership"
+import { completedEventIds } from "../utils/eventStatus"
 import { getEventForecast } from "../utils/weather"
 
 const COURSE_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"]
@@ -180,9 +181,14 @@ function NextEventFeature() {
   // column - that column now holds the event type ("Regular"/"Major")
   // instead of "Played"/"Planned", so it can't be used to tell whether an
   // event has already happened.
+  // Skips events that already have a Winner, so the next event shows as
+  // soon as the last card of the round is in.
+  const finishedIds = completedEventIds(events)
+
   const nextEvent = schedule
     .filter((event) => {
       if (!event.Date) return false
+      if (finishedIds.has((event["Event ID"] || "").trim())) return false
 
       const eventDate = new Date(event.Date)
 

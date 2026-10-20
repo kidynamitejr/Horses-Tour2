@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
-import { getPlayers, getSchedule, getMatchEntry } from "../data/googleSheets"
+import { getEvents, getPlayers, getSchedule, getMatchEntry } from "../data/googleSheets"
+import { completedEventIds } from "../utils/eventStatus"
 import MatchResultsView from "./MatchResultsView"
 
 function LastMatchFeature() {
@@ -7,6 +8,7 @@ function LastMatchFeature() {
   const [playerIds, setPlayerIds] = useState({})
   const [schedule, setSchedule] = useState([])
   const [matchEntry, setMatchEntry] = useState([])
+  const [events, setEvents] = useState(null)
 
   useEffect(() => {
 
@@ -24,10 +26,15 @@ function LastMatchFeature() {
 
     getSchedule().then(setSchedule)
     getMatchEntry().then(setMatchEntry)
+    getEvents().then(setEvents).catch(() => setEvents([]))
 
   }, [])
 
-  const playedRows = matchEntry.filter((row) => row.Player && row.Contributions)
+  // Only finished events (with a Winner) - an event whose round is still
+  // being submitted stays out until every team is in.
+  const finished = events && events.length ? completedEventIds(events) : null
+  const playedRows = matchEntry.filter((row) =>
+    row.Player && row.Contributions && (!finished || finished.has((row["Event ID"] || "").trim())))
 
   const lastEventId = playedRows.length > 0
     ? Math.max(...playedRows.map((row) => Number(row["Event ID"])))

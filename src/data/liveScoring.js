@@ -271,6 +271,24 @@ export async function planTeams(payload) {
   }
 }
 
+// Who's playing in an upcoming event (the sheet's Matchmaking tab).
+export async function getAttendance(eventId) {
+  if (useMock) return readStore(`ht-mock-attendance-${eventId}`, { statuses: {}, subFor: "", subName: "" })
+  const params = new URLSearchParams({ action: "attendance", event: eventId, t: Date.now() })
+  const response = await fetchWithTimeout(`${LIVE_SCORING_URL}?${params}`)
+  const data = await response.json()
+  if (!data.ok) throw new Error(data.error || "Couldn't load who's playing")
+  return data.attendance
+}
+
+export function saveAttendance(payload) {
+  if (useMock) {
+    writeStore(`ht-mock-attendance-${payload.event}`, payload)
+    return Promise.resolve({ ok: true })
+  }
+  return post({ action: "saveAttendance", ...payload })
+}
+
 export function clearPractice() {
   return post({ action: "clearPractice" })
 }

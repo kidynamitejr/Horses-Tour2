@@ -48,6 +48,66 @@
   color: white;
 }
 
+.mm-head-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px 20px;
+}
+
+.mm-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: rgba(255, 255, 255, .7);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.mm-picker select {
+  min-width: 220px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, .3);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .1);
+  color: white;
+  font: 700 14px var(--font-body);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.mm-picker option {
+  color: #0d1b2a;
+}
+
+.mm-auto {
+  margin: 12px 0 0 !important;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(201, 162, 39, .18);
+  color: white !important;
+  font-size: 13px !important;
+}
+
+.mm-sync {
+  display: inline-block;
+  margin-top: 10px;
+  color: #9be3b4;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.mm-sync.is-saving {
+  color: rgba(255, 255, 255, .7);
+}
+
+.mm-sync.is-error {
+  color: #ff9a9a;
+}
+
 /* Players on the left, pairings on the right (stacked on smaller screens) */
 .mm-grid {
   display: grid;
@@ -196,8 +256,7 @@
 /* Pairings */
 .mm-sub {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
   gap: 8px;
   margin-bottom: 12px;
   padding: 10px 12px;
@@ -206,6 +265,23 @@
   color: var(--ink);
   font-size: 13px;
   font-weight: 700;
+}
+
+.mm-sub label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.mm-sub input {
+  flex: 1 1 160px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 700 13px var(--font-body);
 }
 
 .mm-warn {
@@ -288,6 +364,12 @@ html[data-theme="dark"] .mm-is-sub .ev-player-name {
 }
 
 @media (max-width: 640px) {
+  .mm-picker,
+  .mm-picker select {
+    width: 100%;
+    min-width: 0;
+  }
+
   .mm-head {
     padding: 18px 16px;
     border-radius: 18px;

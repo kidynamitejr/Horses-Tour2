@@ -13,6 +13,9 @@
  *   Match Entry  - finished cards fill columns D (Team Score) and
  *                  E (Contributions) on each player's row
  *   Events       - column G (Winner) once every team has a score
+ *   Matchmaking  - who's playing in the next event (from the Auto
+ *                  Matchmaking page); when an event's last card is in,
+ *                  the next event is paired and set up automatically
  * Formula cells are never overwritten.
  *
  * Scores can only be saved or submitted on the event's date (from the
@@ -77,6 +80,7 @@ function setup() {
 
 function doGet(e) {
   const p = e.parameter || {}
+  if (p.action === "attendance") return json({ ok: true, attendance: readAttendance(String(p.event || "")) })
   if (p.action === "state") {
     return json(getState(String(p.event || ""), String(p.course || ""), String(p.eventName || "")))
   }
@@ -93,6 +97,12 @@ function doPost(e) {
     if (body.action === "submitAll") return json(submitAll(body))
     if (body.action === "clearPractice") return json(clearPractice())
     if (body.action === "setTeams") return json(setTeams(body))
+    if (body.action === "saveAttendance") return json(saveAttendance(body))
+    if (body.action === "previewAutoPairing") {
+      const nextId = nextEventAfter(clean(body.completedEvent))
+      const values = sheetById(MATCH_SHEET_ID).getDataRange().getValues()
+      return json({ ok: true, event: nextId, assignments: nextId ? buildPairings(clean(body.completedEvent), nextId, readAttendance(nextId), values) : [] })
+    }
     if (body.action === "planTeams") return json(setTeams(Object.assign({}, body, { dryRun: true })))
     return json({ ok: false, error: "Unknown action" })
   } catch (err) {
@@ -441,9 +451,12 @@ function submitTeams(body, onlyTeam) {
   const winner = finished.length ? winnerChange(eventsTable, matchTable, matchEventId, newScores) : { pending: "no finished cards" }
   if (winner.changes) changes = changes.concat(winner.changes)
 
+  let nextEvent = null
   if (!dryRun) {
     changes.forEach((ch) => ch.table.sheet.getRange(ch.row + 1, ch.col + 1).setValue(ch.value))
     appends.forEach((a) => holeSheet.appendRow(a.row))
+    // Every team is in: pair the next event so people see their matchups now.
+    if (winner.winner) nextEvent = autoMatchmake(matchEventId)
   }
 
   return {
@@ -454,6 +467,7 @@ function submitTeams(body, onlyTeam) {
     missingPlayers: missing,
     winner: winner.winner || null,
     winnerPending: winner.pending || null,
+    nextEvent: nextEvent,
     writes: changes.map((ch) => ch.label).concat(appends.map((a) => a.label)),
   }
 }
@@ -471,9 +485,11 @@ function submitAll(body) {
 // Auto Matchmaking: sets up Match Entry for an upcoming event.
 //  - Players who already have a row for the event get their team letter
 //    in column C; rows of players not playing are cleared (letter only).
-//  - Players playing with no row yet get one: the last filled Match Entry
-//    row is copied (A-U, like dragging it down, so its formulas carry on),
-//    then A = Event ID, B = player, C = team letter, and D/E are cleared.
+//  - Players playing with no row yet (including brand-new sub names) get
+//    one: the last filled Match Entry row is copied (A-U, like dragging it
+//    down, so its formulas carry on), then A = Event ID, B = player,
+//    C = team letter, and D/E are cleared - on these new rows only. No
+//    other row's D/E is ever touched.
 // Upcoming (or today's) events only; formula cells are never overwritten.
 // With dryRun nothing is written - it reports what would be.
 const MATCH_ROW_WIDTH = 21 // A-U: the per-player columns (the side tables start further right)
@@ -563,6 +579,164 @@ function setTeams(body) {
     copiedValues: copiedValues,
     missing: [],
   }
+}
+
+// ---- Auto Matchmaking: attendance + automatic pairing ----
+//
+// The Auto Matchmaking page saves who's playing in the next event to the
+// "Matchmaking" tab (one row per player, plus one row for the sub). When
+// the last card of an event is in (the Winner gets filled), the next
+// event is paired automatically from those choices - seeded from the
+// round that just finished - and its Match Entry rows are set up, so
+// everyone can see their matchup right away.
+
+const MATCHMAKING_SHEET = "Matchmaking"
+const PLAYERS_SHEET_ID = 0 // the Players tab
+const SUB_ROW = "(sub)"
+const MRP_COL = 13 // N: Match Ranking Points
+const AVG_COL = 15 // P: AVG Ranking Points
+const TEAM_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+function matchmakingSheet() {
+  const book = SpreadsheetApp.getActive()
+  let sheet = book.getSheetByName(MATCHMAKING_SHEET)
+  if (!sheet) {
+    sheet = book.insertSheet(MATCHMAKING_SHEET)
+    sheet.getRange(1, 1, 1, 5).setValues([["Event ID", "Player", "Playing", "Sub For", "Sub Name"]]).setFontWeight("bold")
+    sheet.setFrozenRows(1)
+  }
+  return sheet
+}
+
+function readAttendance(eventId) {
+  const result = { statuses: {}, subFor: "", subName: "" }
+  const sheet = SpreadsheetApp.getActive().getSheetByName(MATCHMAKING_SHEET)
+  if (!sheet) return result
+  sheet.getDataRange().getValues().slice(1).forEach((r) => {
+    if (clean(r[0]) !== eventId) return
+    if (clean(r[1]) === SUB_ROW) {
+      result.subFor = clean(r[3])
+      result.subName = clean(r[4])
+    } else if (clean(r[1])) {
+      result.statuses[clean(r[1])] = /^no/i.test(clean(r[2])) ? "out" : "playing"
+    }
+  })
+  return result
+}
+
+// Replaces the event's rows on the Matchmaking tab.
+function saveAttendance(body) {
+  const eventId = clean(body.event)
+  if (!eventId) return { ok: false, error: "Missing event" }
+  const sheet = matchmakingSheet()
+  const values = sheet.getDataRange().getValues()
+  for (let i = values.length - 1; i >= 1; i--) {
+    if (clean(values[i][0]) === eventId) sheet.deleteRow(i + 1)
+  }
+  const rows = Object.keys(body.statuses || {}).map((name) =>
+    [eventId, name, body.statuses[name] === "out" ? "No" : "Yes", "", ""])
+  rows.push([eventId, SUB_ROW, "", clean(body.subFor), clean(body.subName)])
+  sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 5).setValues(rows)
+  return { ok: true }
+}
+
+function eventRows() {
+  const sheet = sheetById(EVENTS_SHEET_ID)
+  if (!sheet) return []
+  return sheet.getDataRange().getValues().slice(1)
+    .map((r) => ({ id: clean(r[EVENTS_COLS.event]), date: eventDate(clean(r[EVENTS_COLS.event])), winner: clean(r[EVENTS_COLS.winner]) }))
+    .filter((e) => e.id && e.date)
+}
+
+// The first event after this one (by date) that doesn't have a winner yet.
+function nextEventAfter(eventId) {
+  const events = eventRows()
+  const current = events.find((e) => e.id === eventId)
+  if (!current) return null
+  const later = events
+    .filter((e) => e.date > current.date && !e.winner)
+    .sort((a, b) => a.date - b.date)
+  return later.length ? later[0].id : null
+}
+
+function activeRoster() {
+  const sheet = sheetById(PLAYERS_SHEET_ID)
+  if (!sheet) return []
+  const values = sheet.getDataRange().getValues()
+  const header = values[0].map(clean)
+  const nameCol = header.indexOf("Name")
+  const activeCol = header.indexOf("Active")
+  return values.slice(1)
+    .filter((r) => clean(r[nameCol]) && /^active$/i.test(clean(r[activeCol])) && !/\(sub\)/i.test(clean(r[nameCol])))
+    .map((r) => clean(r[nameCol]))
+}
+
+// Same pairing as the Auto Matchmaking page: seed by the last match's
+// ranking points (or the player's average if they missed it), 1st with
+// last, 2nd with second to last; an odd count brings in a sub at a missing
+// player's spot.
+function buildPairings(lastEventId, nextEventId, attendance, matchValues) {
+  const firstRow = {}
+  matchValues.slice(1).forEach((r) => {
+    const name = clean(r[MATCH_COLS.player])
+    if (name && !firstRow[name]) firstRow[name] = r
+  })
+  const num = (v) => (v === "" || v == null || isNaN(Number(v)) ? null : Number(v))
+
+  const ranked = activeRoster().map((name) => {
+    const last = matchValues.find((r) =>
+      clean(r[MATCH_COLS.event]) === lastEventId && clean(r[MATCH_COLS.player]) === name && num(r[MATCH_COLS.score]) != null)
+    const average = num(firstRow[name] ? firstRow[name][AVG_COL] : null) || 0
+    const lastPoints = last ? num(last[MRP_COL]) : null
+    return { name: name, seed: lastPoints != null ? lastPoints : average, average: average }
+  }).sort((a, b) => b.seed - a.seed || b.average - a.average || a.name.localeCompare(b.name))
+
+  const status = (name) => attendance.statuses[name] || "playing"
+  const playing = ranked.filter((p) => status(p.name) === "playing")
+  const missing = ranked.filter((p) => status(p.name) !== "playing")
+
+  const field = playing.slice()
+  if (playing.length % 2 === 1 && missing.length) {
+    let target = missing.find((m) => m.name === attendance.subFor)
+    if (!target) {
+      const middle = playing[Math.floor(playing.length / 2)].seed
+      target = missing.slice().sort((a, b) => Math.abs(a.seed - middle) - Math.abs(b.seed - middle))[0]
+    }
+    field.push({ name: attendance.subFor === target.name && attendance.subName ? attendance.subName : subNameFor(target.name, ranked, nextEventId, matchValues), seed: target.seed })
+    field.sort((a, b) => b.seed - a.seed)
+  }
+
+  const assignments = []
+  for (let i = 0; i < Math.floor(field.length / 2); i++) {
+    assignments.push({ player: field[i].name, team: TEAM_LETTERS[i] })
+    assignments.push({ player: field[field.length - 1 - i].name, team: TEAM_LETTERS[i] })
+  }
+  return assignments
+}
+
+// "Bub (Sub)", or the full name when the first name is shared - preferring
+// a name that already has a Match Entry row for the event.
+function subNameFor(name, ranked, eventId, matchValues) {
+  const first = name.split(" ")[0]
+  const options = [first + " (Sub)", name + " (Sub)"]
+  const existing = options.find((n) => matchValues.some((r) => clean(r[MATCH_COLS.event]) === eventId && clean(r[MATCH_COLS.player]) === n))
+  if (existing) return existing
+  const shared = ranked.filter((p) => p.name.split(" ")[0] === first).length > 1
+  return shared ? name + " (Sub)" : first + " (Sub)"
+}
+
+// Pairs the event after `completedEventId`, unless it already has teams.
+function autoMatchmake(completedEventId) {
+  const nextId = nextEventAfter(completedEventId)
+  if (!nextId) return { skipped: "no upcoming event" }
+  SpreadsheetApp.flush() // let the Match Entry formulas catch up with the new scores
+  const matchValues = sheetById(MATCH_SHEET_ID).getDataRange().getValues()
+  const hasTeams = matchValues.some((r, i) => i > 0 && clean(r[MATCH_COLS.event]) === nextId && clean(r[MATCH_COLS.team]))
+  if (hasTeams) return { skipped: "event " + nextId + " already has teams" }
+  const assignments = buildPairings(completedEventId, nextId, readAttendance(nextId), matchValues)
+  if (!assignments.length) return { skipped: "nobody marked as playing" }
+  const result = setTeams({ event: nextId, assignments: assignments })
+  return { event: nextId, teams: assignments.length / 2, result: result }
 }
 
 // Deletes every practice-round row from Live Scores.
