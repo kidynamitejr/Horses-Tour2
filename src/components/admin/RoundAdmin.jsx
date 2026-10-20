@@ -199,6 +199,10 @@ function RoundAdmin() {
             <div key={r.letter} className={`rda-team${r.submitted ? " is-done" : ""}`}>
               <b>{r.label}</b>
               <span className="rda-names">{r.players.join(" & ")}</span>
+              <span className="rda-holes" title={`${r.thru} of 18 holes entered`}>
+                <b>{r.thru}/18</b>
+                <i><em style={{ width: `${(r.thru / 18) * 100}%` }} /></i>
+              </span>
               <span className="rda-progress">
                 {r.submitted ? "✓ Final" : r.thru === 18 ? "Finished - not submitted" : r.thru ? `Thru ${r.thru}` : "Not started"}
               </span>
