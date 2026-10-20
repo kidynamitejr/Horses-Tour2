@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { getAdvertisements } from "../data/googleSheets"
-import { getAdStats, liveScoringReady } from "../data/liveScoring"
+import { clearAdStats, getAdStats, liveScoringReady } from "../data/liveScoring"
 
 // Sponsor Stats: anonymous view and click counts for each ad, by month and
 // all-time, to show sponsors what their spot gets. Views and clicks are
@@ -32,6 +32,7 @@ function SponsorStatsPage() {
   const [clicks, setClicks] = useState([])
   const [ads, setAds] = useState([])
   const [error, setError] = useState("")
+  const [busy, setBusy] = useState(false)
 
   useEffect(() => {
     getAdvertisements().then(setAds).catch(() => {})
@@ -43,6 +44,21 @@ function SponsorStatsPage() {
       })
       .catch((err) => setError(err.message || "Couldn't load the stats - try again in a moment."))
   }, [])
+
+  async function clear(ad, title) {
+    const what = ad ? `all views and clicks for ${title}` : "ALL sponsor views and clicks"
+    if (!window.confirm(`Clear ${what}? This can't be undone.`)) return
+    setBusy(true)
+    try {
+      await clearAdStats(ad)
+      setRows((list) => (list || []).filter((r) => ad && r.ad !== ad))
+      setClicks((list) => list.filter((c) => ad && c.ad !== ad))
+    } catch (err) {
+      setError(err.message || "Couldn't clear the stats.")
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const thisMonth = new Date().toISOString().slice(0, 7)
 
@@ -94,6 +110,9 @@ function SponsorStatsPage() {
                 <a href={s.link} target="_blank" rel="noopener noreferrer sponsored">Visit sponsor ↗</a>
               )}
             </div>
+            <button type="button" className="sps-reset" onClick={() => clear(s.ad, s.title)} disabled={busy}>
+              Reset stats
+            </button>
           </div>
 
           <div className="sps-tiles">
@@ -138,6 +157,12 @@ function SponsorStatsPage() {
           </table>
         </section>
       ))}
+
+      {summaries.length > 0 && (
+        <button type="button" className="sps-clear-all" onClick={() => clear("", "")} disabled={busy}>
+          Clear all sponsor stats
+        </button>
+      )}
 
     </div>
   )

@@ -385,6 +385,12 @@ export async function getAdStats() {
   return { rows: data.rows, clicks: data.clicks || [] }
 }
 
+// Clears view / click history for one ad (pass its Advertisement #) or all.
+export function clearAdStats(ad = "") {
+  if (useMock) return Promise.resolve({ ok: true })
+  return post({ action: "clearAdStats", ad })
+}
+
 // ---- News (Admin) ----
 // News tab: Article ID | Date | Headline | Image | Article | Featured
 export function saveNews(article) {

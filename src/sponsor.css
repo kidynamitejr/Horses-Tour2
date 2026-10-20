@@ -65,6 +65,31 @@
   text-decoration: none;
 }
 
+.sps-reset,
+.sps-clear-all {
+  padding: 8px 14px;
+  border: 1px solid rgba(214, 48, 49, .4);
+  border-radius: 999px;
+  background: rgba(214, 48, 49, .08);
+  color: #d63031;
+  font: 800 12.5px var(--font-body);
+  cursor: pointer;
+}
+
+.sps-reset {
+  margin-left: auto;
+}
+
+.sps-clear-all {
+  align-self: center;
+}
+
+.sps-reset:disabled,
+.sps-clear-all:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
 .sps-tiles {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

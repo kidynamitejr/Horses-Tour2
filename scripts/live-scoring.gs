@@ -54,7 +54,7 @@ const NEWS_FOLDER = "Horses Tour News" // Drive folder for article photos
 // Actions only the Admin page can use (checked against ADMIN_PASSWORD).
 const ADMIN_ACTIONS = [
   "adminCheck", "setTeams", "planTeams", "saveAttendance", "previewAutoPairing",
-  "adStats", "saveNews", "deleteNews",
+  "adStats", "clearAdStats", "saveNews", "deleteNews",
 ]
 
 const LIVE_HEADERS = [
@@ -125,6 +125,7 @@ function doPost(e) {
     }
     if (body.action === "adminCheck") return json({ ok: true })
     if (body.action === "adStats") return json({ ok: true, rows: readAdStats(), clicks: readAdClicks(200) })
+    if (body.action === "clearAdStats") return json(clearAdStats(body))
     if (body.action === "saveNews") return json(saveNews(body))
     if (body.action === "deleteNews") return json(deleteNews(body))
     if (body.action === "save") return json(saveHole(body))
@@ -882,6 +883,24 @@ function readAdClicks(limit) {
     .map((r) => ({ at: r[0].toISOString(), ad: clean(r[1]) }))
     .reverse()
     .slice(0, limit || 200)
+}
+
+// Clears the view / click history - for one ad (body.ad) or all ads.
+function clearAdStats(body) {
+  const adId = clean(body.ad)
+  let removed = 0
+  ;[AD_STATS_SHEET, AD_CLICKS_SHEET].forEach((name) => {
+    const sheet = SpreadsheetApp.getActive().getSheetByName(name)
+    if (!sheet) return
+    const values = sheet.getDataRange().getValues()
+    for (let i = values.length - 1; i >= 1; i--) {
+      if (!adId || clean(values[i][1]) === adId) {
+        sheet.deleteRow(i + 1)
+        removed++
+      }
+    }
+  })
+  return { ok: true, removed: removed }
 }
 
 function readAdStats() {
