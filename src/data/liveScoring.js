@@ -306,8 +306,11 @@ export async function uploadPhoto(payload) {
 }
 
 // Sponsor stats: one anonymous view / click per ad per browser session
-// (so refreshing doesn't inflate the numbers). Not counted while
-// developing locally.
+// (so refreshing doesn't inflate the numbers). The visit is only marked as
+// counted once the sheet confirms it, so a failed send is retried on the
+// next page view. Not counted while developing locally.
+const adPending = new Set()
+
 export function trackAd(kind, ad) {
   if (!LIVE_SCORING_URL || import.meta.env.DEV) return
   const id = String(ad["Advertisement #"] || "").trim()
@@ -315,15 +318,21 @@ export function trackAd(kind, ad) {
   const key = `ht-ad-${kind}-${id}`
   try {
     if (sessionStorage.getItem(key)) return
-    sessionStorage.setItem(key, "1")
   } catch {
     // Storage blocked - count it anyway.
   }
-  const body = JSON.stringify({ action: "adEvent", kind, ad: id, title: (ad["Advertisement Title"] || "").trim() })
-  // sendBeacon survives the page opening the sponsor's site.
-  if (navigator.sendBeacon && navigator.sendBeacon(LIVE_SCORING_URL, body)) return
-  fetch(LIVE_SCORING_URL, { method: "POST", body, keepalive: true, headers: { "Content-Type": "text/plain;charset=utf-8" } })
+  if (adPending.has(key)) return
+  adPending.add(key)
+  post({ action: "adEvent", kind, ad: id, title: (ad["Advertisement Title"] || "").trim() })
+    .then(() => {
+      try {
+        sessionStorage.setItem(key, "1")
+      } catch {
+        // Storage blocked - nothing to remember.
+      }
+    })
     .catch(() => {})
+    .finally(() => adPending.delete(key))
 }
 
 export async function getAdStats() {
