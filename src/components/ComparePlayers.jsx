@@ -19,7 +19,6 @@ const SECTIONS = [
   {
     title: "Overview",
     stats: [
-      { label: "Tour Rank", get: (p) => p.tourRank?.position ?? null, better: "low", format: (v) => (v ? `#${v}` : "-") },
       { label: "Ranking Factor", get: (p) => p.averages.rankingFactor, better: "high", format: num(2) },
       { label: "Events Played", get: (p) => p.career.events, better: "high", format: int },
       { label: "Wins", get: (p) => p.career.wins, better: "high", format: int },
@@ -32,7 +31,6 @@ const SECTIONS = [
   {
     title: "Points",
     stats: [
-      { label: "Total Ranking Points", get: (p) => p.career.rankingPoints, better: "high", format: num(2) },
       { label: "Power Points", get: (p) => p.career.powerPoints, better: "high", format: int },
       { label: "Best Event Points", get: (p) => p.bestPointsEvent?.rankingPoints ?? null, better: "high", format: num(2) },
     ],
