@@ -18,6 +18,7 @@
  *                  "Horses Tour Gallery" Drive folder and added here
  *   Ad Stats     - anonymous view / click counts per ad per month (no
  *                  personal information is collected)
+ *   Ad Clicks    - the date and time of each ad click, and which ad
  *   Matchmaking  - who's playing in the next event (from the Auto
  *                  Matchmaking page); when an event's last card is in,
  *                  the next event is paired and set up automatically
@@ -46,6 +47,7 @@ const PRACTICE_ID = "practice"
 const GALLERY_SHEET_ID = 4188486 // the Gallery tab
 const GALLERY_FOLDER = "Horses Tour Gallery" // Drive folder for uploaded photos
 const AD_STATS_SHEET = "Ad Stats"
+const AD_CLICKS_SHEET = "Ad Clicks" // one row per click: time + ad (nothing about who)
 const NEWS_SHEET_ID = 1649176247 // the News tab
 const NEWS_FOLDER = "Horses Tour News" // Drive folder for article photos
 
@@ -122,7 +124,7 @@ function doPost(e) {
       if (denied) return json(denied)
     }
     if (body.action === "adminCheck") return json({ ok: true })
-    if (body.action === "adStats") return json({ ok: true, rows: readAdStats() })
+    if (body.action === "adStats") return json({ ok: true, rows: readAdStats(), clicks: readAdClicks(200) })
     if (body.action === "saveNews") return json(saveNews(body))
     if (body.action === "deleteNews") return json(deleteNews(body))
     if (body.action === "save") return json(saveHole(body))
@@ -841,6 +843,7 @@ function recordAdEvent(body) {
   const adId = clean(body.ad).slice(0, 12)
   if (!adId) return { ok: false, error: "Missing ad" }
   const month = Utilities.formatDate(new Date(), SpreadsheetApp.getActive().getSpreadsheetTimeZone(), "yyyy-MM")
+  if (kind === "click") logAdClick(adId, clean(body.title).slice(0, 60))
   const sheet = adStatsSheet()
   const values = sheet.getDataRange().getValues()
   const col = kind === "view" ? 4 : 5
@@ -852,6 +855,33 @@ function recordAdEvent(body) {
   }
   sheet.appendRow([month, adId, clean(body.title).slice(0, 60), kind === "view" ? 1 : 0, kind === "click" ? 1 : 0])
   return { ok: true }
+}
+
+function adClicksSheet() {
+  const book = SpreadsheetApp.getActive()
+  let sheet = book.getSheetByName(AD_CLICKS_SHEET)
+  if (!sheet) {
+    sheet = book.insertSheet(AD_CLICKS_SHEET)
+    sheet.getRange(1, 1, 1, 3).setValues([["Clicked At", "Ad #", "Ad"]]).setFontWeight("bold")
+    sheet.setFrozenRows(1)
+    sheet.getRange("A:A").setNumberFormat("m/d/yyyy h:mm am/pm")
+  }
+  return sheet
+}
+
+function logAdClick(adId, title) {
+  adClicksSheet().appendRow([new Date(), adId, title])
+}
+
+// The most recent clicks (newest first) for the Sponsor Stats page.
+function readAdClicks(limit) {
+  const sheet = SpreadsheetApp.getActive().getSheetByName(AD_CLICKS_SHEET)
+  if (!sheet) return []
+  return sheet.getDataRange().getValues().slice(1)
+    .filter((r) => r[0] instanceof Date && clean(r[1]))
+    .map((r) => ({ at: r[0].toISOString(), ad: clean(r[1]) }))
+    .reverse()
+    .slice(0, limit || 200)
 }
 
 function readAdStats() {

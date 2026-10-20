@@ -101,6 +101,44 @@
   font-size: 12px;
 }
 
+.sps-clicks {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--page);
+}
+
+.sps-clicks h3 {
+  margin: 0 0 6px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.sps-clicks p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sps-clicks ol {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sps-clicks li::before {
+  content: "↗ ";
+  color: var(--sky);
+  font-weight: 800;
+}
+
 .sps-table {
   width: 100%;
   min-width: 0 !important;

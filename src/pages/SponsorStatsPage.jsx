@@ -13,12 +13,23 @@ function monthLabel(key) {
   return month ? `${MONTHS[month - 1]} ${year}` : key
 }
 
+function clickTime(iso) {
+  return new Date(iso).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  })
+}
+
 function rate(clicks, views) {
   return views ? `${((clicks / views) * 100).toFixed(1)}%` : "-"
 }
 
 function SponsorStatsPage() {
   const [rows, setRows] = useState(null)
+  const [clicks, setClicks] = useState([])
   const [ads, setAds] = useState([])
   const [error, setError] = useState("")
 
@@ -26,7 +37,10 @@ function SponsorStatsPage() {
     getAdvertisements().then(setAds).catch(() => {})
     if (!liveScoringReady) return
     getAdStats()
-      .then(setRows)
+      .then((stats) => {
+        setRows(stats.rows)
+        setClicks(stats.clicks)
+      })
       .catch((err) => setError(err.message || "Couldn't load the stats - try again in a moment."))
   }, [])
 
@@ -51,6 +65,7 @@ function SponsorStatsPage() {
         image: sheetAd?.["Store Picture Mobile"] || sheetAd?.["Store Picture Desktop"] || "",
         link: sheetAd?.["Store Link"] || "",
         current: s.months.find((m) => m.month === thisMonth) || { views: 0, clicks: 0 },
+        recent: clicks.filter((c) => c.ad === s.ad).slice(0, 10),
         months: [...s.months].sort((a, b) => b.month.localeCompare(a.month)),
       }
     })
@@ -61,7 +76,7 @@ function SponsorStatsPage() {
 
       <p className="sps-intro">
         Counted anonymously: one view per visit when a sponsor&apos;s ad is shown, and one click per visit when
-        someone taps through. No names, emails or personal information are collected.
+        someone taps through (with the time of each click). No names, emails or personal information are collected.
       </p>
 
       {error && <p className="sps-empty">{error}</p>}
@@ -86,6 +101,19 @@ function SponsorStatsPage() {
             <div><span>Clicks · all time</span><b>{s.clicks.toLocaleString()}</b></div>
             <div><span>Click rate</span><b>{rate(s.clicks, s.views)}</b></div>
             <div><span>This month</span><b>{s.current.views} <small>views</small> · {s.current.clicks} <small>clicks</small></b></div>
+          </div>
+
+          <div className="sps-clicks">
+            <h3>Recent clicks</h3>
+            {s.recent.length === 0 ? (
+              <p>No clicks logged yet.</p>
+            ) : (
+              <ol>
+                {s.recent.map((c, i) => (
+                  <li key={`${c.at}-${i}`}>{clickTime(c.at)}</li>
+                ))}
+              </ol>
+            )}
           </div>
 
           <table className="sps-table">

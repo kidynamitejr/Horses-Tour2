@@ -377,11 +377,12 @@ export function trackAd(kind, ad) {
     .finally(() => adPending.delete(key))
 }
 
+// { rows: monthly counts, clicks: [{ at: ISO time, ad }] newest first }
 export async function getAdStats() {
-  if (useMock) return []
+  if (useMock) return { rows: [], clicks: [] }
   const data = await post({ action: "adStats" })
   if (!Array.isArray(data.rows)) throw new Error("Sponsor stats need the latest Google Apps Script.")
-  return data.rows
+  return { rows: data.rows, clicks: data.clicks || [] }
 }
 
 // ---- News (Admin) ----
