@@ -137,15 +137,18 @@ function Gallery() {
 
   const shown = filter === "all" ? photos : photos.filter((p) => p["Event ID"] === filter)
 
-  // Events photos can be added to: anything up to today, newest first.
+  // Every event photos can be added to: ones already played first (newest
+  // at the top), then upcoming ones, then "General" for anything else.
   const today = new Date()
-  const uploadEvents = Object.entries(eventNames)
-    .filter(([, e]) => {
-      const date = parseEventDate(e.date)
-      return date && date <= today
-    })
-    .sort((a, b) => Number(b[0]) - Number(a[0]))
-    .map(([id, e]) => ({ id, name: e.name }))
+  today.setHours(23, 59, 59, 999)
+  const allEvents = Object.entries(eventNames).map(([id, e]) => ({ id, name: e.name, date: parseEventDate(e.date) }))
+  const played = allEvents.filter((e) => e.date && e.date <= today).sort((a, b) => b.date - a.date)
+  const upcoming = allEvents.filter((e) => !e.date || e.date > today).sort((a, b) => (a.date || 0) - (b.date || 0))
+  const uploadEvents = [
+    ...played.map((e) => ({ id: e.id, name: e.name })),
+    ...upcoming.map((e) => ({ id: e.id, name: `${e.name} (upcoming)` })),
+    { id: "", name: "General / no event" },
+  ]
 
   const lightboxPhotos = shown.map((p) => ({
     Image: p.Image,
@@ -165,7 +168,7 @@ function Gallery() {
           <p>{loading ? "Loading photos..." : `${photos.length} photos from ${eventIds.length} event${eventIds.length === 1 ? "" : "s"}`}</p>
         </div>
 
-        {uploadEvents.length > 0 && (
+        {Object.keys(eventNames).length > 0 && (
           <GalleryUpload
             events={uploadEvents}
             defaultEventId={uploadEvents[0].id}

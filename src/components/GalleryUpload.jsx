@@ -12,7 +12,7 @@ const MAX_PHOTOS = 10
 function GalleryUpload({ events, defaultEventId, onUploaded }) {
   const inputRef = useRef(null)
   const [open, setOpen] = useState(false)
-  const [eventId, setEventId] = useState("")
+  const [eventId, setEventId] = useState(null)
   const [caption, setCaption] = useState("")
   const [name, setName] = useState("")
   const [items, setItems] = useState([])
@@ -20,7 +20,7 @@ function GalleryUpload({ events, defaultEventId, onUploaded }) {
 
   if (!liveScoringReady) return null
 
-  const chosenEvent = eventId || defaultEventId || ""
+  const chosenEvent = eventId ?? defaultEventId ?? ""
 
   function pickFiles(e) {
     const files = [...e.target.files].slice(0, MAX_PHOTOS)
