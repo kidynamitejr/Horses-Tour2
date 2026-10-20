@@ -62,7 +62,7 @@ const NEWS_FOLDER = "Horses Tour News" // Drive folder for article photos
 // Actions only the Admin page can use (checked against ADMIN_PASSWORD).
 const ADMIN_ACTIONS = [
   "adminCheck", "setTeams", "planTeams", "saveAttendance", "previewAutoPairing",
-  "adStats", "clearAdStats", "saveNews", "deleteNews",
+  "adStats", "clearAdStats", "saveNews", "deleteNews", "deletePhoto",
 ]
 
 const LIVE_HEADERS = [
@@ -148,6 +148,7 @@ function doPost(e) {
     if (body.action === "clearAdStats") return json(clearAdStats(body))
     if (body.action === "saveNews") return json(saveNews(body))
     if (body.action === "deleteNews") return json(deleteNews(body))
+    if (body.action === "deletePhoto") return json(deletePhoto(body))
     if (body.action === "save") return json(saveHole(body))
     if (body.action === "submit") return json(submitCard(body))
     if (body.action === "submitAll") return json(submitAll(body))
@@ -877,6 +878,53 @@ function rehostDrivePhotos() {
   fix(sheetById(NEWS_SHEET_ID), [3, 6]) // D: Image, G: Image 2
   Logger.log("Moved " + moved + " photo(s) to GitHub.")
   return moved
+}
+
+// Deletes a photo's file wherever it's hosted: the repo's uploads/ folder
+// (GitHub) or Google Drive. Other links (e.g. imgur) are just left alone.
+function deleteHostedImage(url) {
+  const text = String(url || "")
+  const gh = text.match(new RegExp("raw\\.githubusercontent\\.com/" + GITHUB_REPO + "/" + GITHUB_BRANCH + "/(uploads/[^?#]+)"))
+  if (gh) {
+    const token = PropertiesService.getScriptProperties().getProperty("GITHUB_TOKEN")
+    if (!token) return
+    const api = "https://api.github.com/repos/" + GITHUB_REPO + "/contents/" + gh[1]
+    const headers = { Authorization: "Bearer " + token, Accept: "application/vnd.github+json" }
+    const info = UrlFetchApp.fetch(api + "?ref=" + GITHUB_BRANCH, { headers: headers, muteHttpExceptions: true })
+    if (info.getResponseCode() !== 200) return
+    UrlFetchApp.fetch(api, {
+      method: "delete",
+      contentType: "application/json",
+      headers: headers,
+      payload: JSON.stringify({ message: "Photo deleted", sha: JSON.parse(info.getContentText()).sha, branch: GITHUB_BRANCH }),
+      muteHttpExceptions: true,
+    })
+    return
+  }
+  const drive = text.match(/lh3\.googleusercontent\.com\/d\/([\w-]+)/)
+  if (drive) {
+    try {
+      DriveApp.getFileById(drive[1]).setTrashed(true)
+    } catch (err) {
+      // Already gone - nothing to do.
+    }
+  }
+}
+
+// Admin: removes a photo from the Gallery tab and deletes its file.
+function deletePhoto(body) {
+  const sheet = sheetById(GALLERY_SHEET_ID)
+  if (!sheet) return { ok: false, error: "The Gallery tab is missing." }
+  const id = clean(body.id)
+  const values = sheet.getDataRange().getValues()
+  for (let i = values.length - 1; i >= 1; i--) {
+    if (clean(values[i][0]) === id) {
+      deleteHostedImage(values[i][2])
+      sheet.deleteRow(i + 1)
+      return { ok: true }
+    }
+  }
+  return { ok: false, error: "That photo isn't on the Gallery tab anymore." }
 }
 
 // ---- Gallery uploads ----

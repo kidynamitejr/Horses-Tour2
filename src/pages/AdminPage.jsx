@@ -2,16 +2,18 @@ import { useState } from "react"
 import AutoMatchmakingPage from "./AutoMatchmakingPage"
 import SponsorStatsPage from "./SponsorStatsPage"
 import NewsAdmin from "../components/NewsAdmin"
+import GalleryAdmin from "../components/GalleryAdmin"
 import { adminSignIn, adminSignOut, getAdminPassword, liveScoringReady } from "../data/liveScoring"
 
 // Admin: the commissioner's tools behind a password - Auto Matchmaking,
-// Sponsor Stats and News. The password is checked by the Google Apps
+// Sponsor Stats, News and Gallery. The password is checked by the Google Apps
 // Script on every admin action, so it isn't stored in this public code.
 
 const TABS = [
-  { id: "matchmaking", label: "Auto Matchmaking" },
-  { id: "sponsors", label: "Sponsor Stats" },
-  { id: "news", label: "News" },
+  { id: "matchmaking", label: "Auto Matchmaking", short: "Teams" },
+  { id: "sponsors", label: "Sponsor Stats", short: "Sponsors" },
+  { id: "news", label: "News", short: "News" },
+  { id: "gallery", label: "Gallery", short: "Gallery" },
 ]
 
 function AdminPage() {
@@ -93,7 +95,8 @@ function AdminPage() {
               className={tab === t.id ? "active" : ""}
               onClick={() => pickTab(t.id)}
             >
-              {t.label}
+              <span className="adm-tab-long">{t.label}</span>
+              <span className="adm-tab-short">{t.short}</span>
             </button>
           ))}
         </div>
@@ -104,6 +107,7 @@ function AdminPage() {
         {tab === "matchmaking" && <AutoMatchmakingPage />}
         {tab === "sponsors" && <SponsorStatsPage />}
         {tab === "news" && <NewsAdmin />}
+        {tab === "gallery" && <GalleryAdmin />}
       </div>
     </div>
   )

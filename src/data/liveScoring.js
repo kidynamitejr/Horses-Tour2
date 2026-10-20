@@ -391,6 +391,12 @@ export function clearAdStats(ad = "") {
   return post({ action: "clearAdStats", ad })
 }
 
+// Admin: delete a Gallery photo (its row and its file).
+export function deletePhoto(id) {
+  if (useMock) return Promise.resolve({ ok: true })
+  return post({ action: "deletePhoto", id })
+}
+
 // ---- News (Admin) ----
 // News tab: Article ID | Date | Headline | Image | Article | Featured
 export function saveNews(article) {
