@@ -48,10 +48,18 @@
   color: white;
 }
 
+/* Players on the left, pairings on the right (stacked on smaller screens) */
 .mm-grid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr);
+  align-items: start;
   gap: 18px;
+}
+
+@media (max-width: 1000px) {
+  .mm-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .mm-card {
@@ -89,6 +97,7 @@
 /* Players table */
 .mm-table {
   width: 100%;
+  min-width: 0 !important; /* the site's tables default to 600px wide */
   border-collapse: separate;
   border-spacing: 0;
   table-layout: fixed;
@@ -96,8 +105,8 @@
 }
 
 .mm-table th:nth-child(1) { width: 40px; }
-.mm-table th:nth-child(3) { width: 130px; }
-.mm-table th:nth-child(4) { width: 150px; }
+.mm-table th:nth-child(3) { width: 104px; }
+.mm-table th:nth-child(4) { width: 132px; }
 
 .mm-name {
   overflow: hidden;
@@ -212,6 +221,29 @@
 /* Pairings board uses the home page groupings styles (ev-*) */
 .mm-board .ev-board-head {
   margin-bottom: 12px;
+}
+
+/* The home page board, compacted to fit the half-width column */
+@media (min-width: 1001px) {
+  .mm-board .ev-row {
+    grid-template-columns: 44px minmax(0, 1fr) 96px 86px;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .mm-board .ev-col-together {
+    display: none;
+  }
+
+  .mm-board .ev-players {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .mm-board .ev-status {
+    justify-content: flex-end;
+  }
 }
 
 .mm-is-sub .ev-player-name {
