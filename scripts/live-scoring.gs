@@ -944,7 +944,8 @@ function checkAdmin(body) {
 }
 
 // ---- News (from the Admin page) ----
-// News tab: Article ID | Date | Headline | Image | Article | Featured
+// News tab: Article ID | Date | Headline | Image | Article | Featured |
+//           Image 2 | Image 2 Caption  (the second photo is optional)
 
 function newsFolder() {
   const folders = DriveApp.getFoldersByName(NEWS_FOLDER)
@@ -963,6 +964,8 @@ function saveImage(folder, base64, prefix) {
 function saveNews(body) {
   const sheet = sheetById(NEWS_SHEET_ID)
   if (!sheet) return { ok: false, error: "The News tab is missing." }
+  if (!clean(sheet.getRange(1, 7).getValue())) sheet.getRange(1, 7).setValue("Image 2")
+  if (!clean(sheet.getRange(1, 8).getValue())) sheet.getRange(1, 8).setValue("Image 2 Caption")
   const headline = clean(body.headline)
   if (!headline) return { ok: false, error: "Add a headline." }
   const article = String(body.article || "").trim()
@@ -977,12 +980,18 @@ function saveNews(body) {
     if (String(body.imageData).length > 10 * 1024 * 1024) return { ok: false, error: "That photo is too big." }
     image = saveImage(newsFolder(), String(body.imageData), "news")
   }
+  let image2 = clean(body.image2)
+  if (body.imageData2) {
+    if (String(body.imageData2).length > 10 * 1024 * 1024) return { ok: false, error: "The second photo is too big." }
+    image2 = saveImage(newsFolder(), String(body.imageData2), "news")
+  }
+  const caption2 = image2 ? clean(body.caption2).slice(0, 160) : ""
 
   if (id) {
     for (let i = 1; i < values.length; i++) {
       if (clean(values[i][0]) === id) {
-        sheet.getRange(i + 1, 2, 1, 5).setValues([[date, headline, image, article, featured]])
-        return { ok: true, id: id, image: image }
+        sheet.getRange(i + 1, 2, 1, 7).setValues([[date, headline, image, article, featured, image2, caption2]])
+        return { ok: true, id: id, image: image, image2: image2 }
       }
     }
     return { ok: false, error: "That article isn't on the News tab anymore." }
@@ -993,8 +1002,8 @@ function saveNews(body) {
     const n = Number(r[0])
     if (n > maxId) maxId = n
   })
-  sheet.appendRow([maxId + 1, date, headline, image, article, featured])
-  return { ok: true, id: String(maxId + 1), image: image }
+  sheet.appendRow([maxId + 1, date, headline, image, article, featured, image2, caption2])
+  return { ok: true, id: String(maxId + 1), image: image, image2: image2 }
 }
 
 function deleteNews(body) {

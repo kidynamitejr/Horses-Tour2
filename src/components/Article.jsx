@@ -2,6 +2,37 @@ import { useEffect, useState } from "react"
 import { useParams, Link } from "react-router-dom"
 import { getNews } from "../data/googleSheets"
 
+// The article split into paragraphs, with the optional second photo
+// placed partway through like an online news story.
+function ArticleBody({ article }) {
+  const paragraphs = (article.Article || "")
+    .split(/\n\s*\n|\n/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+  const image2 = (article["Image 2"] || "").trim()
+  const caption2 = (article["Image 2 Caption"] || "").trim()
+  const insertAt = Math.ceil(paragraphs.length / 2)
+
+  const figure = image2 && (
+    <figure className="article-figure" key="figure">
+      <img src={image2} alt={caption2 || article.Headline} loading="lazy" />
+      {caption2 && <figcaption>{caption2}</figcaption>}
+    </figure>
+  )
+
+  return (
+    <div className="article-body-text">
+      {paragraphs.map((p, i) => (
+        <span key={i} className="article-paragraph-group">
+          <p>{p}</p>
+          {i === insertAt - 1 && figure}
+        </span>
+      ))}
+      {paragraphs.length === 0 && figure}
+    </div>
+  )
+}
+
 function Article() {
   const { id } = useParams()
 
@@ -71,9 +102,7 @@ function Article() {
 
       <section className="card article-body-card">
 
-        <p className="article-body-text">
-          {article.Article}
-        </p>
+        <ArticleBody article={article} />
 
       </section>
     </>

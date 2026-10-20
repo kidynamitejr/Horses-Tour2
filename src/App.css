@@ -1472,10 +1472,42 @@ a.next-event-player:hover span {
 }
 
 .article-body-text {
-  white-space: pre-wrap;
+  text-align: left;
   line-height: 1.85;
   font-size: 17px;
   color: #2a2a2a;
+}
+
+.article-body-text p {
+  margin: 0 0 1.1em;
+}
+
+.article-paragraph-group {
+  display: contents;
+}
+
+/* Second photo, mid-article, with a caption like a news site */
+.article-figure {
+  margin: 1.6em 0 1.8em;
+}
+
+.article-figure img {
+  display: block;
+  width: 100%;
+  max-height: 520px;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: 0 8px 22px rgba(0, 33, 64, .14);
+}
+
+.article-figure figcaption {
+  margin-top: 8px;
+  padding-left: 10px;
+  border-left: 3px solid var(--gold, #c9a227);
+  color: var(--muted, #64707c);
+  font-size: 13.5px;
+  font-style: italic;
+  line-height: 1.5;
 }
 
 /* FEATURED PLAYER */

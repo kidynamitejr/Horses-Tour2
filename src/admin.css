@@ -269,6 +269,64 @@ html[data-theme="dark"] .adm-tabs button.active {
   height: 18px;
 }
 
+.nws-second {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+}
+
+.nws-second-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.nws-add-second {
+  align-self: flex-start;
+  padding: 8px 14px;
+  border: 1px solid var(--sky);
+  border-radius: 999px;
+  background: var(--sky-soft);
+  color: var(--sky);
+  font: 800 13px var(--font-body);
+  cursor: pointer;
+}
+
+.nws-second-photo {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.nws-second-photo img {
+  width: 160px;
+  max-width: 55%;
+  aspect-ratio: 4 / 3;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.nws-second-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nws-second-actions button {
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 700 12.5px var(--font-body);
+  cursor: pointer;
+}
+
 .nws-save {
   padding: 13px;
   border: 0;
@@ -402,4 +460,8 @@ html[data-theme="dark"] .adm-tabs button.active {
   .nws-row {
     grid-template-columns: 1fr;
   }
+}
+
+.nws-second-actions .nws-delete {
+  color: #d63031;
 }
