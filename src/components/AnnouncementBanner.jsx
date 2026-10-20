@@ -38,10 +38,19 @@ function AnnouncementBanner() {
 
   return (
     <div className={`site-announcement is-${style}`} role="status">
-      <span>{text}</span>
-      {link && (link.startsWith("/")
-        ? <Link to={link}>Learn more →</Link>
-        : <a href={link} target="_blank" rel="noopener noreferrer">Learn more →</a>)}
+      {/* The message scrolls across on a loop (two copies so it's seamless). */}
+      <div className="sa-marquee">
+        <div className="sa-track">
+          {[0, 1].map((copy) => (
+            <span key={copy} className="sa-item" aria-hidden={copy === 1 ? "true" : undefined}>
+              {text}
+              {link && (link.startsWith("/")
+                ? <Link to={link} tabIndex={copy === 1 ? -1 : undefined}>Learn more →</Link>
+                : <a href={link} target="_blank" rel="noopener noreferrer" tabIndex={copy === 1 ? -1 : undefined}>Learn more →</a>)}
+            </span>
+          ))}
+        </div>
+      </div>
       <button type="button" onClick={close} aria-label="Close announcement">×</button>
     </div>
   )

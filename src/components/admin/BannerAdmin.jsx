@@ -54,8 +54,16 @@ function BannerAdmin() {
       <p className="adx-muted">Shown across the top of every page. Visitors can close it until the message changes.</p>
 
       <div className={`site-announcement is-${values.style} bna-preview`}>
-        <span>{values.text || "Your message here"}</span>
-        {values.link && <b>Learn more →</b>}
+        <div className="sa-marquee">
+          <div className="sa-track">
+            {[0, 1].map((copy) => (
+              <span key={copy} className="sa-item">
+                {values.text || "Your message here"}
+                {values.link && <b>Learn more →</b>}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
 
       <label className="af-field af-wide">

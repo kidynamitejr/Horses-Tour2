@@ -1006,14 +1006,32 @@ function recordAdEvent(body) {
   const values = sheet.getDataRange().getValues()
   const col = kind === "view" ? 4 : 5
   const now = new Date()
+  const matches = []
   for (let i = 1; i < values.length; i++) {
-    if (clean(values[i][0]) === month && clean(values[i][1]) === adId) {
-      sheet.getRange(i + 1, col).setValue((Number(values[i][col - 1]) || 0) + 1)
-      if (kind === "click") sheet.getRange(i + 1, 6).setValue(now)
-      return { ok: true }
-    }
+    if (monthKey(values[i][0]) === month && clean(values[i][1]) === adId) matches.push(i)
   }
-  sheet.appendRow([month, adId, clean(body.title).slice(0, 60), kind === "view" ? 1 : 0, kind === "click" ? 1 : 0, kind === "click" ? now : ""])
+  if (matches.length) {
+    // Merge any duplicate rows for this month into the first one.
+    const first = matches[0]
+    let views = 0
+    let clicks = 0
+    let lastClick = ""
+    matches.forEach((i) => {
+      views += Number(values[i][3]) || 0
+      clicks += Number(values[i][4]) || 0
+      if (values[i][5] instanceof Date && (!lastClick || values[i][5] > lastClick)) lastClick = values[i][5]
+    })
+    if (kind === "view") views++
+    else {
+      clicks++
+      lastClick = now
+    }
+    sheet.getRange(first + 1, 1, 1, 6).setValues([["'" + month, adId, values[first][2], views, clicks, lastClick]])
+    matches.slice(1).reverse().forEach((i) => sheet.deleteRow(i + 1))
+    return { ok: true }
+  }
+  // "'" keeps "2026-10" as text (Sheets would turn it into a date).
+  sheet.appendRow(["'" + month, adId, clean(body.title).slice(0, 60), kind === "view" ? 1 : 0, kind === "click" ? 1 : 0, kind === "click" ? now : ""])
   return { ok: true }
 }
 
@@ -1062,15 +1080,19 @@ function clearAdStats(body) {
   return { ok: true, removed: removed }
 }
 
+// A month cell as "yyyy-MM", whether it's text or Sheets made it a date.
+function monthKey(value) {
+  if (value instanceof Date) return Utilities.formatDate(value, SpreadsheetApp.getActive().getSpreadsheetTimeZone(), "yyyy-MM")
+  return clean(value).replace(/^'/, "")
+}
+
 function readAdStats() {
   const sheet = SpreadsheetApp.getActive().getSheetByName(AD_STATS_SHEET)
   if (!sheet) return []
   return sheet.getDataRange().getValues().slice(1)
     .filter((r) => clean(r[1]))
     .map((r) => ({
-      month: r[0] instanceof Date
-        ? Utilities.formatDate(r[0], SpreadsheetApp.getActive().getSpreadsheetTimeZone(), "yyyy-MM")
-        : clean(r[0]),
+      month: monthKey(r[0]),
       ad: clean(r[1]),
       title: clean(r[2]),
       views: Number(r[3]) || 0,

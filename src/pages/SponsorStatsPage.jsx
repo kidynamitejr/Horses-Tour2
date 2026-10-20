@@ -61,7 +61,8 @@ function SponsorStatsPage() {
     }
   }
 
-  const thisMonth = new Date().toISOString().slice(0, 7)
+  const now = new Date()
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
 
   // One summary per ad, plus its months newest first.
   const byAd = {}
@@ -70,7 +71,15 @@ function SponsorStatsPage() {
     const entry = byAd[r.ad]
     entry.views += r.views
     entry.clicks += r.clicks
-    entry.months.push(r)
+    // Older sheets can have more than one row per month - add them up.
+    const month = entry.months.find((m) => m.month === r.month)
+    if (month) {
+      month.views += r.views
+      month.clicks += r.clicks
+      if (r.lastClick && (!month.lastClick || r.lastClick > month.lastClick)) month.lastClick = r.lastClick
+    } else {
+      entry.months.push({ ...r })
+    }
     if (r.title) entry.title = r.title
   })
   const summaries = Object.values(byAd)

@@ -1473,3 +1473,67 @@ html[data-theme="dark"] .rla-cat-head h4 {
     flex-direction: column;
   }
 }
+
+/* Announcement banner: the message pans across on a loop */
+.site-announcement {
+  padding-right: 44px;
+  padding-left: 0;
+  overflow: hidden;
+}
+
+.sa-marquee {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+}
+
+.sa-track {
+  display: flex;
+  width: max-content;
+  animation: sa-pan 22s linear infinite;
+}
+
+.site-announcement:hover .sa-track {
+  animation-play-state: paused;
+}
+
+.sa-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding-right: 18vw;
+  white-space: nowrap;
+}
+
+@keyframes sa-pan {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* People who've asked their device for less motion get it still. */
+@media (prefers-reduced-motion: reduce) {
+  .sa-track {
+    animation: none;
+  }
+
+  .sa-item + .sa-item {
+    display: none;
+  }
+
+  .sa-item {
+    white-space: normal;
+    padding: 0 0 0 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .site-announcement {
+    padding: 9px 40px 9px 0;
+  }
+
+  .sa-track {
+    animation-duration: 16s;
+  }
+}

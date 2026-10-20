@@ -113,7 +113,9 @@ export function teamCard(live, team) {
     }
   }
 
-  if (!row && contributionTotals.every((v) => v == null)) {
+  // A pre-made Hole by Hole row with no scores yet doesn't count.
+  const hasScores = strokes.some(Boolean)
+  if (!hasScores && contributionTotals.every((v) => v == null)) {
     return { strokes, contributions, contributionTotals: null, source: "live" }
   }
   return {

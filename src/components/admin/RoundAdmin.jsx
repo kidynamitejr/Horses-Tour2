@@ -141,8 +141,10 @@ function RoundAdmin() {
 
   const rows = teams.map((t) => {
     const card = teamCard(live, t)
-    // Past rounds already on Hole by Hole count as final.
-    return { ...t, ...summarizeCard(card, pars), submitted: card.source === "history" || isSubmitted(state, t) }
+    const summary = summarizeCard(card, pars)
+    // A past round already complete on Hole by Hole counts as final.
+    const final = (card.source === "history" && summary.thru === 18) || isSubmitted(state, t)
+    return { ...t, ...summary, submitted: final }
   })
   const team = teams.find((t) => t.letter === fixTeam)
   const liveNow = isToday(event)
