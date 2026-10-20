@@ -13,7 +13,7 @@ import {
   takeRejection,
   writeDraft,
 } from "../data/liveScoring"
-import { formatToPar, parseEventDate, summarizeCard, teamCard, useLiveEvent } from "../utils/liveEvent"
+import { formatToPar, isSubmitted, parseEventDate, summarizeCard, teamCard, useLiveEvent } from "../utils/liveEvent"
 
 const RETRY_MS = 15000
 
@@ -191,7 +191,7 @@ function LiveScorecardPage() {
   const firstEmpty = card.strokes.findIndex((s) => !s)
   const hole = selected ?? (firstEmpty === -1 ? 17 : firstEmpty)
   const pending = pendingSaves(eventId, letter).length
-  const submitted = (state?.submitted || []).includes(letter)
+  const submitted = isSubmitted(state, team)
   const complete = firstEmpty === -1
 
   const basePayload = { event: eventId, team: letter, course, date, players: team.players }

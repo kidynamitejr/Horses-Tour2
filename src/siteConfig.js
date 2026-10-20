@@ -113,6 +113,7 @@ export const MORE_NAV = [
   { to: "/gallery", label: "Gallery", note: "Photos from the tour" },
   { to: "/compare-players", label: "Compare Players", note: "Head-to-head numbers" },
   { to: "/calculator", label: "Points Calculator", note: "How points are earned" },
+  { to: "/auto-matchmaking", label: "Auto Matchmaking", note: "Pair the next event's teams" },
   { to: "/rules", label: "Rules", note: "Format and competition rules" },
 ]
 
@@ -188,6 +189,12 @@ export const PAGE_HEROES = {
     title: "Live Scoring",
     subtitle: "Follow every team hole by hole, and keep your own card.",
     image: PHOTOS.flagAndBall,
+  },
+  "/auto-matchmaking": {
+    eyebrow: "Next Event",
+    title: "Auto Matchmaking",
+    subtitle: "Mark who's playing and the teams pair themselves - first with last, second with second to last.",
+    image: PHOTOS.golfCarts,
   },
   "/course-history": {
     eyebrow: "Course Intelligence",

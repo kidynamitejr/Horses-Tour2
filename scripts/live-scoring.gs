@@ -92,6 +92,7 @@ function doPost(e) {
     if (body.action === "submit") return json(submitCard(body))
     if (body.action === "submitAll") return json(submitAll(body))
     if (body.action === "clearPractice") return json(clearPractice())
+    if (body.action === "setTeams") return json(setTeams(body))
     return json({ ok: false, error: "Unknown action" })
   } catch (err) {
     return json({ ok: false, error: String(err) })
@@ -146,17 +147,27 @@ function getState(eventId, course, eventName) {
     pars: getPars(course),
     scores: scores,
     submitted: submittedTeams(eventName),
+    submittedPairs: submittedPairs(eventName),
     serverTime: new Date().toISOString(),
   }
 }
 
-function submittedTeams(eventName) {
+// Teams whose Hole by Hole row for the event has scores: their letters and
+// their players (pairKey), since letters can change between tabs.
+function submittedRows(eventName) {
   const sheet = SpreadsheetApp.getActive().getSheetByName(HOLE_SHEET)
   if (!sheet || !eventName) return []
   const wanted = clean(eventName).toLowerCase()
   return sheet.getDataRange().getValues().slice(1)
     .filter((r) => clean(r[0]).toLowerCase() === wanted && clean(r[HOLE_FIRST_COL - 1]) !== "")
-    .map((r) => clean(r[1]))
+}
+
+function submittedTeams(eventName) {
+  return submittedRows(eventName).map((r) => clean(r[1]))
+}
+
+function submittedPairs(eventName) {
+  return submittedRows(eventName).map((r) => pairKey(clean(r[2]).split("/")))
 }
 
 // ---- Game-day lock ----
@@ -314,13 +325,22 @@ function queueCell(changes, table, row, col, value, label) {
   changes.push({ table: table, row: row, col: col, value: value, label: label })
 }
 
-// Hole by Hole: the team's row for the event (same event name and team
-// letter) gets columns D-U. With no row for the team, a full row is added.
+// "Jacob Dale / Kory Nijoka" -> "jacob dale|kory nijoka" (order doesn't matter)
+function pairKey(names) {
+  return names.map((n) => clean(n).toLowerCase()).filter(Boolean).sort().join("|")
+}
+
+// Hole by Hole: the team's row for the event gets columns D-U. The row is
+// found by the players in column C (so re-lettered teams still land in the
+// right row), then by team letter. With no row for the team, a full row is
+// added.
 function holeByHoleChanges(holeTable, eventName, plan, appends) {
   const changes = []
   const name = eventName.toLowerCase()
-  const r = holeTable.values.findIndex((row, idx) =>
-    idx > 0 && clean(row[0]).toLowerCase() === name && clean(row[1]) === plan.team)
+  const players = pairKey(plan.players)
+  const isEvent = (row, idx) => idx > 0 && clean(row[0]).toLowerCase() === name
+  let r = holeTable.values.findIndex((row, idx) => isEvent(row, idx) && pairKey(clean(row[2]).split("/")) === players)
+  if (r < 0) r = holeTable.values.findIndex((row, idx) => isEvent(row, idx) && clean(row[1]) === plan.team)
   if (r < 0) {
     appends.push({ row: [eventName, plan.team, plan.players.join(" / ")].concat(plan.toPar), label: "Hole by Hole: new row for team " + plan.team })
     return changes
@@ -445,6 +465,36 @@ function submitCard(body) {
 
 function submitAll(body) {
   return submitTeams(body, null)
+}
+
+// Auto Matchmaking: writes each player's team letter into Match Entry
+// column C on the event's existing rows, and clears it for players on the
+// event who aren't playing. Upcoming (or today's) events only; formula
+// cells are left alone. Reports players with no row for the event.
+function setTeams(body) {
+  const eventId = clean(body.event)
+  const date = eventDate(eventId)
+  if (!date) return { ok: false, error: "That event isn't on the Events tab." }
+  const today = new Date()
+  if (date < today && !sameDay(date, today)) return { ok: false, error: "Teams can only be set for upcoming events." }
+
+  const sheet = sheetById(MATCH_SHEET_ID)
+  if (!sheet) return { ok: false, error: "The Match Entry tab is missing." }
+  const table = readTable(sheet)
+
+  const wanted = {}
+  ;(body.assignments || []).forEach((a) => { wanted[clean(a.player)] = clean(a.team) })
+  const found = {}
+  table.values.forEach((row, idx) => {
+    if (idx === 0 || clean(row[MATCH_COLS.event]) !== eventId) return
+    const name = clean(row[MATCH_COLS.player])
+    if (!name) return
+    if (name in wanted) found[name] = true
+    const letter = wanted[name] || ""
+    if (clean(row[MATCH_COLS.team]) === letter || table.formulas[idx][MATCH_COLS.team]) return
+    sheet.getRange(idx + 1, MATCH_COLS.team + 1).setValue(letter)
+  })
+  return { ok: true, missing: Object.keys(wanted).filter((name) => !found[name]) }
 }
 
 // Deletes every practice-round row from Live Scores.

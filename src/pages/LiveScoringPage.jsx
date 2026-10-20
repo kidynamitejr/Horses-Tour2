@@ -4,6 +4,7 @@ import { ContributionSplit, LiveBoardCard } from "../components/LiveBoard"
 import { CalendarIcon, MapPinIcon } from "../components/Icons"
 import { PRACTICE_ID, clearPractice, flushQueue, liveScoringReady, submitAll } from "../data/liveScoring"
 import {
+  isSubmitted,
   isToday,
   parseEventDate,
   summarizeCard,
@@ -62,7 +63,6 @@ function LiveScoringPage() {
     )
   }
 
-  const submitted = state?.submitted || []
 
   const rows = teams
     .map((team) => {
@@ -72,7 +72,7 @@ function LiveScoringPage() {
       if (!summary.thru && card.officialToPar != null) {
         Object.assign(summary, { toPar: card.officialToPar, thru: 18, total: pars ? sum(pars) + card.officialToPar : 0 })
       }
-      return { ...team, card, ...summary, submitted: card.source === "live" && submitted.includes(team.letter) }
+      return { ...team, card, ...summary, submitted: card.source === "live" && isSubmitted(state, team) }
     })
     .sort((a, b) => {
       if (!a.thru !== !b.thru) return a.thru ? -1 : 1

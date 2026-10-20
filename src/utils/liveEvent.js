@@ -31,6 +31,18 @@ export function isToday(event) {
   return date.toDateString() === today.toDateString()
 }
 
+// ["Jacob Dale", "Kory Nijoka"] -> "jacob dale|kory nijoka" (order doesn't matter)
+export function pairKey(names) {
+  return names.map((n) => (n || "").trim().toLowerCase()).filter(Boolean).sort().join("|")
+}
+
+// Has this team's card been submitted? Checked by players when the script
+// reports them (letters can differ between tabs), otherwise by letter.
+export function isSubmitted(state, team) {
+  if (state?.submittedPairs) return state.submittedPairs.includes(pairKey(team.players))
+  return (state?.submitted || []).includes(team.letter)
+}
+
 export function formatToPar(value) {
   if (value == null || isNaN(value)) return "-"
   if (value === 0) return "E"
@@ -89,9 +101,11 @@ export function teamCard(live, team) {
   const officialToPar = parseFloat(entries.find((e) => e?.["Team Score"])?.["Team Score"])
 
   const name = eventName.toLowerCase()
-  const row = holeRows.find(
-    (r) => (r["Event Name"] || "").trim().toLowerCase() === name && (r["Team letter"] || "").trim() === letter
-  )
+  // Find the team's Hole by Hole row by its players, then by letter.
+  const sameEvent = (r) => (r["Event Name"] || "").trim().toLowerCase() === name
+  const players = pairKey(team.players)
+  const row = holeRows.find((r) => sameEvent(r) && pairKey((r.Team || "").split("/")) === players)
+    || holeRows.find((r) => sameEvent(r) && (r["Team letter"] || "").trim() === letter)
   if (row) {
     for (let h = 1; h <= 18; h++) {
       const toPar = parseFloat(row[`Hole ${h}`])

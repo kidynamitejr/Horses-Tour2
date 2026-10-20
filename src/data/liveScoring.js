@@ -91,6 +91,7 @@ function mockIsGameDay(date) {
 function mockRequest(payload) {
   const db = readStore(MOCK_KEY, { scores: [], submitted: {} })
   const open = payload.event === PRACTICE_ID || mockIsGameDay(payload.date)
+  if (payload.action === "setTeams") return { ok: true, missing: [] }
   if (payload.action === "clearPractice") {
     db.scores = db.scores.filter((s) => s.event !== PRACTICE_ID)
     writeStore(MOCK_KEY, db)
@@ -249,6 +250,11 @@ export function submitCard(payload) {
 // Submits every team with all 18 holes entered (for when someone forgets).
 export function submitAll(payload) {
   return post({ action: "submitAll", ...payload })
+}
+
+// Writes team letters into Match Entry column C for an upcoming event.
+export function setTeams(payload) {
+  return post({ action: "setTeams", ...payload })
 }
 
 export function clearPractice() {
