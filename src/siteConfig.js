@@ -114,6 +114,7 @@ export const MORE_NAV = [
   { to: "/compare-players", label: "Compare Players", note: "Head-to-head numbers" },
   { to: "/calculator", label: "Points Calculator", note: "How points are earned" },
   { to: "/rules", label: "Rules", note: "Format and competition rules" },
+  { to: "/admin", label: "Admin", note: "Commissioner sign-in" },
 ]
 
 export const PAGE_HEROES = {
