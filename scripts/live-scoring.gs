@@ -12,7 +12,8 @@
  *   Hole by Hole - finished cards fill columns D-U (score to par per hole)
  *   Match Entry  - finished cards fill columns D (Team Score) and
  *                  E (Contributions) on each player's row
- *   Events       - column G (Winner) once every team has a score
+ *   Events       - column G (Winner) and F (Status = Played) once every
+ *                  team has a score
  *   Matchmaking  - who's playing in the next event (from the Auto
  *                  Matchmaking page); when an event's last card is in,
  *                  the next event is paired and set up automatically
@@ -277,7 +278,7 @@ function saveHole(body) {
 
 const HOLE_FIRST_COL = 4 // D (1-based)
 const MATCH_COLS = { event: 0, player: 1, team: 2, score: 3, contributions: 4 } // A, B, C, D, E
-const EVENTS_COLS = { event: 0, winner: 6 } // A, G
+const EVENTS_COLS = { event: 0, status: 5, winner: 6 } // A, F, G
 
 function sheetById(id) {
   return SpreadsheetApp.getActive().getSheets().find((s) => s.getSheetId() === id) || null
@@ -406,6 +407,7 @@ function winnerChange(eventsTable, matchTable, matchEventId, newScores) {
   if (r < 0) return { pending: "event " + matchEventId + " not found in Events" }
   const changes = []
   queueCell(changes, eventsTable, r, EVENTS_COLS.winner, winner, "Events Winner (G) = " + winner)
+  queueCell(changes, eventsTable, r, EVENTS_COLS.status, "Played", "Events Status (F) = Played")
   return { changes: changes, winner: winner }
 }
 
@@ -602,14 +604,15 @@ function matchmakingSheet() {
   let sheet = book.getSheetByName(MATCHMAKING_SHEET)
   if (!sheet) {
     sheet = book.insertSheet(MATCHMAKING_SHEET)
-    sheet.getRange(1, 1, 1, 5).setValues([["Event ID", "Player", "Playing", "Sub For", "Sub Name"]]).setFontWeight("bold")
+    sheet.getRange(1, 1, 1, 6).setValues([["Event ID", "Player", "Playing", "Sub For", "Sub Name", "Added Ranking Pts"]]).setFontWeight("bold")
     sheet.setFrozenRows(1)
   }
+  if (!clean(sheet.getRange(1, 6).getValue())) sheet.getRange(1, 6).setValue("Added Ranking Pts").setFontWeight("bold")
   return sheet
 }
 
 function readAttendance(eventId) {
-  const result = { statuses: {}, subFor: "", subName: "" }
+  const result = { statuses: {}, subFor: "", subName: "", extras: [] }
   const sheet = SpreadsheetApp.getActive().getSheetByName(MATCHMAKING_SHEET)
   if (!sheet) return result
   sheet.getDataRange().getValues().slice(1).forEach((r) => {
@@ -619,6 +622,8 @@ function readAttendance(eventId) {
       result.subName = clean(r[4])
     } else if (clean(r[1])) {
       result.statuses[clean(r[1])] = /^no/i.test(clean(r[2])) ? "out" : "playing"
+      // A player added just for this event, with the ranking points to seed them at.
+      if (clean(r[5]) !== "" && !isNaN(Number(r[5]))) result.extras.push({ name: clean(r[1]), seed: Number(r[5]) })
     }
   })
   return result
@@ -633,10 +638,16 @@ function saveAttendance(body) {
   for (let i = values.length - 1; i >= 1; i--) {
     if (clean(values[i][0]) === eventId) sheet.deleteRow(i + 1)
   }
-  const rows = Object.keys(body.statuses || {}).map((name) =>
-    [eventId, name, body.statuses[name] === "out" ? "No" : "Yes", "", ""])
-  rows.push([eventId, SUB_ROW, "", clean(body.subFor), clean(body.subName)])
-  sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 5).setValues(rows)
+  const extraSeed = {}
+  ;(body.extras || []).forEach((x) => { if (clean(x.name)) extraSeed[clean(x.name)] = Number(x.seed) || 0 })
+  const names = Object.keys(body.statuses || {})
+  Object.keys(extraSeed).forEach((n) => { if (names.indexOf(n) < 0) names.push(n) })
+  const rows = names.map((name) => [
+    eventId, name, (body.statuses || {})[name] === "out" ? "No" : "Yes", "", "",
+    name in extraSeed ? extraSeed[name] : "",
+  ])
+  rows.push([eventId, SUB_ROW, "", clean(body.subFor), clean(body.subName), ""])
+  sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 6).setValues(rows)
   return { ok: true }
 }
 
@@ -683,13 +694,16 @@ function buildPairings(lastEventId, nextEventId, attendance, matchValues) {
   })
   const num = (v) => (v === "" || v == null || isNaN(Number(v)) ? null : Number(v))
 
-  const ranked = activeRoster().map((name) => {
+  const roster = activeRoster()
+  const extras = (attendance.extras || []).filter((x) => roster.indexOf(x.name) < 0)
+  const ranked = roster.map((name) => {
     const last = matchValues.find((r) =>
       clean(r[MATCH_COLS.event]) === lastEventId && clean(r[MATCH_COLS.player]) === name && num(r[MATCH_COLS.score]) != null)
     const average = num(firstRow[name] ? firstRow[name][AVG_COL] : null) || 0
     const lastPoints = last ? num(last[MRP_COL]) : null
     return { name: name, seed: lastPoints != null ? lastPoints : average, average: average }
-  }).sort((a, b) => b.seed - a.seed || b.average - a.average || a.name.localeCompare(b.name))
+  }).concat(extras.map((x) => ({ name: x.name, seed: x.seed, average: x.seed })))
+    .sort((a, b) => b.seed - a.seed || b.average - a.average || a.name.localeCompare(b.name))
 
   const status = (name) => attendance.statuses[name] || "playing"
   const playing = ranked.filter((p) => status(p.name) === "playing")

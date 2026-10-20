@@ -294,6 +294,79 @@
   font-weight: 600;
 }
 
+/* Players added just for an event */
+.mm-added {
+  color: #b07a00 !important;
+}
+
+.mm-remove {
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(214, 48, 49, .12);
+  color: #d63031;
+  font: 800 14px/1.4 var(--font-body);
+  cursor: pointer;
+}
+
+.mm-add {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  background: var(--page);
+}
+
+.mm-add h4 {
+  margin: 0 0 2px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.mm-add p {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.mm-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mm-add-row input {
+  flex: 1 1 140px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 700 13px var(--font-body);
+}
+
+.mm-add-row input[type="number"] {
+  flex: 0 1 120px;
+}
+
+.mm-add-row button {
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--navy);
+  color: white;
+  font: 800 13px var(--font-body);
+  cursor: pointer;
+}
+
+.mm-add-row button:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
 /* Pairings board uses the home page groupings styles (ev-*) */
 .mm-board .ev-board-head {
   margin-bottom: 12px;

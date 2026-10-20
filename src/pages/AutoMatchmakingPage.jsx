@@ -46,7 +46,9 @@ function AutoMatchmakingPage() {
   const [matchEntry, setMatchEntry] = useState([])
   const [events, setEvents] = useState([])
   const [pickedId, setPickedId] = useState("")
-  const [attendance, setAttendance] = useState({ eventId: "", statuses: {}, subFor: "", subName: "" })
+  const [attendance, setAttendance] = useState({ eventId: "", statuses: {}, subFor: "", subName: "", extras: [] })
+  const [newName, setNewName] = useState("")
+  const [newSeed, setNewSeed] = useState("")
   const [sync, setSync] = useState("")
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState("")
@@ -92,11 +94,17 @@ function AutoMatchmakingPage() {
     load
       .then((a) => {
         if (!cancelled) {
-          setAttendance({ eventId: nextId, statuses: a.statuses || {}, subFor: a.subFor || "", subName: a.subName || "" })
+          setAttendance({
+            eventId: nextId,
+            statuses: a.statuses || {},
+            subFor: a.subFor || "",
+            subName: a.subName || "",
+            extras: a.extras || [],
+          })
         }
       })
       .catch(() => {
-        if (!cancelled) setAttendance({ eventId: nextId, statuses: {}, subFor: "", subName: "" })
+        if (!cancelled) setAttendance({ eventId: nextId, statuses: {}, subFor: "", subName: "", extras: [] })
       })
     return () => { cancelled = true }
   }, [nextId])
@@ -104,6 +112,7 @@ function AutoMatchmakingPage() {
   const loaded = attendance.eventId === nextId
   const statusFor = (name) => (loaded && attendance.statuses[name]) || "playing"
   const subFor = loaded ? attendance.subFor : ""
+  const extras = loaded ? attendance.extras || [] : []
 
   const summaries = getPlayerSummaries(matchEntry)
 
@@ -133,6 +142,12 @@ function AutoMatchmakingPage() {
         average,
       }
     })
+    // Players added just for this event, at the ranking points you gave them.
+    .concat(
+      extras
+        .filter((x) => !players.some((p) => (p.Name || "").trim() === x.name))
+        .map((x) => ({ name: x.name, seed: x.seed, source: "Added", average: x.seed, added: true })),
+    )
     .sort((a, b) => b.seed - a.seed || b.average - a.average || a.name.localeCompare(b.name))
 
   const playing = ranked.filter((p) => statusFor(p.name) === "playing")
@@ -197,13 +212,19 @@ function AutoMatchmakingPage() {
       eventId: nextId,
       statuses: { ...statuses, ...(changes.statuses || {}) },
       ...(changes.sub || {}),
+      extras: changes.extras || attendance.extras || [],
+    }
+    if (changes.extras) {
+      // A removed player drops out of the statuses too.
+      const keep = new Set(ranked.filter((p) => !p.added).map((p) => p.name).concat(changes.extras.map((x) => x.name)))
+      Object.keys(next.statuses).forEach((n) => { if (!keep.has(n)) delete next.statuses[n] })
     }
     setAttendance(next)
     setMessage("")
     setSync("saving")
     clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
-      const payload = { event: nextId, statuses: next.statuses, subFor: next.subFor, subName: next.subName }
+      const payload = { event: nextId, statuses: next.statuses, subFor: next.subFor, subName: next.subName, extras: next.extras }
       if (!liveScoringReady) {
         writeStore(`ht-matchmaking-${nextId}`, payload)
         setSync("saved")
@@ -215,6 +236,27 @@ function AutoMatchmakingPage() {
 
   function setPlayerStatus(name, value) {
     updateAttendance({ statuses: { [name]: value } })
+  }
+
+  function addPlayer(e) {
+    e.preventDefault()
+    const name = newName.trim()
+    const seed = parseFloat(newSeed)
+    if (!name || isNaN(seed)) return
+    if (ranked.some((p) => p.name.toLowerCase() === name.toLowerCase())) {
+      setMessage(`${name} is already on the list.`)
+      return
+    }
+    updateAttendance({
+      extras: [...extras, { name, seed }],
+      statuses: { [name]: "playing" },
+    })
+    setNewName("")
+    setNewSeed("")
+  }
+
+  function removePlayer(name) {
+    updateAttendance({ extras: extras.filter((x) => x.name !== name) })
   }
 
   async function save() {
@@ -315,10 +357,17 @@ function AutoMatchmakingPage() {
                 return (
                   <tr key={p.name} className={value === "playing" ? "" : "is-out"}>
                     <td className="mm-rank">{i + 1}</td>
-                    <td className="mm-name">{p.name}</td>
+                    <td className="mm-name">
+                      {p.name}
+                      {p.added && (
+                        <button type="button" className="mm-remove" onClick={() => removePlayer(p.name)} aria-label={`Remove ${p.name}`}>
+                          ×
+                        </button>
+                      )}
+                    </td>
                     <td className="mm-points">
                       <b>{p.seed.toFixed(2)}</b>
-                      <small>{p.source}</small>
+                      <small className={p.added ? "mm-added" : ""}>{p.source}</small>
                     </td>
                     <td>
                       <select
@@ -335,6 +384,30 @@ function AutoMatchmakingPage() {
               })}
             </tbody>
           </table>
+
+          <form className="mm-add" onSubmit={addPlayer}>
+            <h4>Add a player to {nextEvent ? nextEvent["Event Name"].trim() : "this event"}</h4>
+            <p>For someone new joining - give them the ranking points to slot them in at.</p>
+            <div className="mm-add-row">
+              <input
+                type="text"
+                placeholder="Name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                aria-label="New player's name"
+              />
+              <input
+                type="number"
+                step="0.01"
+                inputMode="decimal"
+                placeholder="Ranking pts"
+                value={newSeed}
+                onChange={(e) => setNewSeed(e.target.value)}
+                aria-label="New player's ranking points"
+              />
+              <button type="submit" disabled={!newName.trim() || newSeed === ""}>Add</button>
+            </div>
+          </form>
         </section>
 
         <section className="mm-card mm-board">
