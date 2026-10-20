@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+    # Photos uploaded from the site are saved in uploads/ and shown straight
+    # from GitHub, so they don't need the website to rebuild.
+    paths-ignore:
+      - "uploads/**"
 
 permissions:
   contents: read

@@ -24,10 +24,11 @@
  *                  the next event is paired and set up automatically
  * Formula cells are never overwritten.
  *
- * Photos: uploads (Gallery and News) are hosted on imgur when
- * IMGUR_CLIENT_ID is set in Script Properties - Google Drive links get
- * blocked when a website shows them. Without it they fall back to Drive.
- * Run rehostDrivePhotos() once to move earlier Drive uploads to imgur.
+ * Photos: uploads (Gallery and News) are saved into the website's GitHub
+ * repo (uploads/ folder) when GITHUB_TOKEN is set in Script Properties -
+ * Google Drive links get blocked when a website shows them. Without the
+ * token they fall back to Drive. Run rehostDrivePhotos() once to move
+ * earlier Drive uploads to GitHub.
  *
  * Admin: the website's Admin page (matchmaking, sponsor stats, news)
  * needs the admin password. It's kept in this project's Script Properties
@@ -52,6 +53,8 @@ const PRACTICE_ID = "practice"
 const GALLERY_SHEET_ID = 4188486 // the Gallery tab
 const GALLERY_FOLDER = "Horses Tour Gallery" // Drive folder for uploaded photos
 const AD_STATS_SHEET = "Ad Stats"
+const GITHUB_REPO = "kidynamitejr/Horses-Tour2" // where uploaded photos are stored
+const GITHUB_BRANCH = "main"
 const AD_CLICKS_SHEET = "Ad Clicks" // one row per click: time + ad (nothing about who)
 const NEWS_SHEET_ID = 1649176247 // the News tab
 const NEWS_FOLDER = "Horses Tour News" // Drive folder for article photos
@@ -82,14 +85,19 @@ function setup() {
   const book = SpreadsheetApp.getActive()
 
   // Creates the photo folders (and asks for Google Drive permission), and
-  // asks for permission to send photos to imgur.
+  // checks the GitHub token (asks for permission to reach GitHub).
   galleryFolder()
   newsFolder()
-  if (PropertiesService.getScriptProperties().getProperty("IMGUR_CLIENT_ID")) {
-    UrlFetchApp.fetch("https://api.imgur.com/3/credits", {
-      headers: { Authorization: "Client-ID " + PropertiesService.getScriptProperties().getProperty("IMGUR_CLIENT_ID") },
+  const token = PropertiesService.getScriptProperties().getProperty("GITHUB_TOKEN")
+  if (token) {
+    const check = UrlFetchApp.fetch("https://api.github.com/repos/" + GITHUB_REPO, {
+      headers: { Authorization: "Bearer " + token, Accept: "application/vnd.github+json" },
       muteHttpExceptions: true,
     })
+    if (check.getResponseCode() !== 200) {
+      throw new Error("GITHUB_TOKEN doesn't work for " + GITHUB_REPO + " (" + check.getResponseCode() + ") - check the token.")
+    }
+    Logger.log("GitHub token works - photo uploads will be saved to " + GITHUB_REPO + "/uploads.")
   }
 
   let pars = book.getSheetByName(PARS_SHEET)
@@ -805,32 +813,47 @@ function autoMatchmake(completedEventId) {
 // ---- Photo hosting ----
 
 // Puts a photo (base64 JPEG) somewhere a website can show it and returns
-// the link: imgur when IMGUR_CLIENT_ID is set, otherwise Google Drive.
+// the link: the GitHub repo's uploads/ folder when GITHUB_TOKEN is set,
+// otherwise Google Drive.
 function hostImage(base64, kind, title) {
-  const clientId = PropertiesService.getScriptProperties().getProperty("IMGUR_CLIENT_ID")
-  if (!clientId) return saveImage(kind === "news" ? newsFolder() : galleryFolder(), base64, kind)
-  const response = UrlFetchApp.fetch("https://api.imgur.com/3/image", {
-    method: "post",
-    headers: { Authorization: "Client-ID " + clientId },
-    payload: { image: base64, type: "base64", title: String(title || "").slice(0, 100) },
+  const token = PropertiesService.getScriptProperties().getProperty("GITHUB_TOKEN")
+  if (!token) return saveImage(kind === "news" ? newsFolder() : galleryFolder(), base64, kind)
+
+  const tz = SpreadsheetApp.getActive().getSpreadsheetTimeZone()
+  const folder = kind === "news" ? "news" : "gallery"
+  const path = "uploads/" + folder + "/" + Utilities.formatDate(new Date(), tz, "yyyy-MM-dd-HHmmss") +
+    "-" + Math.floor(Math.random() * 100000) + ".jpg"
+  const response = UrlFetchApp.fetch("https://api.github.com/repos/" + GITHUB_REPO + "/contents/" + path, {
+    method: "put",
+    contentType: "application/json",
+    headers: {
+      Authorization: "Bearer " + token,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+    payload: JSON.stringify({
+      message: "Photo upload: " + String(title || folder).slice(0, 60),
+      content: base64,
+      branch: GITHUB_BRANCH,
+    }),
     muteHttpExceptions: true,
   })
-  let data = {}
-  try {
-    data = JSON.parse(response.getContentText())
-  } catch (err) {
-    data = {}
+  const code = response.getResponseCode()
+  if (code === 201 || code === 200) {
+    return "https://raw.githubusercontent.com/" + GITHUB_REPO + "/" + GITHUB_BRANCH + "/" + path
   }
-  if (data.success && data.data && data.data.link) return data.data.link
-  throw new Error("imgur didn't take the photo (" + response.getResponseCode() + ") - try again in a minute.")
+  if (code === 401 || code === 403) {
+    throw new Error("GitHub refused the photo - check GITHUB_TOKEN (it may have expired or lack Contents write access).")
+  }
+  throw new Error("GitHub didn't take the photo (" + code + ") - try again in a minute.")
 }
 
-// One-time: moves photos uploaded to Google Drive earlier onto imgur and
-// updates their links on the Gallery and News tabs. Run it from the editor
-// after setting IMGUR_CLIENT_ID.
+// One-time: moves photos uploaded to Google Drive earlier into the GitHub
+// repo and updates their links on the Gallery and News tabs. Run it from
+// the editor after setting GITHUB_TOKEN.
 function rehostDrivePhotos() {
-  if (!PropertiesService.getScriptProperties().getProperty("IMGUR_CLIENT_ID")) {
-    throw new Error("Add IMGUR_CLIENT_ID in Project Settings > Script Properties first.")
+  if (!PropertiesService.getScriptProperties().getProperty("GITHUB_TOKEN")) {
+    throw new Error("Add GITHUB_TOKEN in Project Settings > Script Properties first.")
   }
   const driveId = (url) => {
     const m = String(url || "").match(/lh3\.googleusercontent\.com\/d\/([\w-]+)/)
@@ -845,14 +868,14 @@ function rehostDrivePhotos() {
         const id = driveId(values[i][c])
         if (!id) return
         const base64 = Utilities.base64Encode(DriveApp.getFileById(id).getBlob().getBytes())
-        sheet.getRange(i + 1, c + 1).setValue(hostImage(base64, "rehost", "Horses Tour photo"))
+        sheet.getRange(i + 1, c + 1).setValue(hostImage(base64, sheet.getSheetId() === NEWS_SHEET_ID ? "news" : "gallery", "Moved from Drive"))
         moved++
       })
     }
   }
   fix(sheetById(GALLERY_SHEET_ID), [2]) // C: Image
   fix(sheetById(NEWS_SHEET_ID), [3, 6]) // D: Image, G: Image 2
-  Logger.log("Moved " + moved + " photo(s) to imgur.")
+  Logger.log("Moved " + moved + " photo(s) to GitHub.")
   return moved
 }
 
