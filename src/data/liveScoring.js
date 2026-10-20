@@ -91,7 +91,9 @@ function mockIsGameDay(date) {
 function mockRequest(payload) {
   const db = readStore(MOCK_KEY, { scores: [], submitted: {} })
   const open = payload.event === PRACTICE_ID || mockIsGameDay(payload.date)
-  if (payload.action === "setTeams") return { ok: true, missing: [] }
+  if (payload.action === "setTeams" || payload.action === "planTeams") {
+    return { ok: true, added: payload.assignments.map((x) => `${x.player} (team ${x.team})`), updated: [], copiedValues: [], copiedFromRow: 1 }
+  }
   if (payload.action === "clearPractice") {
     db.scores = db.scores.filter((s) => s.event !== PRACTICE_ID)
     writeStore(MOCK_KEY, db)
@@ -252,9 +254,21 @@ export function submitAll(payload) {
   return post({ action: "submitAll", ...payload })
 }
 
-// Writes team letters into Match Entry column C for an upcoming event.
+// Sets up Match Entry for an upcoming event (team letters, plus new rows
+// for players without one). planTeams only reports what would change.
 export function setTeams(payload) {
   return post({ action: "setTeams", ...payload })
+}
+
+export async function planTeams(payload) {
+  try {
+    return await post({ action: "planTeams", ...payload })
+  } catch (err) {
+    if (/unknown action/i.test(err.message)) {
+      throw new Error("Update the Google Apps Script (Deploy > Manage deployments > New version) to save teams.", { cause: err })
+    }
+    throw err
+  }
 }
 
 export function clearPractice() {

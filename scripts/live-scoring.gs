@@ -93,6 +93,7 @@ function doPost(e) {
     if (body.action === "submitAll") return json(submitAll(body))
     if (body.action === "clearPractice") return json(clearPractice())
     if (body.action === "setTeams") return json(setTeams(body))
+    if (body.action === "planTeams") return json(setTeams(Object.assign({}, body, { dryRun: true })))
     return json({ ok: false, error: "Unknown action" })
   } catch (err) {
     return json({ ok: false, error: String(err) })
@@ -467,12 +468,19 @@ function submitAll(body) {
   return submitTeams(body, null)
 }
 
-// Auto Matchmaking: writes each player's team letter into Match Entry
-// column C on the event's existing rows, and clears it for players on the
-// event who aren't playing. Upcoming (or today's) events only; formula
-// cells are left alone. Reports players with no row for the event.
+// Auto Matchmaking: sets up Match Entry for an upcoming event.
+//  - Players who already have a row for the event get their team letter
+//    in column C; rows of players not playing are cleared (letter only).
+//  - Players playing with no row yet get one: the last filled Match Entry
+//    row is copied (A-U, like dragging it down, so its formulas carry on),
+//    then A = Event ID, B = player, C = team letter, and D/E are cleared.
+// Upcoming (or today's) events only; formula cells are never overwritten.
+// With dryRun nothing is written - it reports what would be.
+const MATCH_ROW_WIDTH = 21 // A-U: the per-player columns (the side tables start further right)
+
 function setTeams(body) {
   const eventId = clean(body.event)
+  const dryRun = Boolean(body.dryRun)
   const date = eventDate(eventId)
   if (!date) return { ok: false, error: "That event isn't on the Events tab." }
   const today = new Date()
@@ -481,10 +489,15 @@ function setTeams(body) {
   const sheet = sheetById(MATCH_SHEET_ID)
   if (!sheet) return { ok: false, error: "The Match Entry tab is missing." }
   const table = readTable(sheet)
+  const header = table.values[0].map(clean)
 
+  const assignments = (body.assignments || []).map((a) => ({ player: clean(a.player), team: clean(a.team) }))
   const wanted = {}
-  ;(body.assignments || []).forEach((a) => { wanted[clean(a.player)] = clean(a.team) })
+  assignments.forEach((a) => { wanted[a.player] = a.team })
+
+  // 1. Existing rows for the event.
   const found = {}
+  const updates = []
   table.values.forEach((row, idx) => {
     if (idx === 0 || clean(row[MATCH_COLS.event]) !== eventId) return
     const name = clean(row[MATCH_COLS.player])
@@ -492,9 +505,64 @@ function setTeams(body) {
     if (name in wanted) found[name] = true
     const letter = wanted[name] || ""
     if (clean(row[MATCH_COLS.team]) === letter || table.formulas[idx][MATCH_COLS.team]) return
-    sheet.getRange(idx + 1, MATCH_COLS.team + 1).setValue(letter)
+    updates.push({ row: idx, value: letter, label: name + " team " + (letter || "(cleared)") })
   })
-  return { ok: true, missing: Object.keys(wanted).filter((name) => !found[name]) }
+
+  // 2. New rows for players playing who don't have one yet, in team order.
+  const toAdd = assignments
+    .filter((a) => !found[a.player])
+    .sort((a, b) => a.team.localeCompare(b.team))
+
+  let lastRow = -1
+  for (let i = table.values.length - 1; i >= 1; i--) {
+    if (clean(table.values[i][MATCH_COLS.event]) !== "") { lastRow = i; break }
+  }
+  if (toAdd.length && lastRow < 1) return { ok: false, error: "Match Entry has no rows to copy formulas from." }
+
+  // Columns of the copied row that hold plain values rather than formulas
+  // (besides A-E) - these get copied as-is, so they're reported.
+  const copiedValues = []
+  if (toAdd.length) {
+    for (let c = 5; c < MATCH_ROW_WIDTH; c++) {
+      const value = table.values[lastRow][c]
+      if (!table.formulas[lastRow][c] && value !== "" && value != null) {
+        copiedValues.push((header[c] || "Column " + (c + 1)) + " (" + value + ")")
+      }
+    }
+  }
+
+  if (!dryRun) {
+    updates.forEach((u) => sheet.getRange(u.row + 1, MATCH_COLS.team + 1).setValue(u.value))
+
+    if (toAdd.length) {
+      const needed = lastRow + 1 + toAdd.length - sheet.getMaxRows()
+      if (needed > 0) sheet.insertRowsAfter(sheet.getMaxRows(), needed)
+      const template = sheet.getRange(lastRow + 1, 1, 1, MATCH_ROW_WIDTH)
+      const idValue = isNaN(Number(eventId)) ? eventId : Number(eventId)
+      toAdd.forEach((a, k) => {
+        const r = lastRow + 2 + k
+        template.copyTo(sheet.getRange(r, 1, 1, MATCH_ROW_WIDTH))
+        const set = (col, value) => {
+          if (!table.formulas[lastRow][col]) sheet.getRange(r, col + 1).setValue(value)
+        }
+        set(MATCH_COLS.event, idValue)
+        set(MATCH_COLS.player, a.player)
+        set(MATCH_COLS.team, a.team)
+        set(MATCH_COLS.score, "")
+        set(MATCH_COLS.contributions, "")
+      })
+    }
+  }
+
+  return {
+    ok: true,
+    dryRun: dryRun,
+    updated: updates.map((u) => u.label),
+    added: toAdd.map((a) => a.player + " (team " + a.team + ")"),
+    copiedFromRow: toAdd.length ? lastRow + 1 : null,
+    copiedValues: copiedValues,
+    missing: [],
+  }
 }
 
 // Deletes every practice-round row from Live Scores.

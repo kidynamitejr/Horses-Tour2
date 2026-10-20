@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { getEvents, getMatchEntry, getPlayers } from "../data/googleSheets"
-import { liveScoringReady, setTeams } from "../data/liveScoring"
+import { liveScoringReady, planTeams, setTeams } from "../data/liveScoring"
 import { getPlayerSummaries } from "../utils/matchEntry"
 import { parseEventDate } from "../utils/liveEvent"
 import { getPartnershipHistory, partnershipLabel } from "../utils/partnership"
@@ -159,15 +159,30 @@ function AutoMatchmakingPage() {
   }
 
   async function save() {
-    if (!window.confirm(`Write these ${teams.length} teams into Match Entry column C for ${nextEvent["Event Name"].trim()}?`)) return
     setSaving(true)
     setMessage("")
     try {
       const assignments = teams.flatMap((t) => t.players.map((p) => ({ player: p.name, team: t.letter })))
+      // Check first, then show what will change before writing anything.
+      const plan = await planTeams({ event: nextId, assignments })
+      const lines = []
+      if (plan.added.length) {
+        lines.push(`Add ${plan.added.length} rows (copied from row ${plan.copiedFromRow}, formulas included):`)
+        lines.push(...plan.added.map((a) => `  • ${a}`))
+      }
+      if (plan.updated.length) lines.push(`Update ${plan.updated.length} existing rows: ${plan.updated.join(", ")}`)
+      if (plan.copiedValues.length) {
+        lines.push(`Heads up - these copy as plain values, not formulas: ${plan.copiedValues.join(", ")}`)
+      }
+      if (!lines.length) {
+        setMessage("Match Entry already matches these teams.")
+        return
+      }
+      const summary = `${nextEvent["Event Name"].trim()} - Match Entry changes:\n\n${lines.join("\n")}\n\nSave?`
+      if (!window.confirm(summary)) return
+
       const result = await setTeams({ event: nextId, assignments })
-      setMessage(result.missing?.length
-        ? `Saved. Not found in Match Entry for this event: ${result.missing.join(", ")} - add a row for them and save again.`
-        : "Teams saved to Match Entry.")
+      setMessage(`Saved. ${result.added.length} rows added, ${result.updated.length} updated.`)
     } catch (err) {
       setMessage(err.message || "Couldn't save the teams.")
     } finally {
@@ -316,7 +331,11 @@ function AutoMatchmakingPage() {
               <button type="button" onClick={save} disabled={saving}>
                 {saving ? "Saving..." : "Save teams to Match Entry"}
               </button>
-              <small>Fills column C (Team) on {nextEvent["Event Name"].trim()}&apos;s rows. Players not playing are cleared.</small>
+              <small>
+                Sets up {nextEvent["Event Name"].trim()} in Match Entry: adds a row for each player (copying the last row&apos;s
+                formulas, with Event ID, name and team filled in) or updates their team letter. You&apos;ll see the changes before
+                anything is saved.
+              </small>
               {message && <p>{message}</p>}
             </div>
           )}
