@@ -23,6 +23,11 @@
  *                  the next event is paired and set up automatically
  * Formula cells are never overwritten.
  *
+ * Admin: the website's Admin page (matchmaking, sponsor stats, news)
+ * needs the admin password. It's kept in this project's Script Properties
+ * (Project Settings > Script Properties > ADMIN_PASSWORD), never in this
+ * file, because the website's code is public.
+ *
  * Scores can only be saved or submitted on the event's date (from the
  * Events tab), so past rounds can't be changed from the website. The
  * "practice" event is always open for trying the cards out; it's never
@@ -41,6 +46,14 @@ const PRACTICE_ID = "practice"
 const GALLERY_SHEET_ID = 4188486 // the Gallery tab
 const GALLERY_FOLDER = "Horses Tour Gallery" // Drive folder for uploaded photos
 const AD_STATS_SHEET = "Ad Stats"
+const NEWS_SHEET_ID = 1649176247 // the News tab
+const NEWS_FOLDER = "Horses Tour News" // Drive folder for article photos
+
+// Actions only the Admin page can use (checked against ADMIN_PASSWORD).
+const ADMIN_ACTIONS = [
+  "adminCheck", "setTeams", "planTeams", "saveAttendance", "previewAutoPairing",
+  "adStats", "saveNews", "deleteNews",
+]
 
 const LIVE_HEADERS = [
   "Event ID", "Team", "Players", "Hole", "Strokes", "Par", "To Par",
@@ -61,8 +74,9 @@ const KNOWN_PARS = {
 function setup() {
   const book = SpreadsheetApp.getActive()
 
-  // Creates the photo folder (and asks for Google Drive permission).
+  // Creates the photo folders (and asks for Google Drive permission).
   galleryFolder()
+  newsFolder()
 
   let pars = book.getSheetByName(PARS_SHEET)
   if (!pars) {
@@ -91,7 +105,6 @@ function setup() {
 
 function doGet(e) {
   const p = e.parameter || {}
-  if (p.action === "adStats") return json({ ok: true, rows: readAdStats() })
   if (p.action === "attendance") return json({ ok: true, attendance: readAttendance(String(p.event || "")) })
   if (p.action === "state") {
     return json(getState(String(p.event || ""), String(p.course || ""), String(p.eventName || "")))
@@ -104,6 +117,14 @@ function doPost(e) {
   const lock = LockService.getScriptLock()
   lock.waitLock(20000)
   try {
+    if (ADMIN_ACTIONS.indexOf(body.action) >= 0) {
+      const denied = checkAdmin(body)
+      if (denied) return json(denied)
+    }
+    if (body.action === "adminCheck") return json({ ok: true })
+    if (body.action === "adStats") return json({ ok: true, rows: readAdStats() })
+    if (body.action === "saveNews") return json(saveNews(body))
+    if (body.action === "deleteNews") return json(deleteNews(body))
     if (body.action === "save") return json(saveHole(body))
     if (body.action === "submit") return json(submitCard(body))
     if (body.action === "submitAll") return json(submitAll(body))
@@ -847,6 +868,93 @@ function readAdStats() {
       views: Number(r[3]) || 0,
       clicks: Number(r[4]) || 0,
     }))
+}
+
+// ---- Admin ----
+
+// Returns an error result if the password is wrong (null when it's fine).
+// After 10 wrong tries in 10 minutes, admin is locked for 10 minutes.
+function checkAdmin(body) {
+  const password = PropertiesService.getScriptProperties().getProperty("ADMIN_PASSWORD") || ""
+  if (!password) {
+    return { ok: false, admin: true, error: "Set ADMIN_PASSWORD in the Apps Script's Project Settings > Script Properties first." }
+  }
+  const cache = CacheService.getScriptCache()
+  const fails = Number(cache.get("admin-fails")) || 0
+  if (fails >= 10) return { ok: false, admin: true, error: "Too many wrong tries - wait 10 minutes and try again." }
+  if (String(body.password || "") !== password) {
+    cache.put("admin-fails", String(fails + 1), 600)
+    return { ok: false, admin: true, error: "Wrong admin password." }
+  }
+  return null
+}
+
+// ---- News (from the Admin page) ----
+// News tab: Article ID | Date | Headline | Image | Article | Featured
+
+function newsFolder() {
+  const folders = DriveApp.getFoldersByName(NEWS_FOLDER)
+  return folders.hasNext() ? folders.next() : DriveApp.createFolder(NEWS_FOLDER)
+}
+
+function saveImage(folder, base64, prefix) {
+  const stamp = Utilities.formatDate(new Date(), SpreadsheetApp.getActive().getSpreadsheetTimeZone(), "yyyyMMdd-HHmmss")
+  const file = folder.createFile(Utilities.newBlob(Utilities.base64Decode(base64), "image/jpeg", prefix + "-" + stamp + ".jpg"))
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW)
+  return "https://lh3.googleusercontent.com/d/" + file.getId()
+}
+
+// Adds an article (no id) or updates one (id). A new photo replaces the
+// old one; without one the current photo is kept.
+function saveNews(body) {
+  const sheet = sheetById(NEWS_SHEET_ID)
+  if (!sheet) return { ok: false, error: "The News tab is missing." }
+  const headline = clean(body.headline)
+  if (!headline) return { ok: false, error: "Add a headline." }
+  const article = String(body.article || "").trim()
+  // Kept as text ("10/25") so Sheets doesn't turn it into a full date.
+  const date = /^\d+\/\d+$/.test(clean(body.date)) ? "'" + clean(body.date) : clean(body.date)
+  const featured = body.featured ? "Yes" : "No"
+  const values = sheet.getDataRange().getValues()
+  const id = clean(body.id)
+
+  let image = clean(body.image)
+  if (body.imageData) {
+    if (String(body.imageData).length > 10 * 1024 * 1024) return { ok: false, error: "That photo is too big." }
+    image = saveImage(newsFolder(), String(body.imageData), "news")
+  }
+
+  if (id) {
+    for (let i = 1; i < values.length; i++) {
+      if (clean(values[i][0]) === id) {
+        sheet.getRange(i + 1, 2, 1, 5).setValues([[date, headline, image, article, featured]])
+        return { ok: true, id: id, image: image }
+      }
+    }
+    return { ok: false, error: "That article isn't on the News tab anymore." }
+  }
+
+  let maxId = 0
+  values.slice(1).forEach((r) => {
+    const n = Number(r[0])
+    if (n > maxId) maxId = n
+  })
+  sheet.appendRow([maxId + 1, date, headline, image, article, featured])
+  return { ok: true, id: String(maxId + 1), image: image }
+}
+
+function deleteNews(body) {
+  const sheet = sheetById(NEWS_SHEET_ID)
+  if (!sheet) return { ok: false, error: "The News tab is missing." }
+  const id = clean(body.id)
+  const values = sheet.getDataRange().getValues()
+  for (let i = values.length - 1; i >= 1; i--) {
+    if (clean(values[i][0]) === id) {
+      sheet.deleteRow(i + 1)
+      return { ok: true }
+    }
+  }
+  return { ok: false, error: "That article isn't on the News tab." }
 }
 
 // Deletes every practice-round row from Live Scores.

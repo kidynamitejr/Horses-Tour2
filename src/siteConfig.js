@@ -113,8 +113,6 @@ export const MORE_NAV = [
   { to: "/gallery", label: "Gallery", note: "Photos from the tour" },
   { to: "/compare-players", label: "Compare Players", note: "Head-to-head numbers" },
   { to: "/calculator", label: "Points Calculator", note: "How points are earned" },
-  { to: "/auto-matchmaking", label: "Auto Matchmaking", note: "Pair the next event's teams" },
-  { to: "/sponsor-stats", label: "Sponsor Stats", note: "Ad views and clicks" },
   { to: "/rules", label: "Rules", note: "Format and competition rules" },
 ]
 
@@ -191,16 +189,10 @@ export const PAGE_HEROES = {
     subtitle: "Follow every team hole by hole, and keep your own card.",
     image: PHOTOS.flagAndBall,
   },
-  "/sponsor-stats": {
-    eyebrow: "Partners",
-    title: "Sponsor Stats",
-    subtitle: "How many people saw and clicked each sponsor - counted anonymously.",
-    image: PHOTOS.courseOverlook,
-  },
-  "/auto-matchmaking": {
-    eyebrow: "Next Event",
-    title: "Auto Matchmaking",
-    subtitle: "Mark who's playing and the teams pair themselves - first with last, second with second to last.",
+  "/admin": {
+    eyebrow: "Commissioner",
+    title: "Admin",
+    subtitle: "Matchmaking, sponsor stats and news - all in one place.",
     image: PHOTOS.golfCarts,
   },
   "/course-history": {

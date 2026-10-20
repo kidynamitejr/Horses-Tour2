@@ -1,40 +1,13 @@
 import { useRef, useState } from "react"
 import { liveScoringReady, uploadPhoto } from "../data/liveScoring"
+import { shrinkImage } from "../utils/image"
 
 // "Add photos" for the Gallery: pick photos from the camera roll (or take
 // one), choose the event and an optional caption, and they're shrunk to a
 // web-friendly size and saved to the tour's Google Drive + Gallery tab by
 // the Apps Script.
 
-const MAX_SIDE = 1600
 const MAX_PHOTOS = 10
-
-function loadImage(file) {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file)
-    const img = new Image()
-    img.onload = () => resolve({ img, url })
-    img.onerror = () => {
-      URL.revokeObjectURL(url)
-      reject(new Error("That file isn't a photo this browser can open."))
-    }
-    img.src = url
-  })
-}
-
-// Phone photos are often 4-12 MB; shrink to 1600px on the long side as a
-// JPEG (a few hundred KB) so uploads are quick on cell signal.
-async function shrink(file) {
-  const { img, url } = await loadImage(file)
-  const scale = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight))
-  const canvas = document.createElement("canvas")
-  canvas.width = Math.round(img.naturalWidth * scale)
-  canvas.height = Math.round(img.naturalHeight * scale)
-  canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height)
-  URL.revokeObjectURL(url)
-  const dataUrl = canvas.toDataURL("image/jpeg", 0.82)
-  return { data: dataUrl.split(",")[1], preview: dataUrl }
-}
 
 function GalleryUpload({ events, defaultEventId, onUploaded }) {
   const inputRef = useRef(null)
@@ -61,7 +34,7 @@ function GalleryUpload({ events, defaultEventId, onUploaded }) {
       if (items[i].status === "done") continue
       setItems((list) => list.map((it, j) => (j === i ? { ...it, status: "uploading" } : it)))
       try {
-        const { data } = await shrink(items[i].file)
+        const { data } = await shrinkImage(items[i].file)
         const result = await uploadPhoto({ data, mimeType: "image/jpeg", event: chosenEvent, caption: caption.trim(), uploader: name.trim() })
         onUploaded({ "Photo ID": String(result.photo.id), "Event ID": chosenEvent, Image: result.photo.url, Caption: caption.trim() })
         setItems((list) => list.map((it, j) => (j === i ? { ...it, status: "done" } : it)))

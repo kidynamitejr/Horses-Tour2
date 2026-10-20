@@ -10,8 +10,9 @@ import "./schedule.css"
 import "./live.css"
 import "./matchmaking.css"
 import "./sponsor.css"
+import "./admin.css"
 import "./mobile.css"
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom"
+import { BrowserRouter, Navigate, Routes, Route, useLocation } from "react-router-dom"
 
 import Header from "./components/Header"
 import Hero from "./components/Hero"
@@ -37,8 +38,7 @@ import CourseHistoryPage from "./pages/CourseHistoryPage"
 import NextEventPage from "./pages/NextEventPage"
 import LiveScoringPage from "./pages/LiveScoringPage"
 import LiveScorecardPage from "./pages/LiveScorecardPage"
-import AutoMatchmakingPage from "./pages/AutoMatchmakingPage"
-import SponsorStatsPage from "./pages/SponsorStatsPage"
+import AdminPage from "./pages/AdminPage"
 
 function getPageHero(pathname) {
   if (PAGE_HEROES[pathname]) return PAGE_HEROES[pathname]
@@ -95,9 +95,11 @@ function Layout() {
 
           <Route path="/live/:eventId/:team" element={<LiveScorecardPage />} />
 
-          <Route path="/auto-matchmaking" element={<AutoMatchmakingPage />} />
+          <Route path="/admin" element={<AdminPage />} />
 
-          <Route path="/sponsor-stats" element={<SponsorStatsPage />} />
+          <Route path="/auto-matchmaking" element={<Navigate to="/admin" replace />} />
+
+          <Route path="/sponsor-stats" element={<Navigate to="/admin" replace />} />
 
           <Route
             path="/player-profile/:name"

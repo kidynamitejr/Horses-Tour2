@@ -91,6 +91,8 @@ function mockIsGameDay(date) {
 function mockRequest(payload) {
   const db = readStore(MOCK_KEY, { scores: [], submitted: {} })
   const open = payload.event === PRACTICE_ID || mockIsGameDay(payload.date)
+  if (payload.action === "saveNews") return { ok: true, id: payload.id || String(Date.now()), image: payload.image || "" }
+  if (payload.action === "deleteNews" || payload.action === "adminCheck") return { ok: true }
   if (payload.action === "setTeams" || payload.action === "planTeams") {
     return { ok: true, added: payload.assignments.map((x) => `${x.player} (team ${x.team})`), updated: [], copiedValues: [], copiedFromRow: 1 }
   }
@@ -171,20 +173,67 @@ function fetchWithTimeout(url, options = {}, ms = 20000) {
 // A request the server answered with ok: false (e.g. a locked round).
 class RejectedError extends Error {}
 
-async function post(payload) {
+// The server refused an Admin request (wrong / missing admin password).
+export class AdminError extends Error {}
+
+// ---- Admin sign-in ----
+// The password is checked by the Apps Script (it isn't in this public
+// code). Once it works it's remembered on this device and sent with each
+// request until "Sign out".
+const ADMIN_KEY = "ht-admin"
+
+export function getAdminPassword() {
+  try {
+    return localStorage.getItem(ADMIN_KEY) || ""
+  } catch {
+    return ""
+  }
+}
+
+export async function adminSignIn(password) {
+  if (useMock) {
+    writeStoreRaw(ADMIN_KEY, password)
+    return true
+  }
+  await post({ action: "adminCheck", password })
+  writeStoreRaw(ADMIN_KEY, password)
+  return true
+}
+
+export function adminSignOut() {
+  try {
+    localStorage.removeItem(ADMIN_KEY)
+  } catch {
+    // Nothing stored.
+  }
+}
+
+function writeStoreRaw(key, value) {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    // Storage blocked - they'll be asked again next time.
+  }
+}
+
+async function post(payload, timeoutMs) {
   if (useMock) {
     const result = mockRequest(payload)
     if (!result.ok) throw new RejectedError(result.error)
     return result
   }
 
+  const password = payload.password ?? getAdminPassword()
   const response = await fetchWithTimeout(LIVE_SCORING_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(payload),
-  })
+    body: JSON.stringify(password ? { ...payload, password } : payload),
+  }, timeoutMs)
   const data = await response.json()
-  if (!data.ok) throw new RejectedError(data.error || "Couldn't save")
+  if (!data.ok) {
+    if (data.admin) throw new AdminError(data.error || "Admin sign-in needed")
+    throw new RejectedError(data.error || "Couldn't save")
+  }
   return data
 }
 
@@ -295,14 +344,7 @@ export async function uploadPhoto(payload) {
   if (useMock) {
     return { ok: true, photo: { id: Date.now(), url: `data:image/jpeg;base64,${payload.data}` } }
   }
-  const response = await fetchWithTimeout(LIVE_SCORING_URL, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({ action: "uploadPhoto", ...payload }),
-  }, 90000)
-  const data = await response.json()
-  if (!data.ok) throw new RejectedError(data.error || "Couldn't upload the photo")
-  return data
+  return post({ action: "uploadPhoto", ...payload }, 90000)
 }
 
 // Sponsor stats: one anonymous view / click per ad per browser session
@@ -337,11 +379,19 @@ export function trackAd(kind, ad) {
 
 export async function getAdStats() {
   if (useMock) return []
-  const response = await fetchWithTimeout(`${LIVE_SCORING_URL}?action=adStats&t=${Date.now()}`)
-  const data = await response.json()
-  if (!data.ok) throw new Error(data.error || "Couldn't load sponsor stats")
+  const data = await post({ action: "adStats" })
   if (!Array.isArray(data.rows)) throw new Error("Sponsor stats need the latest Google Apps Script.")
   return data.rows
+}
+
+// ---- News (Admin) ----
+// News tab: Article ID | Date | Headline | Image | Article | Featured
+export function saveNews(article) {
+  return post({ action: "saveNews", ...article }, 90000)
+}
+
+export function deleteNews(id) {
+  return post({ action: "deleteNews", id })
 }
 
 export function clearPractice() {
