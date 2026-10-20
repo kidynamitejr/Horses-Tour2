@@ -24,6 +24,11 @@
  *                  the next event is paired and set up automatically
  * Formula cells are never overwritten.
  *
+ * Photos: uploads (Gallery and News) are hosted on imgur when
+ * IMGUR_CLIENT_ID is set in Script Properties - Google Drive links get
+ * blocked when a website shows them. Without it they fall back to Drive.
+ * Run rehostDrivePhotos() once to move earlier Drive uploads to imgur.
+ *
  * Admin: the website's Admin page (matchmaking, sponsor stats, news)
  * needs the admin password. It's kept in this project's Script Properties
  * (Project Settings > Script Properties > ADMIN_PASSWORD), never in this
@@ -76,9 +81,16 @@ const KNOWN_PARS = {
 function setup() {
   const book = SpreadsheetApp.getActive()
 
-  // Creates the photo folders (and asks for Google Drive permission).
+  // Creates the photo folders (and asks for Google Drive permission), and
+  // asks for permission to send photos to imgur.
   galleryFolder()
   newsFolder()
+  if (PropertiesService.getScriptProperties().getProperty("IMGUR_CLIENT_ID")) {
+    UrlFetchApp.fetch("https://api.imgur.com/3/credits", {
+      headers: { Authorization: "Client-ID " + PropertiesService.getScriptProperties().getProperty("IMGUR_CLIENT_ID") },
+      muteHttpExceptions: true,
+    })
+  }
 
   let pars = book.getSheetByName(PARS_SHEET)
   if (!pars) {
@@ -790,6 +802,60 @@ function autoMatchmake(completedEventId) {
   return { event: nextId, teams: assignments.length / 2, result: result }
 }
 
+// ---- Photo hosting ----
+
+// Puts a photo (base64 JPEG) somewhere a website can show it and returns
+// the link: imgur when IMGUR_CLIENT_ID is set, otherwise Google Drive.
+function hostImage(base64, kind, title) {
+  const clientId = PropertiesService.getScriptProperties().getProperty("IMGUR_CLIENT_ID")
+  if (!clientId) return saveImage(kind === "news" ? newsFolder() : galleryFolder(), base64, kind)
+  const response = UrlFetchApp.fetch("https://api.imgur.com/3/image", {
+    method: "post",
+    headers: { Authorization: "Client-ID " + clientId },
+    payload: { image: base64, type: "base64", title: String(title || "").slice(0, 100) },
+    muteHttpExceptions: true,
+  })
+  let data = {}
+  try {
+    data = JSON.parse(response.getContentText())
+  } catch (err) {
+    data = {}
+  }
+  if (data.success && data.data && data.data.link) return data.data.link
+  throw new Error("imgur didn't take the photo (" + response.getResponseCode() + ") - try again in a minute.")
+}
+
+// One-time: moves photos uploaded to Google Drive earlier onto imgur and
+// updates their links on the Gallery and News tabs. Run it from the editor
+// after setting IMGUR_CLIENT_ID.
+function rehostDrivePhotos() {
+  if (!PropertiesService.getScriptProperties().getProperty("IMGUR_CLIENT_ID")) {
+    throw new Error("Add IMGUR_CLIENT_ID in Project Settings > Script Properties first.")
+  }
+  const driveId = (url) => {
+    const m = String(url || "").match(/lh3\.googleusercontent\.com\/d\/([\w-]+)/)
+    return m ? m[1] : null
+  }
+  let moved = 0
+  const fix = (sheet, cols) => {
+    if (!sheet) return
+    const values = sheet.getDataRange().getValues()
+    for (let i = 1; i < values.length; i++) {
+      cols.forEach((c) => {
+        const id = driveId(values[i][c])
+        if (!id) return
+        const base64 = Utilities.base64Encode(DriveApp.getFileById(id).getBlob().getBytes())
+        sheet.getRange(i + 1, c + 1).setValue(hostImage(base64, "rehost", "Horses Tour photo"))
+        moved++
+      })
+    }
+  }
+  fix(sheetById(GALLERY_SHEET_ID), [2]) // C: Image
+  fix(sheetById(NEWS_SHEET_ID), [3, 6]) // D: Image, G: Image 2
+  Logger.log("Moved " + moved + " photo(s) to imgur.")
+  return moved
+}
+
 // ---- Gallery uploads ----
 
 function galleryFolder() {
@@ -806,12 +872,7 @@ function uploadPhoto(body) {
   const sheet = sheetById(GALLERY_SHEET_ID)
   if (!sheet) return { ok: false, error: "The Gallery tab is missing." }
 
-  const stamp = Utilities.formatDate(new Date(), SpreadsheetApp.getActive().getSpreadsheetTimeZone(), "yyyyMMdd-HHmmss")
-  const blob = Utilities.newBlob(Utilities.base64Decode(data), "image/jpeg", "horses-tour-" + stamp + "-" + Math.floor(Math.random() * 1000) + ".jpg")
-  const file = galleryFolder().createFile(blob)
-  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW)
-  if (clean(body.uploader)) file.setDescription("Uploaded by " + clean(body.uploader))
-  const url = "https://lh3.googleusercontent.com/d/" + file.getId()
+  const url = hostImage(data, "gallery", clean(body.caption) || "Horses Tour photo")
 
   let maxId = 0
   sheet.getDataRange().getValues().slice(1).forEach((r) => {
@@ -978,12 +1039,12 @@ function saveNews(body) {
   let image = clean(body.image)
   if (body.imageData) {
     if (String(body.imageData).length > 10 * 1024 * 1024) return { ok: false, error: "That photo is too big." }
-    image = saveImage(newsFolder(), String(body.imageData), "news")
+    image = hostImage(String(body.imageData), "news", headline)
   }
   let image2 = clean(body.image2)
   if (body.imageData2) {
     if (String(body.imageData2).length > 10 * 1024 * 1024) return { ok: false, error: "The second photo is too big." }
-    image2 = saveImage(newsFolder(), String(body.imageData2), "news")
+    image2 = hostImage(String(body.imageData2), "news", clean(body.caption2) || headline)
   }
   const caption2 = image2 ? clean(body.caption2).slice(0, 160) : ""
 
