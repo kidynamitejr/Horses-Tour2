@@ -811,3 +811,148 @@
     transform: none;
   }
 }
+
+/* Photo uploads */
+.gup-open {
+  align-self: center;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--sky);
+  color: white;
+  font: 800 14px var(--font-body);
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(26, 159, 224, .3);
+}
+
+.gup {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--page);
+  text-align: left;
+}
+
+.gup-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.gup-head h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.gup-close {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.gup-pick,
+.gup-send {
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 12px;
+  font: 800 14px var(--font-body);
+  cursor: pointer;
+}
+
+.gup-pick {
+  border: 2px dashed var(--sky);
+  background: var(--sky-soft);
+  color: var(--sky);
+}
+
+.gup-send {
+  background: var(--navy);
+  color: white;
+}
+
+html[data-theme="dark"] .gup-send {
+  background: var(--sky);
+}
+
+.gup-pick:disabled,
+.gup-send:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
+.gup-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gup-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.gup-list img {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.gup-list li.is-done span {
+  color: var(--green);
+}
+
+.gup-list li.is-error span {
+  color: #d63031;
+}
+
+.gup-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.gup-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.gup-fields select,
+.gup-fields input {
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 700 14px var(--font-body);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.gup-note {
+  margin: -4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}

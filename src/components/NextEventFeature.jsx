@@ -221,6 +221,14 @@ function NextEventFeature() {
   const nextEventAddress = nextEventDetails?.Address
   const nextEventTeeTime = nextEventDetails?.["Tee Time"]?.trim()
 
+  // Prize money from the Events tab ("$125"); hidden while it's #N/A.
+  const money = (value) => {
+    const text = (value || "").trim()
+    return /^\$?\d/.test(text) ? (text.startsWith("$") ? text : `$${text}`) : ""
+  }
+  const nextEventPayout = money(nextEventDetails?.["Winnings ({Per Person)"])
+  const nextEventBuyIn = money(nextEventDetails?.["Buy in"])
+
   useEffect(() => {
 
     let cancelled = false
@@ -381,6 +389,13 @@ function NextEventFeature() {
                   <span className="ev-chip">
                     {weather.icon} {weather.high}° / {weather.low}°
                     {weather.precipChance > 0 && ` · ${weather.precipChance}% rain`}
+                  </span>
+                )}
+
+                {nextEventPayout && (
+                  <span className="ev-chip ev-chip-money">
+                    💰 Winners get {nextEventPayout} each
+                    {nextEventBuyIn && ` · ${nextEventBuyIn} buy-in`}
                   </span>
                 )}
 

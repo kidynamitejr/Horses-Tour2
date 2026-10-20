@@ -881,6 +881,11 @@ html[data-theme="dark"] .card .ev-title {
   font-weight: 700;
 }
 
+.ev-chip-money {
+  border-color: rgba(111, 207, 151, .55);
+  background: rgba(45, 106, 79, .55);
+}
+
 .ev-chip-gold {
   border-color: transparent;
   background: #e9c75a;

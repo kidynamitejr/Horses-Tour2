@@ -289,6 +289,22 @@ export function saveAttendance(payload) {
   return post({ action: "saveAttendance", ...payload })
 }
 
+// Saves a photo (base64 JPEG) to the tour's Google Drive and the Gallery
+// tab. Uploads get longer than other requests on a slow connection.
+export async function uploadPhoto(payload) {
+  if (useMock) {
+    return { ok: true, photo: { id: Date.now(), url: `data:image/jpeg;base64,${payload.data}` } }
+  }
+  const response = await fetchWithTimeout(LIVE_SCORING_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ action: "uploadPhoto", ...payload }),
+  }, 90000)
+  const data = await response.json()
+  if (!data.ok) throw new RejectedError(data.error || "Couldn't upload the photo")
+  return data
+}
+
 export function clearPractice() {
   return post({ action: "clearPractice" })
 }

@@ -14,6 +14,8 @@
  *                  E (Contributions) on each player's row
  *   Events       - column G (Winner) and F (Status = Played) once every
  *                  team has a score
+ *   Gallery      - photos uploaded from the website are saved to the
+ *                  "Horses Tour Gallery" Drive folder and added here
  *   Matchmaking  - who's playing in the next event (from the Auto
  *                  Matchmaking page); when an event's last card is in,
  *                  the next event is paired and set up automatically
@@ -34,6 +36,8 @@ const HOLE_SHEET = "Hole by Hole"
 const EVENTS_SHEET_ID = 898289286 // the Events tab (gid in its URL)
 const MATCH_SHEET_ID = 1996241982 // the Match Entry tab
 const PRACTICE_ID = "practice"
+const GALLERY_SHEET_ID = 4188486 // the Gallery tab
+const GALLERY_FOLDER = "Horses Tour Gallery" // Drive folder for uploaded photos
 
 const LIVE_HEADERS = [
   "Event ID", "Team", "Players", "Hole", "Strokes", "Par", "To Par",
@@ -53,6 +57,9 @@ const KNOWN_PARS = {
 
 function setup() {
   const book = SpreadsheetApp.getActive()
+
+  // Creates the photo folder (and asks for Google Drive permission).
+  galleryFolder()
 
   let pars = book.getSheetByName(PARS_SHEET)
   if (!pars) {
@@ -99,6 +106,7 @@ function doPost(e) {
     if (body.action === "clearPractice") return json(clearPractice())
     if (body.action === "setTeams") return json(setTeams(body))
     if (body.action === "saveAttendance") return json(saveAttendance(body))
+    if (body.action === "uploadPhoto") return json(uploadPhoto(body))
     if (body.action === "previewAutoPairing") {
       const nextId = nextEventAfter(clean(body.completedEvent))
       const values = sheetById(MATCH_SHEET_ID).getDataRange().getValues()
@@ -751,6 +759,39 @@ function autoMatchmake(completedEventId) {
   if (!assignments.length) return { skipped: "nobody marked as playing" }
   const result = setTeams({ event: nextId, assignments: assignments })
   return { event: nextId, teams: assignments.length / 2, result: result }
+}
+
+// ---- Gallery uploads ----
+
+function galleryFolder() {
+  const folders = DriveApp.getFoldersByName(GALLERY_FOLDER)
+  return folders.hasNext() ? folders.next() : DriveApp.createFolder(GALLERY_FOLDER)
+}
+
+// Saves an uploaded photo to Drive (viewable by link) and adds a Gallery
+// row: Photo ID, Event ID, Image link, Caption.
+function uploadPhoto(body) {
+  const data = String(body.data || "")
+  if (!data) return { ok: false, error: "No photo was sent." }
+  if (data.length > 10 * 1024 * 1024) return { ok: false, error: "That photo is too big." }
+  const sheet = sheetById(GALLERY_SHEET_ID)
+  if (!sheet) return { ok: false, error: "The Gallery tab is missing." }
+
+  const stamp = Utilities.formatDate(new Date(), SpreadsheetApp.getActive().getSpreadsheetTimeZone(), "yyyyMMdd-HHmmss")
+  const blob = Utilities.newBlob(Utilities.base64Decode(data), "image/jpeg", "horses-tour-" + stamp + "-" + Math.floor(Math.random() * 1000) + ".jpg")
+  const file = galleryFolder().createFile(blob)
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW)
+  if (clean(body.uploader)) file.setDescription("Uploaded by " + clean(body.uploader))
+  const url = "https://lh3.googleusercontent.com/d/" + file.getId()
+
+  let maxId = 0
+  sheet.getDataRange().getValues().slice(1).forEach((r) => {
+    const n = Number(r[0])
+    if (n > maxId) maxId = n
+  })
+  const eventId = clean(body.event)
+  sheet.appendRow([maxId + 1, isNaN(Number(eventId)) ? eventId : Number(eventId), url, clean(body.caption).slice(0, 80)])
+  return { ok: true, photo: { id: maxId + 1, url: url } }
 }
 
 // Deletes every practice-round row from Live Scores.

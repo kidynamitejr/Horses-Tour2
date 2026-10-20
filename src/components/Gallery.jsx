@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import { getGallery, getSchedule } from "../data/googleSheets"
+import GalleryUpload from "./GalleryUpload"
+import { parseEventDate } from "../utils/liveEvent"
 
 // Full-screen photo viewer, shared with the Hall of Champions. `photos` is
 // a list of { Image, Caption, Subtitle? }.
@@ -135,6 +137,16 @@ function Gallery() {
 
   const shown = filter === "all" ? photos : photos.filter((p) => p["Event ID"] === filter)
 
+  // Events photos can be added to: anything up to today, newest first.
+  const today = new Date()
+  const uploadEvents = Object.entries(eventNames)
+    .filter(([, e]) => {
+      const date = parseEventDate(e.date)
+      return date && date <= today
+    })
+    .sort((a, b) => Number(b[0]) - Number(a[0]))
+    .map(([id, e]) => ({ id, name: e.name }))
+
   const lightboxPhotos = shown.map((p) => ({
     Image: p.Image,
     Caption: (p.Caption || "").trim(),
@@ -152,6 +164,17 @@ function Gallery() {
           <h2>Gallery</h2>
           <p>{loading ? "Loading photos..." : `${photos.length} photos from ${eventIds.length} event${eventIds.length === 1 ? "" : "s"}`}</p>
         </div>
+
+        {uploadEvents.length > 0 && (
+          <GalleryUpload
+            events={uploadEvents}
+            defaultEventId={uploadEvents[0].id}
+            onUploaded={(photo) => {
+              setFilter("all")
+              setPhotos((list) => [photo, ...list])
+            }}
+          />
+        )}
 
         {eventIds.length > 1 && (
           <div className="gal-filters" role="tablist" aria-label="Filter by event">
