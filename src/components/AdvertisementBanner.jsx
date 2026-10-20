@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { getAdvertisements } from "../data/googleSheets"
+import { trackAd } from "../data/liveScoring"
 
 function AdvertisementBanner() {
 
@@ -23,6 +24,11 @@ function AdvertisementBanner() {
 
   }, [])
 
+  // Anonymous view count (once per visit) for the sponsor stats.
+  useEffect(() => {
+    if (ad) trackAd("view", ad)
+  }, [ad])
+
   if (!ad || dismissed) return null
 
   const title = ad["Advertisement Title"] || "Shop our store"
@@ -44,11 +50,14 @@ function AdvertisementBanner() {
           ×
         </button>
 
+        <span className="ad-banner-tag">Sponsor</span>
+
         <a
           href={ad["Store Link"]}
           target="_blank"
           rel="noopener noreferrer sponsored"
           className="ad-banner-link"
+          onClick={() => trackAd("click", ad)}
         >
           <img
             src={ad["Store Picture Desktop"]}
@@ -62,11 +71,14 @@ function AdvertisementBanner() {
       {/* Mobile: a full-width bar pinned to the bottom, left to right. */}
       <div className="ad-banner ad-banner-mobile">
 
+        <span className="ad-banner-tag">Sponsor</span>
+
         <a
           href={ad["Store Link"]}
           target="_blank"
           rel="noopener noreferrer sponsored"
           className="ad-banner-link"
+          onClick={() => trackAd("click", ad)}
         >
           <img
             src={ad["Store Picture Mobile"]}

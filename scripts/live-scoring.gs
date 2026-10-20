@@ -16,6 +16,8 @@
  *                  team has a score
  *   Gallery      - photos uploaded from the website are saved to the
  *                  "Horses Tour Gallery" Drive folder and added here
+ *   Ad Stats     - anonymous view / click counts per ad per month (no
+ *                  personal information is collected)
  *   Matchmaking  - who's playing in the next event (from the Auto
  *                  Matchmaking page); when an event's last card is in,
  *                  the next event is paired and set up automatically
@@ -38,6 +40,7 @@ const MATCH_SHEET_ID = 1996241982 // the Match Entry tab
 const PRACTICE_ID = "practice"
 const GALLERY_SHEET_ID = 4188486 // the Gallery tab
 const GALLERY_FOLDER = "Horses Tour Gallery" // Drive folder for uploaded photos
+const AD_STATS_SHEET = "Ad Stats"
 
 const LIVE_HEADERS = [
   "Event ID", "Team", "Players", "Hole", "Strokes", "Par", "To Par",
@@ -88,6 +91,7 @@ function setup() {
 
 function doGet(e) {
   const p = e.parameter || {}
+  if (p.action === "adStats") return json({ ok: true, rows: readAdStats() })
   if (p.action === "attendance") return json({ ok: true, attendance: readAttendance(String(p.event || "")) })
   if (p.action === "state") {
     return json(getState(String(p.event || ""), String(p.course || ""), String(p.eventName || "")))
@@ -107,6 +111,7 @@ function doPost(e) {
     if (body.action === "setTeams") return json(setTeams(body))
     if (body.action === "saveAttendance") return json(saveAttendance(body))
     if (body.action === "uploadPhoto") return json(uploadPhoto(body))
+    if (body.action === "adEvent") return json(recordAdEvent(body))
     if (body.action === "previewAutoPairing") {
       const nextId = nextEventAfter(clean(body.completedEvent))
       const values = sheetById(MATCH_SHEET_ID).getDataRange().getValues()
@@ -792,6 +797,56 @@ function uploadPhoto(body) {
   const eventId = clean(body.event)
   sheet.appendRow([maxId + 1, isNaN(Number(eventId)) ? eventId : Number(eventId), url, clean(body.caption).slice(0, 80)])
   return { ok: true, photo: { id: maxId + 1, url: url } }
+}
+
+// ---- Sponsor stats (anonymous counts only) ----
+
+function adStatsSheet() {
+  const book = SpreadsheetApp.getActive()
+  let sheet = book.getSheetByName(AD_STATS_SHEET)
+  if (!sheet) {
+    sheet = book.insertSheet(AD_STATS_SHEET)
+    sheet.getRange(1, 1, 1, 5).setValues([["Month", "Ad #", "Ad", "Views", "Clicks"]]).setFontWeight("bold")
+    sheet.setFrozenRows(1)
+  }
+  return sheet
+}
+
+// Adds one view or click to the ad's row for this month. Only the ad and
+// the count are stored - nothing about who viewed or clicked.
+function recordAdEvent(body) {
+  const kind = clean(body.kind)
+  if (kind !== "view" && kind !== "click") return { ok: false, error: "Unknown ad event" }
+  const adId = clean(body.ad).slice(0, 12)
+  if (!adId) return { ok: false, error: "Missing ad" }
+  const month = Utilities.formatDate(new Date(), SpreadsheetApp.getActive().getSpreadsheetTimeZone(), "yyyy-MM")
+  const sheet = adStatsSheet()
+  const values = sheet.getDataRange().getValues()
+  const col = kind === "view" ? 4 : 5
+  for (let i = 1; i < values.length; i++) {
+    if (clean(values[i][0]) === month && clean(values[i][1]) === adId) {
+      sheet.getRange(i + 1, col).setValue((Number(values[i][col - 1]) || 0) + 1)
+      return { ok: true }
+    }
+  }
+  sheet.appendRow([month, adId, clean(body.title).slice(0, 60), kind === "view" ? 1 : 0, kind === "click" ? 1 : 0])
+  return { ok: true }
+}
+
+function readAdStats() {
+  const sheet = SpreadsheetApp.getActive().getSheetByName(AD_STATS_SHEET)
+  if (!sheet) return []
+  return sheet.getDataRange().getValues().slice(1)
+    .filter((r) => clean(r[1]))
+    .map((r) => ({
+      month: r[0] instanceof Date
+        ? Utilities.formatDate(r[0], SpreadsheetApp.getActive().getSpreadsheetTimeZone(), "yyyy-MM")
+        : clean(r[0]),
+      ad: clean(r[1]),
+      title: clean(r[2]),
+      views: Number(r[3]) || 0,
+      clicks: Number(r[4]) || 0,
+    }))
 }
 
 // Deletes every practice-round row from Live Scores.

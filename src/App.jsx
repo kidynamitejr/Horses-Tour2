@@ -9,6 +9,7 @@ import "./leaderboard.css"
 import "./schedule.css"
 import "./live.css"
 import "./matchmaking.css"
+import "./sponsor.css"
 import "./mobile.css"
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom"
 
@@ -37,6 +38,7 @@ import NextEventPage from "./pages/NextEventPage"
 import LiveScoringPage from "./pages/LiveScoringPage"
 import LiveScorecardPage from "./pages/LiveScorecardPage"
 import AutoMatchmakingPage from "./pages/AutoMatchmakingPage"
+import SponsorStatsPage from "./pages/SponsorStatsPage"
 
 function getPageHero(pathname) {
   if (PAGE_HEROES[pathname]) return PAGE_HEROES[pathname]
@@ -94,6 +96,8 @@ function Layout() {
           <Route path="/live/:eventId/:team" element={<LiveScorecardPage />} />
 
           <Route path="/auto-matchmaking" element={<AutoMatchmakingPage />} />
+
+          <Route path="/sponsor-stats" element={<SponsorStatsPage />} />
 
           <Route
             path="/player-profile/:name"

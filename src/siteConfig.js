@@ -114,6 +114,7 @@ export const MORE_NAV = [
   { to: "/compare-players", label: "Compare Players", note: "Head-to-head numbers" },
   { to: "/calculator", label: "Points Calculator", note: "How points are earned" },
   { to: "/auto-matchmaking", label: "Auto Matchmaking", note: "Pair the next event's teams" },
+  { to: "/sponsor-stats", label: "Sponsor Stats", note: "Ad views and clicks" },
   { to: "/rules", label: "Rules", note: "Format and competition rules" },
 ]
 
@@ -189,6 +190,12 @@ export const PAGE_HEROES = {
     title: "Live Scoring",
     subtitle: "Follow every team hole by hole, and keep your own card.",
     image: PHOTOS.flagAndBall,
+  },
+  "/sponsor-stats": {
+    eyebrow: "Partners",
+    title: "Sponsor Stats",
+    subtitle: "How many people saw and clicked each sponsor - counted anonymously.",
+    image: PHOTOS.courseOverlook,
   },
   "/auto-matchmaking": {
     eyebrow: "Next Event",

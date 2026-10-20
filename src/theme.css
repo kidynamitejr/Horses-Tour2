@@ -2275,3 +2275,20 @@ input[type="number"] {
     transform: none;
   }
 }
+
+/* "Sponsor" label on the ad, so it's clearly marked as an ad */
+.ad-banner-tag {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .55);
+  color: white;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  pointer-events: none;
+}

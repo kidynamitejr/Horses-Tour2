@@ -305,6 +305,36 @@ export async function uploadPhoto(payload) {
   return data
 }
 
+// Sponsor stats: one anonymous view / click per ad per browser session
+// (so refreshing doesn't inflate the numbers). Not counted while
+// developing locally.
+export function trackAd(kind, ad) {
+  if (!LIVE_SCORING_URL || import.meta.env.DEV) return
+  const id = String(ad["Advertisement #"] || "").trim()
+  if (!id) return
+  const key = `ht-ad-${kind}-${id}`
+  try {
+    if (sessionStorage.getItem(key)) return
+    sessionStorage.setItem(key, "1")
+  } catch {
+    // Storage blocked - count it anyway.
+  }
+  const body = JSON.stringify({ action: "adEvent", kind, ad: id, title: (ad["Advertisement Title"] || "").trim() })
+  // sendBeacon survives the page opening the sponsor's site.
+  if (navigator.sendBeacon && navigator.sendBeacon(LIVE_SCORING_URL, body)) return
+  fetch(LIVE_SCORING_URL, { method: "POST", body, keepalive: true, headers: { "Content-Type": "text/plain;charset=utf-8" } })
+    .catch(() => {})
+}
+
+export async function getAdStats() {
+  if (useMock) return []
+  const response = await fetchWithTimeout(`${LIVE_SCORING_URL}?action=adStats&t=${Date.now()}`)
+  const data = await response.json()
+  if (!data.ok) throw new Error(data.error || "Couldn't load sponsor stats")
+  if (!Array.isArray(data.rows)) throw new Error("Sponsor stats need the latest Google Apps Script.")
+  return data.rows
+}
+
 export function clearPractice() {
   return post({ action: "clearPractice" })
 }
