@@ -50,7 +50,6 @@ const SECTIONS = [
       { label: "Birdies per Round", get: (p) => p.holeStats?.birdiesPerRound ?? null, better: "high", format: num(2) },
       { label: "Par or Better %", get: (p) => p.holeStats?.parOrBetterPct ?? null, better: "high", format: pct },
       { label: "Bogeys per Round", get: (p) => p.holeStats?.bogeysPerRound ?? null, better: "low", format: num(2) },
-      { label: "Scoring Average", get: (p) => p.holeStats?.roundAvg ?? null, better: "low", format: formatToPar },
     ],
   },
   {
