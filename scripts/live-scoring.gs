@@ -830,9 +830,11 @@ function adStatsSheet() {
   let sheet = book.getSheetByName(AD_STATS_SHEET)
   if (!sheet) {
     sheet = book.insertSheet(AD_STATS_SHEET)
-    sheet.getRange(1, 1, 1, 5).setValues([["Month", "Ad #", "Ad", "Views", "Clicks"]]).setFontWeight("bold")
+    sheet.getRange(1, 1, 1, 6).setValues([["Month", "Ad #", "Ad", "Views", "Clicks", "Last Click"]]).setFontWeight("bold")
     sheet.setFrozenRows(1)
   }
+  if (!clean(sheet.getRange(1, 6).getValue())) sheet.getRange(1, 6).setValue("Last Click").setFontWeight("bold")
+  sheet.getRange("F:F").setNumberFormat("m/d/yyyy h:mm am/pm")
   return sheet
 }
 
@@ -848,13 +850,15 @@ function recordAdEvent(body) {
   const sheet = adStatsSheet()
   const values = sheet.getDataRange().getValues()
   const col = kind === "view" ? 4 : 5
+  const now = new Date()
   for (let i = 1; i < values.length; i++) {
     if (clean(values[i][0]) === month && clean(values[i][1]) === adId) {
       sheet.getRange(i + 1, col).setValue((Number(values[i][col - 1]) || 0) + 1)
+      if (kind === "click") sheet.getRange(i + 1, 6).setValue(now)
       return { ok: true }
     }
   }
-  sheet.appendRow([month, adId, clean(body.title).slice(0, 60), kind === "view" ? 1 : 0, kind === "click" ? 1 : 0])
+  sheet.appendRow([month, adId, clean(body.title).slice(0, 60), kind === "view" ? 1 : 0, kind === "click" ? 1 : 0, kind === "click" ? now : ""])
   return { ok: true }
 }
 
@@ -916,6 +920,7 @@ function readAdStats() {
       title: clean(r[2]),
       views: Number(r[3]) || 0,
       clicks: Number(r[4]) || 0,
+      lastClick: r[5] instanceof Date ? r[5].toISOString() : "",
     }))
 }
 

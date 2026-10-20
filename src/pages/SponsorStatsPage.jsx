@@ -95,6 +95,12 @@ function SponsorStatsPage() {
         someone taps through (with the time of each click). No names, emails or personal information are collected.
       </p>
 
+      <dl className="sps-help">
+        <div><dt>View</dt><dd>Someone visited the site and the sponsor&apos;s ad was shown to them.</dd></div>
+        <div><dt>Click</dt><dd>Someone tapped the ad and went to the sponsor&apos;s site or store.</dd></div>
+        <div><dt>Click rate</dt><dd>Clicks ÷ views - e.g. 5 clicks from 100 views is 5%. It shows how well the ad gets people to act.</dd></div>
+      </dl>
+
       {error && <p className="sps-empty">{error}</p>}
       {!error && rows === null && liveScoringReady && <p className="sps-empty">Loading stats...</p>}
       {rows && summaries.length === 0 && <p className="sps-empty">No views counted yet - stats start now.</p>}
@@ -142,6 +148,7 @@ function SponsorStatsPage() {
                 <th>Views</th>
                 <th>Clicks</th>
                 <th>Click rate</th>
+                <th>Last click</th>
               </tr>
             </thead>
             <tbody>
@@ -151,6 +158,7 @@ function SponsorStatsPage() {
                   <td>{m.views.toLocaleString()}</td>
                   <td>{m.clicks.toLocaleString()}</td>
                   <td>{rate(m.clicks, m.views)}</td>
+                  <td>{m.lastClick ? clickTime(m.lastClick) : "-"}</td>
                 </tr>
               ))}
             </tbody>
