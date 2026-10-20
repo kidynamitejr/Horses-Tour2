@@ -18,6 +18,7 @@ import Header from "./components/Header"
 import Hero from "./components/Hero"
 import Footer from "./components/Footer"
 import AdvertisementBanner from "./components/AdvertisementBanner"
+import AnnouncementBanner from "./components/AnnouncementBanner"
 import { PAGE_HEROES } from "./siteConfig"
 
 import Home from "./pages/Home"
@@ -56,6 +57,8 @@ function Layout() {
   return (
     <div className={`website${isHome ? " is-home" : ""}`}>
       <Header />
+
+      <AnnouncementBanner />
 
       {!isHome && pageHero && <Hero {...pageHero} />}
 

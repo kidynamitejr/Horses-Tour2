@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { getAdvertisements } from "../data/googleSheets"
 import { clearAdStats, getAdStats, liveScoringReady } from "../data/liveScoring"
+import SponsorsAdmin from "../components/admin/SponsorsAdmin"
 
 // Sponsor Stats: anonymous view and click counts for each ad, by month and
 // all-time, to show sponsors what their spot gets. Views and clicks are
@@ -89,6 +90,10 @@ function SponsorStatsPage() {
 
   return (
     <div className="sps-page">
+
+      <SponsorsAdmin />
+
+      <h2 className="sps-section-title">Sponsor stats</h2>
 
       <p className="sps-intro">
         Counted anonymously: one view per visit when a sponsor&apos;s ad is shown, and one click per visit when

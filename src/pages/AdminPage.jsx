@@ -3,17 +3,28 @@ import AutoMatchmakingPage from "./AutoMatchmakingPage"
 import SponsorStatsPage from "./SponsorStatsPage"
 import NewsAdmin from "../components/NewsAdmin"
 import GalleryAdmin from "../components/GalleryAdmin"
+import RoundAdmin from "../components/admin/RoundAdmin"
+import EventsAdmin from "../components/admin/EventsAdmin"
+import PlayersAdmin from "../components/admin/PlayersAdmin"
+import RulesAdmin from "../components/admin/RulesAdmin"
+import BannerAdmin from "../components/admin/BannerAdmin"
 import { adminSignIn, adminSignOut, getAdminPassword, liveScoringReady } from "../data/liveScoring"
 
-// Admin: the commissioner's tools behind a password - Auto Matchmaking,
-// Sponsor Stats, News and Gallery. The password is checked by the Google Apps
+// Admin: the commissioner's tools behind a password - matchmaking, the
+// round dashboard and scorecard fixes, events (and course pars), players,
+// sponsors, news, gallery, rules and the announcement banner. The password is checked by the Google Apps
 // Script on every admin action, so it isn't stored in this public code.
 
 const TABS = [
-  { id: "matchmaking", label: "Auto Matchmaking", short: "Teams" },
-  { id: "sponsors", label: "Sponsor Stats", short: "Sponsors" },
-  { id: "news", label: "News", short: "News" },
-  { id: "gallery", label: "Gallery", short: "Gallery" },
+  { id: "matchmaking", label: "Auto Matchmaking" },
+  { id: "round", label: "Round" },
+  { id: "events", label: "Events" },
+  { id: "players", label: "Players" },
+  { id: "sponsors", label: "Sponsors" },
+  { id: "news", label: "News" },
+  { id: "gallery", label: "Gallery" },
+  { id: "rules", label: "Rules" },
+  { id: "banner", label: "Banner" },
 ]
 
 function AdminPage() {
@@ -95,19 +106,26 @@ function AdminPage() {
               className={tab === t.id ? "active" : ""}
               onClick={() => pickTab(t.id)}
             >
-              <span className="adm-tab-long">{t.label}</span>
-              <span className="adm-tab-short">{t.short}</span>
+              {t.label}
             </button>
           ))}
         </div>
+        <select className="adm-tab-select" value={tab} onChange={(e) => pickTab(e.target.value)} aria-label="Admin section">
+          {TABS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+        </select>
         <button type="button" className="adm-signout" onClick={signOut}>Sign out</button>
       </div>
 
       <div className="adm-panel" role="tabpanel">
         {tab === "matchmaking" && <AutoMatchmakingPage />}
+        {tab === "round" && <RoundAdmin />}
+        {tab === "events" && <EventsAdmin />}
+        {tab === "players" && <PlayersAdmin />}
         {tab === "sponsors" && <SponsorStatsPage />}
         {tab === "news" && <NewsAdmin />}
         {tab === "gallery" && <GalleryAdmin />}
+        {tab === "rules" && <RulesAdmin />}
+        {tab === "banner" && <BannerAdmin />}
       </div>
     </div>
   )

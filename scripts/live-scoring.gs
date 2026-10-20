@@ -19,6 +19,7 @@
  *   Ad Stats     - anonymous view / click counts per ad per month (no
  *                  personal information is collected)
  *   Ad Clicks    - the date and time of each ad click, and which ad
+ *   Settings     - site settings from Admin (the announcement banner)
  *   Matchmaking  - who's playing in the next event (from the Auto
  *                  Matchmaking page); when an event's last card is in,
  *                  the next event is paired and set up automatically
@@ -63,6 +64,8 @@ const NEWS_FOLDER = "Horses Tour News" // Drive folder for article photos
 const ADMIN_ACTIONS = [
   "adminCheck", "setTeams", "planTeams", "saveAttendance", "previewAutoPairing",
   "adStats", "clearAdStats", "saveNews", "deleteNews", "deletePhoto",
+  "adminData", "saveAdminRow", "deleteAdminRow", "allPars", "savePars",
+  "uploadAsset", "saveSettings", "adminSaveCard",
 ]
 
 const LIVE_HEADERS = [
@@ -127,6 +130,7 @@ function setup() {
 
 function doGet(e) {
   const p = e.parameter || {}
+  if (p.action === "settings") return json({ ok: true, settings: readSettings() })
   if (p.action === "attendance") return json({ ok: true, attendance: readAttendance(String(p.event || "")) })
   if (p.action === "state") {
     return json(getState(String(p.event || ""), String(p.course || ""), String(p.eventName || "")))
@@ -149,6 +153,14 @@ function doPost(e) {
     if (body.action === "saveNews") return json(saveNews(body))
     if (body.action === "deleteNews") return json(deleteNews(body))
     if (body.action === "deletePhoto") return json(deletePhoto(body))
+    if (body.action === "adminData") return json(adminData(body))
+    if (body.action === "saveAdminRow") return json(saveAdminRow(body))
+    if (body.action === "deleteAdminRow") return json(deleteAdminRow(body))
+    if (body.action === "allPars") return json({ ok: true, courses: allPars() })
+    if (body.action === "savePars") return json(savePars(body))
+    if (body.action === "uploadAsset") return json(uploadAsset(body))
+    if (body.action === "saveSettings") return json(saveSettings(body))
+    if (body.action === "adminSaveCard") return json(adminSaveCard(body))
     if (body.action === "save") return json(saveHole(body))
     if (body.action === "submit") return json(submitCard(body))
     if (body.action === "submitAll") return json(submitAll(body))
@@ -277,14 +289,14 @@ const LOCKED_MESSAGE = "This round is locked - scores can only be entered on the
 
 // ---- Writes ----
 
-function saveHole(body) {
+function saveHole(body, force) {
   const eventId = clean(body.event)
   const team = clean(body.team)
   const hole = Number(body.hole)
   if (!eventId || !team || !(hole >= 1 && hole <= 18)) {
     return { ok: false, error: "Missing event, team or hole" }
   }
-  if (!isGameDay(eventId)) return { ok: false, locked: true, error: LOCKED_MESSAGE }
+  if (!force && !isGameDay(eventId)) return { ok: false, locked: true, error: LOCKED_MESSAGE }
 
   const players = body.players || []
   const contributions = body.contributions || []
@@ -472,7 +484,7 @@ function winnerChange(eventsTable, matchTable, matchEventId, newScores) {
 // Submits one team (or every team with scores). With dryRun nothing is
 // written - it reports what would be. `matchEvent` lets a dry run of the
 // practice round be checked against a real event's rows.
-function submitTeams(body, onlyTeam) {
+function submitTeams(body, onlyTeam, force) {
   const eventId = clean(body.event)
   const dryRun = Boolean(body.dryRun)
   const matchEventId = clean(body.matchEvent || eventId)
@@ -480,13 +492,17 @@ function submitTeams(body, onlyTeam) {
 
   if (!dryRun) {
     if (eventId === PRACTICE_ID) return { ok: false, error: "Practice cards can't be submitted - this was only a test." }
-    if (!isGameDay(eventId)) return { ok: false, locked: true, error: LOCKED_MESSAGE }
+    if (!force && !isGameDay(eventId)) return { ok: false, locked: true, error: LOCKED_MESSAGE }
   }
   const pars = getPars(body.course)
   if (!pars) return { ok: false, error: "Pars for this course aren't filled in on the Course Pars tab." }
 
   const teams = onlyTeam ? [onlyTeam] : teamsWithScores(eventId)
   const plans = teams.map((team) => planTeam(eventId, team, pars))
+  // Fixing an older round: use the contribution totals given by Admin.
+  if (onlyTeam && Array.isArray(body.contributionTotals) && plans[0] && !plans[0].error) {
+    plans[0].contributions = body.contributionTotals.map((v) => Number(v) || 0)
+  }
   const finished = plans.filter((p) => !p.error)
   const unfinished = plans.filter((p) => p.error).map((p) => ({ team: p.team, holes: p.holes, error: p.error }))
   if (onlyTeam && unfinished.length) return { ok: false, error: unfinished[0].error }
@@ -816,37 +832,44 @@ function autoMatchmake(completedEventId) {
 // Puts a photo (base64 JPEG) somewhere a website can show it and returns
 // the link: the GitHub repo's uploads/ folder when GITHUB_TOKEN is set,
 // otherwise Google Drive.
+// Creates or replaces a file in the website's GitHub repo.
+function githubPut(path, base64, message) {
+  const token = PropertiesService.getScriptProperties().getProperty("GITHUB_TOKEN")
+  if (!token) throw new Error("Add GITHUB_TOKEN in Project Settings > Script Properties first.")
+  const api = "https://api.github.com/repos/" + GITHUB_REPO + "/contents/" + path
+  const headers = {
+    Authorization: "Bearer " + token,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  }
+  const existing = UrlFetchApp.fetch(api + "?ref=" + GITHUB_BRANCH, { headers: headers, muteHttpExceptions: true })
+  const payload = { message: message, content: base64, branch: GITHUB_BRANCH }
+  if (existing.getResponseCode() === 200) payload.sha = JSON.parse(existing.getContentText()).sha
+  const response = UrlFetchApp.fetch(api, {
+    method: "put",
+    contentType: "application/json",
+    headers: headers,
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true,
+  })
+  const code = response.getResponseCode()
+  if (code === 200 || code === 201) return
+  if (code === 401 || code === 403) {
+    throw new Error("GitHub refused the photo - check GITHUB_TOKEN (it may have expired or lack Contents write access).")
+  }
+  throw new Error("GitHub didn't take the photo (" + code + ") - try again in a minute.")
+}
+
 function hostImage(base64, kind, title) {
   const token = PropertiesService.getScriptProperties().getProperty("GITHUB_TOKEN")
   if (!token) return saveImage(kind === "news" ? newsFolder() : galleryFolder(), base64, kind)
 
   const tz = SpreadsheetApp.getActive().getSpreadsheetTimeZone()
-  const folder = kind === "news" ? "news" : "gallery"
+  const folder = { news: "news", gallery: "gallery", winner: "winners", ad: "ads" }[kind] || "gallery"
   const path = "uploads/" + folder + "/" + Utilities.formatDate(new Date(), tz, "yyyy-MM-dd-HHmmss") +
     "-" + Math.floor(Math.random() * 100000) + ".jpg"
-  const response = UrlFetchApp.fetch("https://api.github.com/repos/" + GITHUB_REPO + "/contents/" + path, {
-    method: "put",
-    contentType: "application/json",
-    headers: {
-      Authorization: "Bearer " + token,
-      Accept: "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
-    },
-    payload: JSON.stringify({
-      message: "Photo upload: " + String(title || folder).slice(0, 60),
-      content: base64,
-      branch: GITHUB_BRANCH,
-    }),
-    muteHttpExceptions: true,
-  })
-  const code = response.getResponseCode()
-  if (code === 201 || code === 200) {
-    return "https://raw.githubusercontent.com/" + GITHUB_REPO + "/" + GITHUB_BRANCH + "/" + path
-  }
-  if (code === 401 || code === 403) {
-    throw new Error("GitHub refused the photo - check GITHUB_TOKEN (it may have expired or lack Contents write access).")
-  }
-  throw new Error("GitHub didn't take the photo (" + code + ") - try again in a minute.")
+  githubPut(path, base64, "Photo upload: " + String(title || folder).slice(0, 60))
+  return "https://raw.githubusercontent.com/" + GITHUB_REPO + "/" + GITHUB_BRANCH + "/" + path
 }
 
 // One-time: moves photos uploaded to Google Drive earlier into the GitHub
@@ -1150,6 +1173,230 @@ function deleteNews(body) {
     }
   }
   return { ok: false, error: "That article isn't on the News tab." }
+}
+
+// ---- Admin editors: Events, Players, Sponsors (ads), Rules ----
+//
+// The Admin page reads these tabs fresh from here (not the published
+// copy, which lags a few minutes) and saves rows back. Only plain cells
+// are written - formula cells are never overwritten. New rows copy the
+// last filled row first so its formulas carry on.
+
+const ADMIN_SHEETS = {
+  events: { id: EVENTS_SHEET_ID, key: "Event ID" },
+  players: { id: PLAYERS_SHEET_ID, key: "Player ID" },
+  ads: { id: 1618727872, key: "Advertisement #", extraHeaders: ["Start Date", "End Date"] },
+  rules: { id: 1947708801, key: "Rule #" },
+}
+
+function adminSheet(name) {
+  const def = ADMIN_SHEETS[name]
+  if (!def) throw new Error("Unknown tab: " + name)
+  const sheet = sheetById(def.id)
+  if (!sheet) throw new Error("That tab is missing from the sheet.")
+  // Columns the editors need that older sheets may not have yet.
+  ;(def.extraHeaders || []).forEach((h) => {
+    const header = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 1)).getValues()[0].map(clean)
+    if (header.indexOf(h) < 0) sheet.getRange(1, header.filter((x) => x !== "").length + 1).setValue(h).setFontWeight("bold")
+  })
+  return { sheet: sheet, def: def }
+}
+
+// Stops typed text being treated as a formula.
+function safeCell(value) {
+  const text = value == null ? "" : String(value)
+  return /^[=+\-@]/.test(text) && !/^[-+]?\d/.test(text) ? "'" + text : text
+}
+
+function adminData(body) {
+  const ref = adminSheet(clean(body.sheet))
+  const range = ref.sheet.getDataRange()
+  const display = range.getDisplayValues()
+  const formulas = range.getFormulas()
+  const header = display[0].map(clean)
+  const rows = []
+  for (let i = 1; i < display.length; i++) {
+    if (!display[i].some((v) => clean(v))) continue
+    const fields = {}
+    header.forEach((h, c) => { if (h) fields[h] = display[i][c] })
+    rows.push({ fields: fields, formulas: header.filter((h, c) => h && formulas[i][c]) })
+  }
+  return { ok: true, header: header.filter(Boolean), key: ref.def.key, rows: rows }
+}
+
+function saveAdminRow(body) {
+  const ref = adminSheet(clean(body.sheet))
+  const sheet = ref.sheet
+  const range = sheet.getDataRange()
+  const values = range.getValues()
+  const formulas = range.getFormulas()
+  const header = values[0].map(clean)
+  const keyCol = header.indexOf(ref.def.key)
+  if (keyCol < 0) return { ok: false, error: "The " + ref.def.key + " column is missing." }
+  const fields = body.fields || {}
+  const key = clean(body.key)
+
+  if (key) {
+    const r = values.findIndex((row, i) => i > 0 && clean(row[keyCol]) === key)
+    if (r < 0) return { ok: false, error: "That row isn't on the sheet anymore - reload and try again." }
+    header.forEach((h, c) => {
+      if (!h || !(h in fields) || c === keyCol || formulas[r][c]) return
+      sheet.getRange(r + 1, c + 1).setValue(safeCell(fields[h]))
+    })
+    return { ok: true, key: key }
+  }
+
+  // New row: copy the last filled row (formulas carry on), then fill in.
+  let last = -1
+  for (let i = values.length - 1; i >= 1; i--) {
+    if (values[i].some((v) => clean(v) !== "")) { last = i; break }
+  }
+  let maxKey = 0
+  values.slice(1).forEach((row) => {
+    const n = Number(row[keyCol])
+    if (n > maxKey) maxKey = n
+  })
+  const target = (last >= 1 ? last : 0) + 2
+  if (target > sheet.getMaxRows()) sheet.insertRowsAfter(sheet.getMaxRows(), target - sheet.getMaxRows())
+  const width = header.length
+  if (last >= 1) sheet.getRange(last + 1, 1, 1, width).copyTo(sheet.getRange(target, 1, 1, width))
+  header.forEach((h, c) => {
+    if (!h) return
+    if (last >= 1 && formulas[last][c]) return
+    const value = c === keyCol ? maxKey + 1 : (h in fields ? safeCell(fields[h]) : "")
+    sheet.getRange(target, c + 1).setValue(value)
+  })
+  return { ok: true, key: String(maxKey + 1) }
+}
+
+function deleteAdminRow(body) {
+  const ref = adminSheet(clean(body.sheet))
+  const values = ref.sheet.getDataRange().getValues()
+  const keyCol = values[0].map(clean).indexOf(ref.def.key)
+  const key = clean(body.key)
+  for (let i = values.length - 1; i >= 1; i--) {
+    if (clean(values[i][keyCol]) === key) {
+      ref.sheet.deleteRow(i + 1)
+      return { ok: true }
+    }
+  }
+  return { ok: false, error: "That row isn't on the sheet anymore." }
+}
+
+// ---- Course pars (edited under each event) ----
+
+function allPars() {
+  const sheet = SpreadsheetApp.getActive().getSheetByName(PARS_SHEET)
+  if (!sheet) return []
+  return sheet.getDataRange().getValues().slice(1)
+    .filter((r) => clean(r[0]))
+    .map((r) => ({ course: clean(r[0]), pars: r.slice(1, 19).map((v) => Number(v) || 0) }))
+}
+
+function savePars(body) {
+  const course = clean(body.course)
+  const pars = (body.pars || []).map((v) => Number(v) || "")
+  if (!course || pars.length !== 18) return { ok: false, error: "Pick a course and all 18 pars." }
+  let sheet = SpreadsheetApp.getActive().getSheetByName(PARS_SHEET)
+  if (!sheet) {
+    setup()
+    sheet = SpreadsheetApp.getActive().getSheetByName(PARS_SHEET)
+  }
+  const values = sheet.getDataRange().getValues()
+  const wanted = course.toLowerCase()
+  for (let i = 1; i < values.length; i++) {
+    if (clean(values[i][0]).toLowerCase() === wanted) {
+      sheet.getRange(i + 1, 2, 1, 18).setValues([pars])
+      return { ok: true }
+    }
+  }
+  sheet.appendRow([course].concat(pars))
+  return { ok: true }
+}
+
+// ---- Images for the editors ----
+// kind "winner" / "ad": a photo in the repo's uploads/ folder.
+// kind "headshot": the player's photo and cut-out in the website itself
+// (public/images/players/<id>.jpg and cutouts/<id>.png).
+function uploadAsset(body) {
+  const data = String(body.data || "")
+  if (!data) return { ok: false, error: "No photo was sent." }
+  if (data.length > 10 * 1024 * 1024) return { ok: false, error: "That photo is too big." }
+  const kind = clean(body.kind)
+  if (kind === "headshot") {
+    const id = clean(body.playerId)
+    if (!/^\d+$/.test(id)) return { ok: false, error: "Save the player first, then add the photo." }
+    githubPut("public/images/players/" + id + ".jpg", data, "Headshot for player " + id)
+    if (body.cutout) githubPut("public/images/players/cutouts/" + id + ".png", String(body.cutout), "Cut-out for player " + id)
+    return { ok: true }
+  }
+  return { ok: true, url: hostImage(data, kind === "ad" ? "ad" : "winner", clean(body.title)) }
+}
+
+// ---- Site settings (the announcement banner) ----
+const SETTINGS_SHEET = "Settings"
+
+function settingsSheet() {
+  const book = SpreadsheetApp.getActive()
+  let sheet = book.getSheetByName(SETTINGS_SHEET)
+  if (!sheet) {
+    sheet = book.insertSheet(SETTINGS_SHEET)
+    sheet.getRange(1, 1, 1, 2).setValues([["Setting", "Value"]]).setFontWeight("bold")
+    sheet.setFrozenRows(1)
+  }
+  return sheet
+}
+
+function readSettings() {
+  const sheet = SpreadsheetApp.getActive().getSheetByName(SETTINGS_SHEET)
+  const settings = {}
+  if (!sheet) return settings
+  sheet.getDataRange().getValues().slice(1).forEach((r) => {
+    if (clean(r[0])) settings[clean(r[0])] = String(r[1] == null ? "" : r[1])
+  })
+  return settings
+}
+
+function saveSettings(body) {
+  const sheet = settingsSheet()
+  const values = sheet.getDataRange().getValues()
+  Object.keys(body.values || {}).forEach((key) => {
+    const value = safeCell(body.values[key])
+    const r = values.findIndex((row, i) => i > 0 && clean(row[0]) === key)
+    if (r > 0) sheet.getRange(r + 1, 2).setValue(value)
+    else {
+      sheet.appendRow([key, value])
+      values.push([key, value])
+    }
+  })
+  return { ok: true }
+}
+
+// ---- Fix a scorecard (any round, even after it's locked) ----
+// Rewrites the team's 18 holes in Live Scores, then (when all 18 are in)
+// resubmits it to Hole by Hole and Match Entry. contributionTotals, when
+// given, are used for Match Entry instead of the per-hole sums (older
+// rounds only have totals).
+function adminSaveCard(body) {
+  const eventId = clean(body.event)
+  const team = clean(body.team)
+  if (!eventId || !team) return { ok: false, error: "Pick an event and a team." }
+  const strokes = body.strokes || []
+  const contributions = body.contributions || []
+  for (let h = 1; h <= 18; h++) {
+    const s = Number(strokes[h - 1]) || null
+    saveHole({
+      event: eventId, team: team, course: body.course, players: body.players || [],
+      hole: h, strokes: s, contributions: contributions[h - 1] || [0, 0],
+    }, true)
+  }
+  const complete = strokes.filter((s) => Number(s) > 0).length === 18
+  if (!complete) return { ok: true, submitted: false }
+  const result = submitTeams({
+    event: eventId, eventName: body.eventName, course: body.course,
+    contributionTotals: body.contributionTotals,
+  }, team, true)
+  return { ok: result.ok, submitted: result.ok, error: result.error, writes: result.writes }
 }
 
 // Deletes every practice-round row from Live Scores.

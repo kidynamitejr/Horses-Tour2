@@ -397,6 +397,82 @@ export function deletePhoto(id) {
   return post({ action: "deletePhoto", id })
 }
 
+// ---- Admin editors (Events, Players, Sponsors, Rules) ----
+// Rows come fresh from the sheet: { header, key, rows: [{ fields, formulas }] }
+export function adminData(sheet) {
+  if (useMock) return Promise.resolve({ ok: true, header: [], key: "", rows: [] })
+  return post({ action: "adminData", sheet })
+}
+
+// key = the row's ID to update it, or "" to add a new row (ID assigned).
+export function saveAdminRow(sheet, key, fields) {
+  if (useMock) return Promise.resolve({ ok: true, key: key || String(Date.now()) })
+  return post({ action: "saveAdminRow", sheet, key, fields })
+}
+
+export function deleteAdminRow(sheet, key) {
+  if (useMock) return Promise.resolve({ ok: true })
+  return post({ action: "deleteAdminRow", sheet, key })
+}
+
+export async function getAllPars() {
+  if (useMock) return []
+  return (await post({ action: "allPars" })).courses || []
+}
+
+export function savePars(course, pars) {
+  if (useMock) return Promise.resolve({ ok: true })
+  return post({ action: "savePars", course, pars })
+}
+
+// kind: "winner" | "ad" (returns { url }) or "headshot" (saved into the site).
+export function uploadAsset(payload) {
+  if (useMock) return Promise.resolve({ ok: true, url: `data:image/jpeg;base64,${payload.data}` })
+  return post({ action: "uploadAsset", ...payload }, 90000)
+}
+
+// Fix a scorecard for any round, even a locked one (Admin).
+export function adminSaveCard(payload) {
+  if (useMock) return Promise.resolve({ ok: true, submitted: true })
+  return post({ action: "adminSaveCard", ...payload }, 90000)
+}
+
+// ---- Site settings (announcement banner) ----
+const SETTINGS_CACHE = "ht-settings"
+
+// Public. Cached for 2 minutes per visit so every page doesn't wait on it.
+export async function getSettings({ fresh = false } = {}) {
+  if (!LIVE_SCORING_URL) return {}
+  if (!fresh) {
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(SETTINGS_CACHE))
+      if (cached && Date.now() - cached.at < 120000) return cached.settings
+    } catch {
+      // No cache - load it.
+    }
+  }
+  const response = await fetchWithTimeout(`${LIVE_SCORING_URL}?action=settings&t=${Date.now()}`)
+  const data = await response.json()
+  const settings = data.settings || {}
+  try {
+    sessionStorage.setItem(SETTINGS_CACHE, JSON.stringify({ at: Date.now(), settings }))
+  } catch {
+    // Not cached - fine.
+  }
+  return settings
+}
+
+export async function saveSettings(values) {
+  if (useMock) return { ok: true }
+  const result = await post({ action: "saveSettings", values })
+  try {
+    sessionStorage.removeItem(SETTINGS_CACHE)
+  } catch {
+    // Nothing cached.
+  }
+  return result
+}
+
 // ---- News (Admin) ----
 // News tab: Article ID | Date | Headline | Image | Article | Featured
 export function saveNews(article) {
