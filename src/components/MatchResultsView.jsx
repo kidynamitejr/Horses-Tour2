@@ -296,6 +296,15 @@ function MatchResultsView({ eventId, matchEntry, schedule, playerIds, eyebrow, o
 
   const champions = teams.find((t) => t.teamPlacement === 1)
 
+  // Podium: the top three teams, shown 2nd - 1st - 3rd.
+  const podium = teams.slice(0, 3)
+  const podiumOrder = [podium[1], podium[0], podium[2]].filter(Boolean)
+  const MEDALS = ["gold", "silver", "bronze"]
+  const placeLabel = (t) => {
+    const tied = teams.filter((x) => x.teamPlacement === t.teamPlacement).length > 1
+    return `${tied ? "T" : ""}${ordinal(t.teamPlacement)}`
+  }
+
   return (
 
     <section className="ev-card ev-card-recap" ref={sectionRef}>
@@ -349,6 +358,46 @@ function MatchResultsView({ eventId, matchEntry, schedule, playerIds, eyebrow, o
       {teams.length > 0 && (
 
         <div className="ev-board">
+
+          {podium.length >= 2 && (
+            <div className="pod" aria-label="Podium">
+              <span className="pod-title">Podium</span>
+              <div className="pod-stage">
+                {podiumOrder.map((t) => {
+                  const medal = MEDALS[podium.indexOf(t)]
+                  return (
+                    <button
+                      type="button"
+                      key={t.team}
+                      className={`pod-col pod-${medal}`}
+                      onClick={() => setModalTeam(t)}
+                      aria-label={`${placeLabel(t)}: ${t.players.map((p) => p.name).join(" and ")}`}
+                    >
+                      <span className="pod-figures">
+                        {t.players.map((p) => (
+                          <img
+                            key={p.name}
+                            src={`${import.meta.env.BASE_URL}images/players/cutouts/${playerIds[p.name] || "default"}.png`}
+                            alt=""
+                            onError={(e) => {
+                              e.target.src = `${import.meta.env.BASE_URL}images/players/cutouts/default.png`
+                            }}
+                          />
+                        ))}
+                      </span>
+                      <span className="pod-step">
+                        <span className="pod-place">{placeLabel(t)}</span>
+                        <span className="pod-names">
+                          {t.players.map((p) => <b key={p.name}>{p.name}</b>)}
+                        </span>
+                        <span className="pod-score">{formatOverPar(t.teamScore)}</span>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="ev-board-head">
             <h3>{view === "teams" ? "Final Leaderboard" : "Individual Placements"}</h3>
