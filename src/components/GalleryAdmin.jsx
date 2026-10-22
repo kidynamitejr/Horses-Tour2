@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { getEvents, getGallery } from "../data/googleSheets"
+import { newestPhotosFirst } from "../utils/gallery"
 import { deletePhoto } from "../data/liveScoring"
 
 // Admin > Gallery: every photo, newest first, with Delete. Deleting removes
@@ -13,7 +14,7 @@ function GalleryAdmin() {
 
   useEffect(() => {
     getGallery()
-      .then((rows) => setPhotos([...rows].filter((p) => p.Image).reverse()))
+      .then((rows) => setPhotos(newestPhotosFirst(rows)))
       .catch(() => setPhotos([]))
     getEvents()
       .then((rows) => {

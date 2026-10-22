@@ -3,6 +3,7 @@ import { createPortal } from "react-dom"
 import { getGallery, getSchedule } from "../data/googleSheets"
 import GalleryUpload from "./GalleryUpload"
 import { parseEventDate } from "../utils/liveEvent"
+import { newestPhotosFirst } from "../utils/gallery"
 
 // Full-screen photo viewer, shared with the Hall of Champions. `photos` is
 // a list of { Image, Caption, Subtitle? }.
@@ -110,10 +111,9 @@ function Gallery() {
 
         setEventNames(names)
 
-        // New photos get added as new rows at the bottom of the sheet,
-        // so reversing puts the most recently added ones first instead
-        // of making people scroll down to find them.
-        setPhotos([...data].filter((p) => p.Image).reverse())
+        // Most recently added first, so people don't have to scroll down
+        // to find new photos.
+        setPhotos(newestPhotosFirst(data))
 
       } catch (error) {
 
