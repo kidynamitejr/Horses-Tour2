@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { getMatchEntry, getSchedule, getPlayers } from "../data/googleSheets"
+import { eventDisplayName } from "../utils/eventName"
 
 function formatOverPar(value) {
   if (value === "" || value === null || value === undefined) return value
@@ -94,7 +95,7 @@ function LastMatchResults() {
           (e) => e["Event ID"] === String(lastEventId)
         )
 
-        setEventName(event ? event["Event Name"] : `Event ${lastEventId}`)
+        setEventName(eventDisplayName(event, `Event ${lastEventId}`))
         setRows(results)
 
       } catch (error) {

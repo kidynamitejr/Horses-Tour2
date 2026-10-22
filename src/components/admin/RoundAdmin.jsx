@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { adminSaveCard, flushQueue, submitAll } from "../../data/liveScoring"
 import { formatToPar, isSubmitted, isToday, summarizeCard, teamCard, useLiveEvent } from "../../utils/liveEvent"
+import { eventDisplayName } from "../../utils/eventName"
 
 // Admin > Round: a game-day dashboard (every team's progress, Submit all)
 // and "Fix a scorecard" for any round - even after it's locked - which
@@ -172,13 +173,13 @@ function RoundAdmin() {
       <div className="rda-head">
         <div>
           <span className={`live-badge${liveNow ? " is-live" : ""}`}>{liveNow ? <><i /> Live today</> : "Round"}</span>
-          <h3>{event ? event["Event Name"] : loading ? "Loading..." : "No event"}</h3>
+          <h3>{event ? eventDisplayName(event) : loading ? "Loading..." : "No event"}</h3>
           {event && <small>{event.Date} · {event.Course}</small>}
         </div>
         <label className="rda-picker">
           <span>Event</span>
           <select value={eventId} onChange={(e) => { setEventParam(e.target.value); setFixTeam("") }}>
-            {events.map((e) => <option key={e["Event ID"]} value={e["Event ID"]}>{e["Event Name"]}</option>)}
+            {events.map((e) => <option key={e["Event ID"]} value={e["Event ID"]}>{eventDisplayName(e)}</option>)}
           </select>
         </label>
       </div>

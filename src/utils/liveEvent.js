@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { getEvents, getHoleByHole, getMatchEntry, getPlayers } from "../data/googleSheets"
 import { PRACTICE_ID, getLiveState, pendingSaves, readCachedState } from "../data/liveScoring"
+import { eventDisplayName } from "./eventName"
 
 // "M/D/YY" from the Events tab.
 export function parseEventDate(text) {
@@ -155,6 +156,9 @@ function resolveEvent(events, eventIdParam) {
     eventId: base ? (practice ? PRACTICE_ID : base["Event ID"]) : "",
     course: (base?.Course || "").trim(),
     eventName,
+    // What pages show; eventName stays the sheet's own name since the
+    // Hole by Hole tab is matched on it.
+    displayName: practice ? eventName : eventDisplayName(base),
     date: (base?.Date || "").trim(),
   }
 }

@@ -4,6 +4,7 @@ import { TeamModal, TeamModalPlayer, TeamModalSection } from "./TeamModal"
 import confetti from "canvas-confetti"
 import { slugify } from "../utils/slugify"
 import { ordinal } from "../utils/ordinal"
+import { eventDisplayName } from "../utils/eventName"
 
 const COURSE_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"]
 
@@ -292,7 +293,7 @@ function MatchResultsView({ eventId, matchEntry, schedule, playerIds, eyebrow, o
     .sort((a, b) => a.individualPlacement - b.individualPlacement)
 
   const event = schedule.find((e) => e["Event ID"] === String(eventId))
-  const eventName = event ? event["Event Name"] : `Event ${eventId}`
+  const eventName = eventDisplayName(event, `Event ${eventId}`)
 
   const champions = teams.find((t) => t.teamPlacement === 1)
 

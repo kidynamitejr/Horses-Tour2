@@ -137,7 +137,7 @@ function HoleEditor({ eventId, team, hole, par, players, playerIds, saved, onSav
 function LiveScorecardPage() {
   const { eventId, team: letter } = useParams()
   const live = useLiveEvent(eventId)
-  const { event, course, eventName, date, editable, practice, teams, playerIds, state, pars, error, refresh } = live
+  const { event, course, eventName, displayName, date, editable, practice, teams, playerIds, state, pars, error, refresh } = live
   const team = teams.find((t) => t.letter === letter)
 
   const [selected, setSelected] = useState(null)
@@ -251,7 +251,7 @@ function LiveScorecardPage() {
           {team.players.map((p) => <Headshot key={p} id={playerIds[p]} />)}
         </div>
         <div className="lsc-team-info">
-          <span>{team.label} · {eventName}</span>
+          <span>{team.label} · {displayName}</span>
           <h2>{team.players.join(" & ")}</h2>
         </div>
         <div className="lsc-team-score">

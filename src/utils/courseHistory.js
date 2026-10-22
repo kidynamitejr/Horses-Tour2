@@ -2,6 +2,8 @@
 // par for each of 18 holes) into per-match running totals for the line
 // chart, plus per-course records.
 
+import { eventDisplayName } from "./eventName"
+
 export const HOLES = Array.from({ length: 18 }, (_, i) => i + 1)
 
 const norm = (value) => (value || "").trim().toLowerCase()
@@ -32,20 +34,6 @@ export function formatOverPar(value, digits = 0) {
   if (rounded === 0) return "E"
 
   return rounded > 0 ? `+${rounded.toFixed(digits)}` : rounded.toFixed(digits)
-
-}
-
-// "M/D/YY" dates - split by hand since browsers disagree on how to expand
-// a 2-digit year.
-function getEventYear(dateStr) {
-
-  const parts = (dateStr || "").split("/")
-
-  if (parts.length !== 3) return ""
-
-  const year = parts[2].trim()
-
-  return year.length === 2 ? `20${year}` : year
 
 }
 
@@ -256,10 +244,9 @@ export function getCourseHistory(holeRows, events) {
 
     return {
       key,
-      eventName: event ? (event["Event Name"] || "").trim() : group.displayName,
+      eventName: event ? eventDisplayName(event) : group.displayName,
       eventId: event ? Number(event["Event ID"]) : null,
       date: event ? event.Date : "",
-      year: event ? getEventYear(event.Date) : "",
       course: event ? (event.Course || "").trim() : "",
       teams,
       lowRound,

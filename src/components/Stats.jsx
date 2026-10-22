@@ -1,13 +1,19 @@
 import { useEffect, useState } from "react"
-import { getPlayerStats, getContributions, getMatchEntry, getHoleByHole } from "../data/googleSheets"
+import { getPlayerStats, getContributions, getMatchEntry, getHoleByHole, getEvents } from "../data/googleSheets"
 import { getMatchmakingPointsByPlayer } from "../utils/matchmakingPoints"
 import { getPlayerSummaries, getPlayedMatchEntryRows } from "../utils/matchEntry"
 import { HOLES, parseScore, cleanTeamName } from "../utils/courseHistory"
+import { withEventYear } from "../utils/eventName"
 
 // Counts each team's under-par holes (birdie or better) in every round on
 // the Hole by Hole tab and returns the highest count, with the teams and
 // events it happened at.
-function getMostBirdiesInRound(holeRows) {
+function getMostBirdiesInRound(holeRows, events) {
+
+  // Hole by Hole rows only carry the event name; the date (for the year)
+  // comes from the Events tab.
+  const dateByName = {}
+  events.forEach((e) => { dateByName[(e["Event Name"] || "").trim().toLowerCase()] = e.Date })
 
   const rounds = holeRows
     .filter((row) => row["Event Name"])
@@ -16,7 +22,7 @@ function getMostBirdiesInRound(holeRows) {
       const letter = (row["Team letter"] || "").trim()
 
       return {
-        name: `${cleanTeamName(row.Team, letter)} (${row["Event Name"].trim()})`,
+        name: `${cleanTeamName(row.Team, letter)} (${withEventYear(row["Event Name"], dateByName[row["Event Name"].trim().toLowerCase()])})`,
         value: HOLES.filter((hole) => parseScore(row[`Hole ${hole}`]) < 0).length,
       }
 
@@ -146,11 +152,12 @@ function Stats() {
 
       try {
 
-        const [playerStats, contributions, matchEntry, holeRows] = await Promise.all([
+        const [playerStats, contributions, matchEntry, holeRows, events] = await Promise.all([
           getPlayerStats(),
           getContributions(),
           getMatchEntry(),
           getHoleByHole(),
+          getEvents(),
         ])
 
         const lowestTeamScore = getLowestTeamScore(matchEntry)
@@ -188,7 +195,7 @@ function Stats() {
 
         const topThreeStreak = getLongestTopThreeStreaks(matchEntry)
 
-        const mostBirdies = getMostBirdiesInRound(holeRows)
+        const mostBirdies = getMostBirdiesInRound(holeRows, events)
 
         const combined = []
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { getPlayers, getSchedule, getMatchEntry } from "../data/googleSheets"
+import { eventDisplayName } from "../utils/eventName"
 
 function HottestPlayer() {
 
@@ -56,7 +57,7 @@ function HottestPlayer() {
 
         setHottest({
           player,
-          eventName: event ? event["Event Name"] : `Event ${latestEventId}`,
+          eventName: eventDisplayName(event, `Event ${latestEventId}`),
           pointsEarned: (parseFloat(topRow["Match Ranking Points"]) || 0).toFixed(2),
         })
 
