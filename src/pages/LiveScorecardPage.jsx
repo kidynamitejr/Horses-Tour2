@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import Headshot from "../components/Headshot"
+import LiveHighlights from "../components/LiveHighlights"
 import LiveScorecardGrid from "../components/LiveScorecardGrid"
 import {
   clearDraft,
@@ -245,6 +246,8 @@ function LiveScorecardPage() {
     <div className="live-page lsc-page" data-version={version}>
 
       <Link to={`/live?event=${eventId}`} className="lsc-back">← Live leaderboard</Link>
+
+      <LiveHighlights scores={state?.scores} teams={teams} pars={pars} playerIds={playerIds} current={letter} />
 
       <section className="lsc-team">
         <div className="lsc-team-heads">
