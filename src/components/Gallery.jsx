@@ -3,6 +3,7 @@ import { createPortal } from "react-dom"
 import { getGallery, getSchedule } from "../data/googleSheets"
 import GalleryUpload from "./GalleryUpload"
 import { parseEventDate } from "../utils/liveEvent"
+import { eventDisplayName } from "../utils/eventName"
 
 // Full-screen photo viewer, shared with the Hall of Champions. `photos` is
 // a list of { Image, Caption, Subtitle? }.
@@ -105,7 +106,7 @@ function Gallery() {
 
         const names = {}
         schedule.forEach((e) => {
-          names[e["Event ID"]] = { name: (e["Event Name"] || "").trim(), date: e.Date }
+          names[e["Event ID"]] = { name: eventDisplayName(e), date: e.Date }
         })
 
         setEventNames(names)

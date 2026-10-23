@@ -327,7 +327,7 @@ function CourseHistory() {
                   <span>
 
                     <span className="course-match-title">
-                      {match.year} {match.eventName}
+                      {match.eventName}
                     </span>
 
                     <span className="course-match-meta">

@@ -5,6 +5,7 @@ import { completedEventIds } from "../utils/eventStatus"
 import { getPlayerSummaries } from "../utils/matchEntry"
 import { parseEventDate } from "../utils/liveEvent"
 import { getPartnershipHistory, partnershipLabel } from "../utils/partnership"
+import { eventDisplayName } from "../utils/eventName"
 
 const BASE = import.meta.env.BASE_URL
 
@@ -279,7 +280,7 @@ function AutoMatchmakingPage() {
         setMessage("Match Entry already matches these teams.")
         return
       }
-      const summary = `${nextEvent["Event Name"].trim()} - Match Entry changes:\n\n${lines.join("\n")}\n\nSave?`
+      const summary = `${eventDisplayName(nextEvent)} - Match Entry changes:\n\n${lines.join("\n")}\n\nSave?`
       if (!window.confirm(summary)) return
 
       const result = await setTeams({ event: nextId, assignments })
@@ -300,11 +301,11 @@ function AutoMatchmakingPage() {
         <div className="mm-head-row">
           <div>
             <span className="mm-eyebrow">{isNextUp ? "Next event" : "Upcoming event"}</span>
-            <h2>{nextEvent ? nextEvent["Event Name"] : loading ? "Loading..." : "No upcoming event"}</h2>
+            <h2>{nextEvent ? eventDisplayName(nextEvent) : loading ? "Loading..." : "No upcoming event"}</h2>
             {nextEvent && (
               <p>
                 {nextEvent.Date} · {nextEvent.Course}
-                {lastEvent && <> · Seeded from <b>{lastEvent["Event Name"].trim()}</b> (last match)</>}
+                {lastEvent && <> · Seeded from <b>{eventDisplayName(lastEvent)}</b> (last match)</>}
               </p>
             )}
           </div>
@@ -313,7 +314,7 @@ function AutoMatchmakingPage() {
               <span>Pairing for</span>
               <select value={nextId} onChange={(e) => setPickedId(e.target.value)}>
                 {upcoming.map((e) => (
-                  <option key={e["Event ID"]} value={e["Event ID"]}>{e["Event Name"].trim()}</option>
+                  <option key={e["Event ID"]} value={e["Event ID"]}>{eventDisplayName(e)}</option>
                 ))}
               </select>
             </label>
@@ -321,7 +322,7 @@ function AutoMatchmakingPage() {
         </div>
         {playedFirst && (
           <p className="mm-auto">
-            These teams are set up automatically the moment every card from <b>{playedFirst["Event Name"].trim()}</b> is
+            These teams are set up automatically the moment every card from <b>{eventDisplayName(playedFirst)}</b> is
             in - seeded from that round - so everyone sees their matchup right after it. Until then this is a preview.
           </p>
         )}
@@ -386,7 +387,7 @@ function AutoMatchmakingPage() {
           </table>
 
           <form className="mm-add" onSubmit={addPlayer}>
-            <h4>Add a player to {nextEvent ? nextEvent["Event Name"].trim() : "this event"}</h4>
+            <h4>Add a player to {nextEvent ? eventDisplayName(nextEvent) : "this event"}</h4>
             <p>For someone new joining - give them the ranking points to slot them in at.</p>
             <div className="mm-add-row">
               <input
@@ -507,7 +508,7 @@ function AutoMatchmakingPage() {
                 {saving ? "Saving..." : "Save teams to Match Entry"}
               </button>
               <small>
-                Sets up {nextEvent["Event Name"].trim()} in Match Entry: adds a row for each player (copying the last row&apos;s
+                Sets up {eventDisplayName(nextEvent)} in Match Entry: adds a row for each player (copying the last row&apos;s
                 formulas, with Event ID, name and team filled in) or updates their team letter. You&apos;ll see the changes before
                 anything is saved.
               </small>

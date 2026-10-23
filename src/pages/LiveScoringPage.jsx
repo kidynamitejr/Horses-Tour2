@@ -4,6 +4,7 @@ import { ContributionSplit, LiveBoardCard } from "../components/LiveBoard"
 import { CalendarIcon, MapPinIcon } from "../components/Icons"
 import LiveHighlights from "../components/LiveHighlights"
 import { PRACTICE_ID, clearPractice, flushQueue, liveScoringReady, submitAll } from "../data/liveScoring"
+import { eventDisplayName } from "../utils/eventName"
 import {
   isSubmitted,
   isToday,
@@ -137,7 +138,7 @@ function LiveScoringPage() {
           <span className={`live-badge${liveNow && !practice ? " is-live" : ""}${practice ? " is-practice" : ""}`}>
             {practice ? "Practice · not counted" : liveNow ? <><i /> Live</> : "Scorecards"}
           </span>
-          <h2>{event ? event["Event Name"] : "Loading..."}</h2>
+          <h2>{event ? live.displayName : "Loading..."}</h2>
           {event && (
             <p className="live-meta">
               <span><CalendarIcon size={14} /> {event.Date}</span>
@@ -156,7 +157,7 @@ function LiveScoringPage() {
             }}
           >
             {events.map((e) => (
-              <option key={e["Event ID"]} value={e["Event ID"]}>{e["Event Name"]}</option>
+              <option key={e["Event ID"]} value={e["Event ID"]}>{eventDisplayName(e)}</option>
             ))}
             <option value={PRACTICE_ID}>Practice round (try the cards)</option>
           </select>

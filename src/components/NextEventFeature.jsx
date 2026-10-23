@@ -13,6 +13,7 @@ import { ordinal } from "../utils/ordinal"
 import { getPartnershipHistory, partnershipLabel } from "../utils/partnership"
 import { completedEventIds } from "../utils/eventStatus"
 import { getEventForecast } from "../utils/weather"
+import { eventDisplayName } from "../utils/eventName"
 
 const COURSE_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"]
 
@@ -282,7 +283,7 @@ function NextEventFeature() {
   const eventNameById = {}
 
   schedule.forEach((e) => {
-    eventNameById[e["Event ID"]] = e["Event Name"].trim()
+    eventNameById[e["Event ID"]] = eventDisplayName(e)
   })
 
   // Favored team = whichever pairing has the highest combined Ranking
@@ -365,7 +366,7 @@ function NextEventFeature() {
 
               <span className="ev-eyebrow">Up Next · Matchup Preview</span>
 
-              <h2 className="ev-title">{nextEvent["Event Name"]}</h2>
+              <h2 className="ev-title">{eventDisplayName(nextEvent)}</h2>
 
               <p className="ev-meta">
                 <span>{nextEvent.Date}</span>
@@ -502,7 +503,7 @@ function NextEventFeature() {
           playerIds={playerIds}
           summaries={summaries}
           tourRankByName={tourRankByName}
-          eventName={nextEvent ? nextEvent["Event Name"].trim() : ""}
+          eventName={eventDisplayName(nextEvent)}
           onClose={() => setModalTeam(null)}
         />
       )}

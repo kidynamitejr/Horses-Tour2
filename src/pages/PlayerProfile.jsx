@@ -508,7 +508,7 @@ function CareerTab({ profile, badges }) {
             {profile.lastWin ? (
               <>
                 <strong>{profile.lastWin.eventName}</strong>
-                <span>{yearOf(profile.lastWin)}</span>
+                <span>{profile.lastWin.date}</span>
                 <small>{profile.lastWin.course}</small>
               </>
             ) : (
@@ -520,7 +520,7 @@ function CareerTab({ profile, badges }) {
             {profile.lowestRound ? (
               <>
                 <strong>{formatToPar(profile.lowestRound.teamScore)}</strong>
-                <span>{profile.lowestRound.eventName} ({yearOf(profile.lowestRound)})</span>
+                <span>{profile.lowestRound.eventName}</span>
                 <small>{profile.lowestRound.course}</small>
               </>
             ) : (
@@ -554,7 +554,7 @@ function CareerTab({ profile, badges }) {
                 <ul>
                   {wins.map((w) => (
                     <li key={w.eventId}>
-                      <strong>{year} {w.eventName}</strong>
+                      <strong>{w.eventName}</strong>
                       {w.isMajor && <span className="pp-major-tag">★ {w.type}</span>}
                       <span className="pp-wins-meta">
                         {w.course} · with {w.partners.join(" & ") || "—"} · {formatToPar(w.teamScore)}

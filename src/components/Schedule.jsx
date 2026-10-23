@@ -4,6 +4,7 @@ import { getEvents, getMatchEntry, getPlayers } from "../data/googleSheets"
 import { slugify } from "../utils/slugify"
 import { formatCurrency } from "../utils/winnings"
 import { CalendarIcon, FlagIcon, MapPinIcon, TrophyIcon } from "./Icons"
+import { eventDisplayName } from "../utils/eventName"
 
 const BASE = import.meta.env.BASE_URL
 const COURSE_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"]
@@ -121,7 +122,7 @@ function Schedule() {
       const complete = Boolean(winner) || (date ? date < today : false)
       return {
         id: e["Event ID"],
-        name: e["Event Name"].trim(),
+        name: eventDisplayName(e),
         date,
         dateText: e.Date,
         course: (e.Course || "").trim(),

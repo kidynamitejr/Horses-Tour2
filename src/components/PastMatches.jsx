@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { getSchedule, getMatchEntry, getPlayers } from "../data/googleSheets"
 import { slugify } from "../utils/slugify"
 import MatchResultsView from "./MatchResultsView"
+import { eventDisplayName } from "../utils/eventName"
 
 const COURSE_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"]
 
@@ -145,7 +146,7 @@ function PastMatches() {
               <CourseImage course={match.Course} />
 
               <div className="match-card-front">
-                <h3>{match["Event Name"]}</h3>
+                <h3>{eventDisplayName(match)}</h3>
                 <p>{match.Date}</p>
               </div>
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { getEvents, getGallery } from "../data/googleSheets"
 import { deletePhoto } from "../data/liveScoring"
+import { eventDisplayName } from "../utils/eventName"
 
 // Admin > Gallery: every photo, newest first, with Delete. Deleting removes
 // the photo's row from the Gallery tab and deletes the photo file.
@@ -18,7 +19,7 @@ function GalleryAdmin() {
     getEvents()
       .then((rows) => {
         const names = {}
-        rows.forEach((e) => { names[e["Event ID"]] = (e["Event Name"] || "").trim() })
+        rows.forEach((e) => { names[e["Event ID"]] = eventDisplayName(e) })
         setEventNames(names)
       })
       .catch(() => {})

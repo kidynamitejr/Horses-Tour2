@@ -10,6 +10,7 @@
 import { getPlayedMatchEntryRows } from "./matchEntry"
 import { HOLES, parseScore } from "./courseHistory"
 import { ordinal } from "./ordinal"
+import { eventDisplayName } from "./eventName"
 
 const isSub = (name) => /\(sub\)/i.test(name || "")
 const norm = (value) => (value || "").trim().toLowerCase()
@@ -177,7 +178,7 @@ export function buildPlayerProfiles({ players, matchEntry, events, holeRows }) {
 
         return {
           eventId: Number(eventId),
-          eventName: (event["Event Name"] || `Event ${eventId}`).trim(),
+          eventName: eventDisplayName(event, `Event ${eventId}`),
           date: event.Date || "",
           dateValue: parseEventDate(event.Date),
           course: (event.Course || "").trim(),

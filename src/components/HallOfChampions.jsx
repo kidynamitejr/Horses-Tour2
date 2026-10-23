@@ -4,6 +4,7 @@ import { getSchedule, getMatchEntry, getPlayers, getEvents } from "../data/googl
 import { formatCurrency } from "../utils/winnings"
 import { Lightbox } from "./Gallery"
 import { TrophyIcon } from "./Icons"
+import { eventDisplayName, getEventYear } from "../utils/eventName"
 
 const BASE = import.meta.env.BASE_URL
 
@@ -13,18 +14,6 @@ function formatOverPar(value) {
   if (isNaN(num)) return value
   if (num === 0) return "E"
   return num > 0 ? `+${value}` : value
-}
-
-// Schedule dates are "M/D/YY" (e.g. "8/23/26") - pulled apart by hand
-// instead of trusting `new Date(...)`, since browsers don't agree on how
-// a 2-digit year like "26" should be expanded.
-function getEventYear(dateStr) {
-  if (!dateStr) return ""
-  const parts = dateStr.split("/")
-  if (parts.length !== 3) return ""
-  let year = parts[2].trim()
-  if (year.length === 2) year = `20${year}`
-  return year
 }
 
 function money(value) {
@@ -126,7 +115,7 @@ function HallOfChampions() {
             const type = (details["Event Type"] || "").trim()
             return {
               ...c,
-              eventName: event ? event["Event Name"].trim() : `Event ${c.eventId}`,
+              eventName: eventDisplayName(event, `Event ${c.eventId}`),
               date: event ? event.Date : "",
               year: event ? getEventYear(event.Date) : "",
               course: ((details.Course || event?.Course) || "").trim(),
@@ -164,7 +153,7 @@ function HallOfChampions() {
     .map((c) => ({
       eventId: c.eventId,
       Image: c.image,
-      Caption: `${c.year} ${c.eventName} · ${c.players.join(" & ")}`,
+      Caption: `${c.eventName} · ${c.players.join(" & ")}`,
     }))
 
   function openPhoto(eventId) {
@@ -230,7 +219,7 @@ function HallOfChampions() {
         <div className="hoc-feature-body">
           <span className="hoc-eyebrow">Reigning Champions</span>
           <h2>
-            {reigning.year} {reigning.eventName}
+            {reigning.eventName}
             {reigning.isMajor && <span className="hoc-major-tag">★ {reigning.type}</span>}
           </h2>
           <p className="hoc-feature-meta">

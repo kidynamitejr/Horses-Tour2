@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { getMatchEntry, getSchedule } from "../data/googleSheets"
 import { getPlayedMatchEntryRows } from "../utils/matchEntry"
 import { ordinal } from "../utils/ordinal"
+import { eventDisplayName } from "../utils/eventName"
 
 // Reads Match Entry (like the rest of the site) instead of the old
 // Contributions tab, which stopped being updated after the first two events.
@@ -56,7 +57,7 @@ function PointsCalculator() {
 
             return {
               eventId,
-              eventName: event ? event["Event Name"].trim() : `Event ${eventId}`,
+              eventName: eventDisplayName(event, `Event ${eventId}`),
               date: event ? event.Date : "",
               rows,
             }
