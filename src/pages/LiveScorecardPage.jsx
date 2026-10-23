@@ -247,8 +247,6 @@ function LiveScorecardPage() {
 
       <Link to={`/live?event=${eventId}`} className="lsc-back">← Live leaderboard</Link>
 
-      <LiveHighlights scores={state?.scores} teams={teams} pars={pars} playerIds={playerIds} current={letter} />
-
       <section className="lsc-team">
         <div className="lsc-team-heads">
           {team.players.map((p) => <Headshot key={p} id={playerIds[p]} />)}
@@ -274,6 +272,8 @@ function LiveScorecardPage() {
             : "This round is closed - scores are final and can't be changed."}
         </p>
       ) : null}
+
+      <LiveHighlights scores={state?.scores} teams={teams} pars={pars} playerIds={playerIds} current={letter} />
 
       <LiveScorecardGrid
         pars={pars}
