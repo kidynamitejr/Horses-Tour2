@@ -4,6 +4,9 @@ import Headshot from "./Headshot"
 // A strip of small cards for the big moments of a round: birdies or
 // better in green, double bogeys or worse in red, newest first. Each card
 // shows the team's headshots so you can tell who it was at a glance.
+// A card disappears 15 minutes after the hole was entered.
+
+const SHOW_FOR_MS = 15 * 60 * 1000
 
 function describe(strokes, par) {
   const diff = strokes - par
@@ -25,11 +28,12 @@ function timeAgo(iso, now) {
   return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h`
 }
 
-function buildHighlights(scores, teams, pars) {
+function buildHighlights(scores, teams, pars, now) {
   if (!pars || !scores) return []
   const byLetter = Object.fromEntries(teams.map((t) => [t.letter, t]))
+  const fresh = (s) => s.updated && now - new Date(s.updated) < SHOW_FOR_MS
   return scores
-    .filter((s) => byLetter[s.team] && s.strokes && pars[s.hole - 1])
+    .filter((s) => byLetter[s.team] && s.strokes && pars[s.hole - 1] && fresh(s))
     .map((s) => {
       const par = pars[s.hole - 1]
       const moment = describe(s.strokes, par)
@@ -53,7 +57,7 @@ export default function LiveHighlights({ scores, teams, pars, playerIds, current
     return () => clearInterval(timer)
   }, [])
 
-  const highlights = buildHighlights(scores, teams, pars)
+  const highlights = buildHighlights(scores, teams, pars, now)
   if (!highlights.length) return null
 
   return (
