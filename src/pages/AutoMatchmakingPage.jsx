@@ -8,7 +8,7 @@ import { getPartnershipHistory, partnershipLabel } from "../utils/partnership"
 import { headshotUrl, playerImageFallback } from "../utils/headshot"
 
 // Auto Matchmaking: every active player ranked by ranking points from the
-// last match (or their average if they missed it), a Playing dropdown for
+// last match (or the last one they played, if they missed it), a Playing dropdown for
 // each, and the resulting pairings - 1st with last, 2nd with second to
 // last, and so on. With an odd number playing, a sub fills in for one of
 // the missing players at that player's spot.
@@ -81,6 +81,12 @@ function AutoMatchmakingPage() {
   const lastEvent = [...dated].reverse()
     .find((x) => finished.has(x.e["Event ID"].trim()) && scoredIds.has(x.e["Event ID"]))?.e || null
   const lastId = lastEvent?.["Event ID"] || ""
+  const eventDates = {}
+  const eventNames = {}
+  dated.forEach((x) => {
+    eventDates[x.e["Event ID"]] = x.date
+    eventNames[x.e["Event ID"]] = (x.e["Event Name"] || "").trim()
+  })
 
   // Load the saved choices for the event (from the sheet, or this browser
   // when live scoring isn't connected).
@@ -129,15 +135,19 @@ function AutoMatchmakingPage() {
     .filter((p) => /^active$/i.test((p.Active || "").trim()) && p.Name && !/\(sub\)/i.test(p.Name))
     .map((p) => {
       const name = p.Name.trim()
-      const lastRow = matchEntry.find(
-        (r) => r["Event ID"] === lastId && (r.Player || "").trim() === name && num(r["Team Score"]) != null,
+      // The most recent finished match they played - the last match, or an
+      // earlier one if they missed it.
+      const played = matchEntry.filter(
+        (r) => (r.Player || "").trim() === name && num(r["Team Score"]) != null && num(r["Match Ranking Points"]) != null
+          && finished.has((r["Event ID"] || "").trim()) && eventDates[r["Event ID"]],
       )
-      const lastPoints = lastRow ? num(lastRow["Match Ranking Points"]) : null
+      const recentRow = played.sort((a, b) => eventDates[b["Event ID"]] - eventDates[a["Event ID"]])[0]
+      const recentPoints = recentRow ? num(recentRow["Match Ranking Points"]) : null
       const average = summaries[name]?.avgRankingPoints ?? 0
       return {
         name,
-        seed: lastPoints ?? average,
-        source: lastPoints != null ? "Last match" : "Average",
+        seed: recentPoints ?? average,
+        source: !recentRow ? "Average" : recentRow["Event ID"] === lastId ? "Last match" : eventNames[recentRow["Event ID"]] || "Earlier match",
         average,
       }
     })

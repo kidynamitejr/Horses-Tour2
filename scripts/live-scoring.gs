@@ -757,7 +757,7 @@ function activeRoster() {
 }
 
 // Same pairing as the Auto Matchmaking page: seed by the last match's
-// ranking points (or the player's average if they missed it), 1st with
+// ranking points (or the last match they played, if they missed it), 1st with
 // last, 2nd with second to last; an odd count brings in a sub at a missing
 // player's spot.
 function buildPairings(lastEventId, nextEventId, attendance, matchValues) {
@@ -768,14 +768,25 @@ function buildPairings(lastEventId, nextEventId, attendance, matchValues) {
   })
   const num = (v) => (v === "" || v == null || isNaN(Number(v)) ? null : Number(v))
 
+  // Finished events up to and including the one that just ended, by date.
+  const events = eventRows()
+  const lastDate = (events.find((e) => e.id === lastEventId) || {}).date
+  const playedDate = {}
+  events.forEach((e) => { if (lastDate && e.date <= lastDate && (e.winner || e.id === lastEventId)) playedDate[e.id] = e.date })
+
   const roster = activeRoster()
   const extras = (attendance.extras || []).filter((x) => roster.indexOf(x.name) < 0)
   const ranked = roster.map((name) => {
-    const last = matchValues.find((r) =>
-      clean(r[MATCH_COLS.event]) === lastEventId && clean(r[MATCH_COLS.player]) === name && num(r[MATCH_COLS.score]) != null)
+    // The most recent match they played - the last one, or an earlier one if they missed it.
+    let recent = null
+    matchValues.slice(1).forEach((r) => {
+      const id = clean(r[MATCH_COLS.event])
+      if (clean(r[MATCH_COLS.player]) !== name || num(r[MATCH_COLS.score]) == null || num(r[MRP_COL]) == null || !playedDate[id]) return
+      if (!recent || playedDate[id] > playedDate[clean(recent[MATCH_COLS.event])]) recent = r
+    })
     const average = num(firstRow[name] ? firstRow[name][AVG_COL] : null) || 0
-    const lastPoints = last ? num(last[MRP_COL]) : null
-    return { name: name, seed: lastPoints != null ? lastPoints : average, average: average }
+    const recentPoints = recent ? num(recent[MRP_COL]) : null
+    return { name: name, seed: recentPoints != null ? recentPoints : average, average: average }
   }).concat(extras.map((x) => ({ name: x.name, seed: x.seed, average: x.seed })))
     .sort((a, b) => b.seed - a.seed || b.average - a.average || a.name.localeCompare(b.name))
 
