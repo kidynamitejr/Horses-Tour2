@@ -63,7 +63,7 @@ function NotificationsAdmin() {
 
   return (
     <div className="bna nta">
-      <h3>Send a notification</h3>
+      <h3>Send a phone notification</h3>
       <p className="adx-muted">
         Goes straight to every phone that turned on alerts. Birdies, lead changes and final cards are still sent automatically.
       </p>

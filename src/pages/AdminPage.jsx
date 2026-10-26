@@ -8,9 +8,8 @@ import EventsAdmin from "../components/admin/EventsAdmin"
 import ChampionsAdmin from "../components/admin/ChampionsAdmin"
 import PlayersAdmin from "../components/admin/PlayersAdmin"
 import RulesAdmin from "../components/admin/RulesAdmin"
-import BannerAdmin from "../components/admin/BannerAdmin"
+import AnnouncementsAdmin from "../components/admin/AnnouncementsAdmin"
 import AwardsAdmin from "../components/admin/AwardsAdmin"
-import NotificationsAdmin from "../components/admin/NotificationsAdmin"
 import { adminSignIn, adminSignOut, getAdminPassword, liveScoringReady } from "../data/liveScoring"
 
 // Admin: the commissioner's tools behind a password - matchmaking, the
@@ -32,8 +31,7 @@ const TABS = [
   { id: "news", label: "News" },
   { id: "gallery", label: "Gallery" },
   { id: "rules", label: "Rules" },
-  { id: "banner", label: "Banner" },
-  { id: "notifications", label: "Notifications" },
+  { id: "announcements", label: "Banner & Notifications" },
 ]
 
 function AdminPage() {
@@ -43,7 +41,9 @@ function AdminPage() {
   const [error, setError] = useState("")
   const [tab, setTab] = useState(() => {
     try {
-      return sessionStorage.getItem("ht-admin-tab") || "matchmaking"
+      const saved = sessionStorage.getItem("ht-admin-tab") || "matchmaking"
+      // The Banner and Notifications tabs are now one.
+      return saved === "banner" || saved === "notifications" ? "announcements" : saved
     } catch {
       return "matchmaking"
     }
@@ -136,8 +136,7 @@ function AdminPage() {
         {tab === "news" && <NewsAdmin />}
         {tab === "gallery" && <GalleryAdmin />}
         {tab === "rules" && <RulesAdmin />}
-        {tab === "banner" && <BannerAdmin />}
-        {tab === "notifications" && <NotificationsAdmin />}
+        {tab === "announcements" && <AnnouncementsAdmin />}
       </div>
     </div>
   )
