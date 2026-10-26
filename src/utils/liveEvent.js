@@ -72,12 +72,15 @@ function buildTeams(matchEntry, eventId) {
 // the Hole by Hole tab (score to par) and Match Entry (contribution
 // totals - Hole by Hole has no per-hole contributions).
 export function teamCard(live, team) {
-  const { state, eventId, pars, practice, eventName, baseId, holeRows = [], matchEntry = [] } = live
+  const { state, eventId, pars, practice } = live
   const letter = team.letter
+  const players = pairKey(team.players)
   const strokes = Array(18).fill(null)
   const contributions = Array.from({ length: 18 }, () => [0, 0])
   ;(state?.scores || []).forEach((s) => {
-    if (s.team !== letter || !(s.hole >= 1 && s.hole <= 18)) return
+    // By players when the row has them (letters can differ between tabs).
+    const mine = s.players?.some(Boolean) ? pairKey(s.players) === players : s.team === letter
+    if (!mine || !(s.hole >= 1 && s.hole <= 18)) return
     strokes[s.hole - 1] = s.strokes
     contributions[s.hole - 1] = s.contributions || [0, 0]
   })
@@ -90,6 +93,17 @@ export function teamCard(live, team) {
     return { strokes, contributions, contributionTotals: null, source: "live" }
   }
 
+  const official = officialCard(live, team)
+  if (!official) return { strokes, contributions, contributionTotals: null, source: "live" }
+  return { ...official, contributions: null, source: "history" }
+}
+
+// A past team's card from the Hole by Hole tab (score per hole) and Match
+// Entry (contribution totals and team score), or null when neither has it.
+export function officialCard(live, team) {
+  const { pars, eventName, baseId, holeRows = [], matchEntry = [] } = live
+  const letter = team.letter
+  const strokes = Array(18).fill(null)
   const entries = team.players.map((player) => matchEntry.find(
     (r) => r["Event ID"] === baseId && (r.Player || "").trim() === player && (r.Team || "").trim() === letter
   ))
@@ -104,8 +118,8 @@ export function teamCard(live, team) {
   // Find the team's Hole by Hole row by its players, then by letter.
   const sameEvent = (r) => (r["Event Name"] || "").trim().toLowerCase() === name
   const players = pairKey(team.players)
-  const row = holeRows.find((r) => sameEvent(r) && pairKey((r.Team || "").split("/")) === players)
-    || holeRows.find((r) => sameEvent(r) && (r["Team letter"] || "").trim() === letter)
+  const row = pars && (holeRows.find((r) => sameEvent(r) && pairKey((r.Team || "").split("/")) === players)
+    || holeRows.find((r) => sameEvent(r) && (r["Team letter"] || "").trim() === letter))
   if (row) {
     for (let h = 1; h <= 18; h++) {
       const toPar = parseFloat(row[`Hole ${h}`])
@@ -115,15 +129,11 @@ export function teamCard(live, team) {
 
   // A pre-made Hole by Hole row with no scores yet doesn't count.
   const hasScores = strokes.some(Boolean)
-  if (!hasScores && contributionTotals.every((v) => v == null)) {
-    return { strokes, contributions, contributionTotals: null, source: "live" }
-  }
+  if (!hasScores && contributionTotals.every((v) => v == null)) return null
   return {
     strokes,
-    contributions: null,
     contributionTotals,
     officialToPar: isNaN(officialToPar) ? null : officialToPar,
-    source: "history",
   }
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { adminSaveCard, flushQueue, submitAll } from "../../data/liveScoring"
-import { formatToPar, isSubmitted, isToday, summarizeCard, teamCard, useLiveEvent } from "../../utils/liveEvent"
+import { formatToPar, isSubmitted, isToday, officialCard, summarizeCard, teamCard, useLiveEvent } from "../../utils/liveEvent"
 
 // Admin > Round: a game-day dashboard (every team's progress, Submit all)
 // and "Fix a scorecard" for any round - even after it's locked - which
@@ -8,15 +8,28 @@ import { formatToPar, isSubmitted, isToday, summarizeCard, teamCard, useLiveEven
 
 const HOLES = Array.from({ length: 18 }, (_, i) => i)
 
-function CardFixer({ live, team, onSaved }) {
+// Everything already saved for the team, so fixing one hole doesn't mean
+// re-entering the card: Live Scores first, any holes missing there from
+// Hole by Hole, and the contribution totals from Match Entry when it has them.
+function savedCard(live, team) {
   const card = teamCard(live, team)
+  const official = live.pars && !live.practice ? officialCard(live, team) : null
+  const strokes = card.strokes.map((s, h) => s || official?.strokes[h] || null)
+  const known = card.source === "live" && card.contributions.some((c) => Number(c?.[0]) || Number(c?.[1]))
+  const contributions = known ? card.contributions : null
+  const perHole = contributions && [0, 1].map((i) => contributions.reduce((t, c) => t + (Number(c?.[i]) || 0), 0))
+  const savedTotals = official?.contributionTotals?.some((v) => v != null) ? official.contributionTotals : null
+  return { strokes, contributions, contributionTotals: savedTotals || perHole || [0, 0] }
+}
+
+function CardFixer({ live, team, onSaved }) {
   const pars = live.pars
+  const [card] = useState(() => savedCard(live, team))
   const [strokes, setStrokes] = useState(() => card.strokes.map((s) => (s ? String(s) : "")))
   const [contrib, setContrib] = useState(() => (card.contributions
     ? card.contributions.map((c) => [String(c?.[0] ?? 0), String(c?.[1] ?? 0)])
     : HOLES.map(() => ["", ""])))
-  const perHoleTotals = [0, 1].map((i) => contrib.reduce((t, c) => t + (Number(c[i]) || 0), 0))
-  const [totals, setTotals] = useState(() => (card.contributionTotals || perHoleTotals).map((v) => String(v ?? 0)))
+  const [totals, setTotals] = useState(() => card.contributionTotals.map((v) => String(v ?? 0)))
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState("")
 
@@ -30,7 +43,9 @@ function CardFixer({ live, team, onSaved }) {
   function setContribution(h, p, value) {
     const next = contrib.map((c, i) => (i === h ? c.map((v, j) => (j === p ? value.replace(/[^\d.]/g, "").slice(0, 4) : v)) : c))
     setContrib(next)
-    setTotals([0, 1].map((i) => String(next.reduce((t, c) => t + (Number(c[i]) || 0), 0))))
+    // Only re-add the totals when the card had per-hole contributions - an
+    // older round only has totals, and one hole shouldn't wipe them out.
+    if (card.contributions) setTotals([0, 1].map((i) => String(next.reduce((t, c) => t + (Number(c[i]) || 0), 0))))
   }
 
   async function save() {
@@ -109,7 +124,7 @@ function CardFixer({ live, team, onSaved }) {
             <input inputMode="decimal" value={totals[p]} onChange={(e) => setTotals(totals.map((v, i) => (i === p ? e.target.value.replace(/[^\d.]/g, "") : v)))} />
           </label>
         ))}
-        <small>These are filled in from the holes above - change them if this round only has totals.</small>
+        <small>Filled in from what's saved for this round. They update when you change a hole's contributions above.</small>
       </div>
 
       <div className="adx-actions">
