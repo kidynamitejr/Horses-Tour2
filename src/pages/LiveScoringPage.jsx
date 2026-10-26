@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import { ContributionSplit, LiveBoardCard } from "../components/LiveBoard"
 import Headshot from "../components/Headshot"
+import AlertsButton from "../components/AlertsButton"
 import { CalendarIcon, ChevronRightIcon, MapPinIcon } from "../components/Icons"
 import { PRACTICE_ID, clearPractice, flushQueue, liveScoringReady, submitAll } from "../data/liveScoring"
 import {
@@ -165,6 +166,8 @@ function LiveScoringPage() {
           </select>
         </label>
       </section>
+
+      <AlertsButton />
 
       {event && !pars && state && (
         <p className="live-note">

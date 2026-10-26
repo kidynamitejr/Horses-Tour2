@@ -28,6 +28,7 @@
  *   Matchmaking  - who's playing in the next event (from the Auto
  *                  Matchmaking page); when an event's last card is in,
  *                  the next event is paired and set up automatically
+ *   Alert Phones - phones that tapped "Turn on alerts" on the website
  * Formula cells are never overwritten, except a tied team's Placement.
  *
  * Photos: uploads (Gallery, News and headshots) are saved into the website's GitHub
@@ -45,6 +46,12 @@
  * Events tab), so past rounds can't be changed from the website. The
  * "practice" event is always open for trying the cards out; it's never
  * written to Hole by Hole and can be cleared from the website.
+ *
+ * Alerts: birdies, lead changes, final cards and the winner are sent as
+ * phone notifications through Firebase Cloud Messaging once these Script
+ * Properties are set (see "Phone alerts" near the end of this file):
+ * FIREBASE_WEB_CONFIG, FIREBASE_VAPID_KEY and FIREBASE_SERVICE_ACCOUNT.
+ * Run sendTestAlert() to check them.
  *
  * After changing this file: Deploy > Manage deployments > edit (pencil) >
  * Version: New version > Deploy. That keeps the same web app URL.
@@ -137,6 +144,7 @@ function doGet(e) {
   const p = e.parameter || {}
   if (p.action === "settings") return json({ ok: true, settings: readSettings() })
   if (p.action === "awards") return json({ ok: true, awards: readAwards() })
+  if (p.action === "alertsConfig") return json(Object.assign({ ok: true }, alertsConfig()))
   if (p.action === "attendance") return json({ ok: true, attendance: readAttendance(String(p.event || "")) })
   if (p.action === "state") {
     return json(getState(String(p.event || ""), String(p.course || ""), String(p.eventName || "")))
@@ -144,7 +152,15 @@ function doGet(e) {
   return json({ ok: true, message: "Horses Tour live scoring" })
 }
 
+// Alerts go out after the lock is released, so other teams' saves don't
+// wait on them.
 function doPost(e) {
+  const result = handlePost(e)
+  sendQueuedAlerts()
+  return result
+}
+
+function handlePost(e) {
   const body = JSON.parse(e.postData.contents || "{}")
   const lock = LockService.getScriptLock()
   // Busy with other saves: say so (the site keeps the hole and retries).
@@ -178,6 +194,8 @@ function doPost(e) {
     if (body.action === "saveAttendance") return json(saveAttendance(body))
     if (body.action === "uploadPhoto") return json(uploadPhoto(body))
     if (body.action === "adEvent") return json(recordAdEvent(body))
+    if (body.action === "alertsOn") return json(alertsOn(body))
+    if (body.action === "alertsOff") return json(alertsOff(body))
     if (body.action === "previewAutoPairing") {
       const nextId = nextEventAfter(clean(body.completedEvent))
       const values = sheetById(MATCH_SHEET_ID).getDataRange().getValues()
@@ -342,10 +360,21 @@ function saveHole(body, force) {
     new Date(),
   ]
 
+  const previous = rowIndex > 0 ? Number(live.values[rowIndex - 1][4]) : null
   if (rowIndex > 0) {
     live.sheet.getRange(rowIndex, 1, 1, row.length).setValues([row])
   } else {
     live.sheet.appendRow(row)
+  }
+  // Fixes from Admin (force) and practice rounds never send alerts.
+  if (!force && eventId !== PRACTICE_ID) {
+    try {
+      if (rowIndex > 0) live.values[rowIndex - 1] = row
+      else live.values.push(row)
+      if (previous !== strokes) queueHoleAlerts(eventId, team, hole, strokes, par, live.values)
+    } catch (err) {
+      Logger.log("Alert skipped: " + err)
+    }
   }
   return { ok: true }
 }
@@ -650,10 +679,22 @@ function submitTeams(body, onlyTeam, force) {
 
   let nextEvent = null
   if (!dryRun) {
+    const alreadyIn = force ? [] : submittedPairs(eventName)
+    const eventsRow = eventsTable.values.find((row, idx) => idx > 0 && clean(row[EVENTS_COLS.event]) === matchEventId)
+    const winnerBefore = eventsRow ? clean(eventsRow[EVENTS_COLS.winner]) : ""
     changes.forEach((ch) => ch.table.sheet.getRange(ch.row + 1, ch.col + 1).setValue(ch.value))
     appends.forEach((a) => holeSheet.appendRow(a.row))
     // Every team is in: pair the next event so people see their matchups now.
     if (winner.winner) nextEvent = autoMatchmake(matchEventId)
+    // Fixes from Admin (force) never send alerts.
+    if (!force) {
+      try {
+        queueCardAlerts(eventId, eventName, pars, finished.filter((p) => alreadyIn.indexOf(pairKey(p.players)) < 0))
+        if (winner.winner && winner.winner !== winnerBefore) queueWinnerAlert(eventId, eventName, winner.winner)
+      } catch (err) {
+        Logger.log("Alert skipped: " + err)
+      }
+    }
   }
 
   return {
@@ -1645,4 +1686,306 @@ function clearPractice() {
     if (clean(live.values[i][0]) === PRACTICE_ID) live.sheet.deleteRow(i + 1)
   }
   return { ok: true }
+}
+
+// ---- Phone alerts (Firebase Cloud Messaging) ----
+// People tap "Turn on alerts" on the website; their phone's address
+// (a token) is kept on the Alert Phones tab. Birdies or better, lead
+// changes, final cards and the winner are sent to every phone on it.
+// Practice rounds and Admin fixes never send alerts.
+//
+// Script Properties (Project Settings > Script Properties):
+//   FIREBASE_WEB_CONFIG      - the firebaseConfig block from Firebase
+//                              (Project settings > General > Your apps)
+//   FIREBASE_VAPID_KEY       - Project settings > Cloud Messaging > Web
+//                              Push certificates > Key pair
+//   FIREBASE_SERVICE_ACCOUNT - everything in the private key file from
+//                              Project settings > Service accounts >
+//                              Generate new private key (keep it secret)
+const ALERTS_SHEET = "Alert Phones"
+const ALERTS_HEADERS = ["Token", "Added", "Last Seen"]
+const SITE_URL = "https://kidynamitejr.github.io/Horses-Tour2/"
+const queuedAlerts = []
+
+function scriptProperty(name) {
+  return clean(PropertiesService.getScriptProperties().getProperty(name))
+}
+
+// Firebase shows the web config as JavaScript (`apiKey: "..."`), not
+// JSON, so either is accepted.
+function parseLooseObject(text) {
+  if (!text) return null
+  try {
+    return JSON.parse(text)
+  } catch (err) {
+    const out = {}
+    const re = /([A-Za-z_]+)\s*:\s*["']([^"']*)["']/g
+    let m
+    while ((m = re.exec(text))) out[m[1]] = m[2]
+    return Object.keys(out).length ? out : null
+  }
+}
+
+// What the website needs to sign a phone up (all of it is public).
+function alertsConfig() {
+  const config = parseLooseObject(scriptProperty("FIREBASE_WEB_CONFIG"))
+  const vapidKey = scriptProperty("FIREBASE_VAPID_KEY")
+  if (!config || !config.apiKey || !config.projectId || !config.messagingSenderId || !config.appId || !vapidKey) {
+    return { config: null }
+  }
+  return {
+    config: {
+      apiKey: config.apiKey,
+      authDomain: config.authDomain,
+      projectId: config.projectId,
+      messagingSenderId: config.messagingSenderId,
+      appId: config.appId,
+    },
+    vapidKey: vapidKey,
+  }
+}
+
+function alertsSheet() {
+  const book = SpreadsheetApp.getActive()
+  let sheet = book.getSheetByName(ALERTS_SHEET)
+  if (!sheet) {
+    sheet = book.insertSheet(ALERTS_SHEET)
+    sheet.getRange(1, 1, 1, ALERTS_HEADERS.length).setValues([ALERTS_HEADERS]).setFontWeight("bold")
+    sheet.setFrozenRows(1)
+  }
+  return sheet
+}
+
+function alertsOn(body) {
+  const token = clean(body.token)
+  if (!token || token.length > 4096) return { ok: false, error: "Missing phone token" }
+  const sheet = alertsSheet()
+  const values = sheet.getDataRange().getValues()
+  const r = values.findIndex((row, i) => i > 0 && clean(row[0]) === token)
+  if (r > 0) sheet.getRange(r + 1, 3).setValue(new Date())
+  else sheet.appendRow([token, new Date(), new Date()])
+  // A phone that got a new token stops using the old one.
+  const old = clean(body.oldToken)
+  if (old && old !== token) removeAlertTokens([old])
+  return { ok: true }
+}
+
+function alertsOff(body) {
+  removeAlertTokens([clean(body.token)])
+  return { ok: true }
+}
+
+function removeAlertTokens(tokens) {
+  const sheet = SpreadsheetApp.getActive().getSheetByName(ALERTS_SHEET)
+  if (!sheet || !tokens.length) return
+  const values = sheet.getDataRange().getValues()
+  for (let i = values.length - 1; i >= 1; i--) {
+    if (tokens.indexOf(clean(values[i][0])) >= 0) sheet.deleteRow(i + 1)
+  }
+}
+
+function queueAlert(title, body, eventId) {
+  queuedAlerts.push({
+    title: title,
+    body: body,
+    url: SITE_URL + "live" + (eventId ? "?event=" + encodeURIComponent(eventId) : ""),
+  })
+}
+
+function teamNames(row) {
+  return [clean(row[7]), clean(row[9])].filter(Boolean).join(" & ") || "Team " + clean(row[1])
+}
+
+function formatToPar(value) {
+  if (value === 0) return "E"
+  return value > 0 ? "+" + value : String(value)
+}
+
+// Every team's score so far in the event, from Live Scores rows.
+function liveStandings(eventId, values) {
+  const teams = {}
+  values.slice(1).forEach((r) => {
+    if (clean(r[0]) !== eventId || !clean(r[1])) return
+    const team = clean(r[1])
+    if (!teams[team]) teams[team] = { team: team, names: teamNames(r), toPar: 0, thru: 0, missingPar: false }
+    const par = Number(r[5])
+    if (!par) teams[team].missingPar = true
+    teams[team].toPar += Number(r[4]) - par
+    teams[team].thru++
+  })
+  return Object.keys(teams).map((t) => teams[t])
+}
+
+// A birdie or better on this hole, and a new leader after it.
+function queueHoleAlerts(eventId, team, hole, strokes, par, values) {
+  const standings = liveStandings(eventId, values)
+  const mine = standings.find((s) => s.team === team)
+  if (!mine) return
+  const now = mine.missingPar ? "" : " · " + formatToPar(mine.toPar) + " thru " + mine.thru
+
+  if (par) {
+    const diff = strokes - par
+    let title = ""
+    if (strokes === 1) title = "⛳ Hole in one on " + hole + "!"
+    else if (diff <= -3) title = "🤯 Albatross on " + hole + "!"
+    else if (diff === -2) title = "🦅 Eagle on " + hole + "!"
+    else if (diff === -1) title = "🐦 Birdie on " + hole
+    if (title) queueAlert(title, mine.names + now, eventId)
+  }
+
+  // A new outright leader. The first leader of the day is noted quietly.
+  if (standings.length < 2 || standings.some((s) => s.missingPar)) return
+  const best = Math.min.apply(null, standings.map((s) => s.toPar))
+  const leaders = standings.filter((s) => s.toPar === best)
+  if (leaders.length !== 1) return
+  const key = "ALERT_LEADER_" + eventId
+  const props = PropertiesService.getScriptProperties()
+  const before = props.getProperty(key)
+  const leader = leaders[0]
+  if (before === leader.team) return
+  props.setProperty(key, leader.team)
+  if (before) {
+    queueAlert("📈 New leader", leader.names + " lead at " + formatToPar(leader.toPar) + " thru " + leader.thru, eventId)
+  }
+}
+
+// Cards submitted for the first time.
+function queueCardAlerts(eventId, eventName, pars, plans) {
+  const parTotal = pars.reduce((a, b) => a + b, 0)
+  plans.forEach((plan) => {
+    const names = plan.players.join(" & ") || "Team " + plan.team
+    queueAlert("✅ Final card" + (eventName ? " · " + eventName : ""),
+      names + " post " + (parTotal + plan.teamScore) + " (" + formatToPar(plan.teamScore) + ")", eventId)
+  })
+}
+
+function queueWinnerAlert(eventId, eventName, winner) {
+  // Tied winners come as "A / B & C / D".
+  const tied = winner.indexOf(" & ") >= 0
+  const names = winner.split(" & ").map((team) => team.split(" / ").join(" & ")).join(" and ")
+  const text = names + (tied ? " share the win!" : " win!")
+  queueAlert("🏆 " + (eventName ? eventName + " winner" : "We have a winner"), text, eventId)
+}
+
+// An access token for the FCM API, signed with the service account's key
+// and kept for 50 minutes.
+function fcmAccessToken(account) {
+  const cache = CacheService.getScriptCache()
+  const cached = cache.get("FCM_ACCESS_TOKEN")
+  if (cached) return cached
+  const now = Math.floor(Date.now() / 1000)
+  const encode = (obj) => Utilities.base64EncodeWebSafe(JSON.stringify(obj)).replace(/=+$/, "")
+  const unsigned = encode({ alg: "RS256", typ: "JWT" }) + "." + encode({
+    iss: account.client_email,
+    scope: "https://www.googleapis.com/auth/firebase.messaging",
+    aud: "https://oauth2.googleapis.com/token",
+    iat: now,
+    exp: now + 3600,
+  })
+  const signature = Utilities.base64EncodeWebSafe(
+    Utilities.computeRsaSha256Signature(unsigned, account.private_key)
+  ).replace(/=+$/, "")
+  const response = UrlFetchApp.fetch("https://oauth2.googleapis.com/token", {
+    method: "post",
+    payload: {
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion: unsigned + "." + signature,
+    },
+    muteHttpExceptions: true,
+  })
+  const data = JSON.parse(response.getContentText() || "{}")
+  if (!data.access_token) throw new Error("Firebase sign-in failed: " + response.getContentText())
+  cache.put("FCM_ACCESS_TOKEN", data.access_token, 3000)
+  return data.access_token
+}
+
+// Sends everything queued during this request to every phone. Never
+// throws - a failed alert must not affect scoring.
+function sendQueuedAlerts() {
+  if (!queuedAlerts.length) return { sent: 0, removed: 0 }
+  const alerts = queuedAlerts.splice(0, queuedAlerts.length)
+  try {
+    return sendAlerts(alerts)
+  } catch (err) {
+    Logger.log("Alerts not sent: " + err)
+    return { sent: 0, removed: 0, error: String(err) }
+  }
+}
+
+function sendAlerts(alerts) {
+  const account = parseLooseObject(scriptProperty("FIREBASE_SERVICE_ACCOUNT"))
+  if (!account || !account.private_key || !account.client_email || !account.project_id) {
+    return { sent: 0, removed: 0, error: "FIREBASE_SERVICE_ACCOUNT isn't set" }
+  }
+  const sheet = SpreadsheetApp.getActive().getSheetByName(ALERTS_SHEET)
+  if (!sheet) return { sent: 0, removed: 0 }
+  const tokens = sheet.getDataRange().getValues().slice(1).map((r) => clean(r[0])).filter(Boolean)
+  if (!tokens.length) return { sent: 0, removed: 0 }
+
+  const accessToken = fcmAccessToken(account)
+  const url = "https://fcm.googleapis.com/v1/projects/" + account.project_id + "/messages:send"
+  const requests = []
+  const sentTo = []
+  alerts.forEach((alert, n) => {
+    tokens.forEach((token) => {
+      sentTo.push(token)
+      requests.push({
+        url: url,
+        method: "post",
+        contentType: "application/json",
+        headers: { Authorization: "Bearer " + accessToken },
+        muteHttpExceptions: true,
+        payload: JSON.stringify({
+          message: {
+            token: token,
+            // Shown by the website's service worker (public/alerts-sw.js).
+            data: { title: alert.title, body: alert.body, url: alert.url, tag: "ht-" + Date.now() + "-" + n },
+            webpush: { headers: { Urgency: "high", TTL: "3600" } },
+          },
+        }),
+      })
+    })
+  })
+
+  const gone = []
+  let sent = 0
+  for (let i = 0; i < requests.length; i += 50) {
+    UrlFetchApp.fetchAll(requests.slice(i, i + 50)).forEach((response, j) => {
+      const code = response.getResponseCode()
+      if (code === 200) {
+        sent++
+        return
+      }
+      const text = response.getContentText()
+      // The phone turned alerts off or the token is no good: forget it.
+      if (code === 404 || /UNREGISTERED|SENDER_ID_MISMATCH|registration token is not a valid/i.test(text)) {
+        gone.push(sentTo[i + j])
+      } else {
+        Logger.log("Alert failed (" + code + "): " + text)
+      }
+    })
+  }
+  if (gone.length) {
+    const lock = LockService.getScriptLock()
+    if (lock.tryLock(5000)) {
+      try {
+        removeAlertTokens(gone)
+      } finally {
+        lock.releaseLock()
+      }
+    }
+  }
+  return { sent: sent, removed: gone.length }
+}
+
+// Run from the editor to check the Firebase setup: sends a test alert to
+// every phone on the Alert Phones tab.
+function sendTestAlert() {
+  const config = alertsConfig()
+  if (!config.config) {
+    throw new Error("FIREBASE_WEB_CONFIG or FIREBASE_VAPID_KEY is missing or incomplete in Script Properties.")
+  }
+  const result = sendAlerts([{ title: "🐴 Horses Tour alerts work", body: "You'll get birdies, lead changes and final cards here.", url: SITE_URL + "live" }])
+  if (result.error) throw new Error(result.error)
+  Logger.log("Sent to " + result.sent + " phone(s); removed " + result.removed + " that turned alerts off.")
 }
