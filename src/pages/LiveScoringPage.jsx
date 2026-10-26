@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import { ContributionSplit, LiveBoardCard } from "../components/LiveBoard"
-import { CalendarIcon, MapPinIcon } from "../components/Icons"
+import Headshot from "../components/Headshot"
+import { CalendarIcon, ChevronRightIcon, MapPinIcon } from "../components/Icons"
 import { PRACTICE_ID, clearPractice, flushQueue, liveScoringReady, submitAll } from "../data/liveScoring"
 import {
   compareTiebreak,
+  formatToPar,
   isSubmitted,
   isToday,
   parseEventDate,
@@ -35,7 +37,7 @@ function secondsAgo(date, now) {
 function LiveScoringPage() {
   const [params, setParams] = useSearchParams()
   const live = useLiveEvent(params.get("event"))
-  const { events, event, eventId, eventName, course, editable, practice, teams, state, pars, error, loadedAt, refresh } = live
+  const { events, event, eventId, eventName, course, editable, practice, teams, playerIds, state, pars, error, loadedAt, refresh } = live
   const [now, setNow] = useState(() => Date.now())
   const [submittingAll, setSubmittingAll] = useState(false)
   const [submitAllMessage, setSubmitAllMessage] = useState("")
@@ -201,18 +203,36 @@ function LiveScoringPage() {
 
       {teams.length > 0 && editable && (
         <section className="live-keep">
-          <h3>Keep your team's card</h3>
+          <div className="live-keep-head">
+            <span className="live-keep-step">Start here</span>
+            <h3>Pick your team</h3>
+          </div>
           <p className="live-keep-note">
             One shared card per team - either player can enter scores and contributions for both of you,
             so the passenger can keep score while the other drives.
           </p>
           <div className="live-keep-grid">
-            {teams.map((team) => (
-              <Link key={team.letter} to={`/live/${eventId}/${team.letter}`} className="live-keep-btn">
-                <b>{team.label}</b>
-                <span>{team.players.join(" & ")}</span>
-              </Link>
-            ))}
+            {teams.map((team) => {
+              const row = rows.find((r) => r.letter === team.letter)
+              const status = row?.submitted
+                ? "Submitted"
+                : row?.thru
+                  ? `${row.toPar != null ? formatToPar(row.toPar) : row.total} · thru ${row.thru}`
+                  : "Not started"
+              return (
+                <Link key={team.letter} to={`/live/${eventId}/${team.letter}`} className="live-keep-btn">
+                  <span className="live-keep-heads">
+                    {team.players.map((p) => <Headshot key={p} id={playerIds[p]} />)}
+                  </span>
+                  <span className="live-keep-info">
+                    <small>{team.label}</small>
+                    <b>{team.players.join(" & ")}</b>
+                    <em className={row?.submitted ? "is-done" : row?.thru ? "is-going" : ""}>{status}</em>
+                  </span>
+                  <span className="live-keep-go" aria-hidden="true"><ChevronRightIcon size={18} /></span>
+                </Link>
+              )
+            })}
           </div>
         </section>
       )}
