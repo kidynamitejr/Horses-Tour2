@@ -503,24 +503,30 @@ html[data-theme="dark"] .pc-art {
   top: 0;
   right: 0;
   z-index: 3;
-  width: 104px;
-  height: 104px;
-  background: linear-gradient(225deg, #0b1410 0 70px, transparent 70px);
+  width: 150px;
+  height: 150px;
+  background: linear-gradient(225deg, #0b1410 0 98px, transparent 98px);
 }
 
 .tc-art-corner::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(225deg, transparent 0 68px, var(--tc-gold) 68px 70px, transparent 70px);
+  background: linear-gradient(225deg, transparent 0 96px, var(--tc-gold) 96px 98px, transparent 98px);
 }
 
 .tc-art-corner img {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 42px;
-  height: 42px;
+  top: 7px;
+  right: 7px;
+  box-sizing: border-box;
+  width: 66px;
+  height: 66px;
+  padding: 5px;
+  border: 2px solid var(--tc-gold);
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #fffdf5, var(--tc-cream) 60%, #e9dfc2 100%);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .4), 0 0 12px rgba(243, 226, 166, .45);
   object-fit: contain;
 }
 
@@ -697,6 +703,13 @@ html[data-theme="dark"] .pc-art {
 
 .tc-flag {
   display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--tc-gold-light);
+  font-family: var(--tc-serif);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .16em;
 }
 
 .tc-strip {
@@ -823,16 +836,23 @@ html[data-theme="dark"] .pc-art {
 }
 
 .tc-back-logo {
-  width: 42px;
-  height: 42px;
+  width: 50px;
+  height: 50px;
   object-fit: contain;
 }
 
 .tc-back-flag {
   display: flex;
+  flex-direction: column;
   align-items: center;
+  gap: 2px;
   width: 42px;
   flex-shrink: 0;
+  color: var(--tc-green);
+  font-family: var(--tc-serif);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .14em;
 }
 
 .tc-bio {
