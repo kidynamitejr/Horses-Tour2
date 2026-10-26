@@ -140,3 +140,15 @@ export const PhotoIcon = (p) => (
     <path d="M21 16l-5-5-8 8" />
   </Icon>
 )
+
+export const BookIcon = (p) => (
+  <Icon {...p}><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5v-15z" /><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3" /><path d="M9 7.5h6" /></Icon>
+)
+
+export const ShieldIcon = (p) => (
+  <Icon {...p}><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z" /><path d="M9 12l2 2 4-4" /></Icon>
+)
+
+export const LogoutIcon = (p) => (
+  <Icon {...p}><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" /><path d="M10 16l-4-4 4-4" /><path d="M6 12h10" /></Icon>
+)
