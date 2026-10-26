@@ -147,7 +147,8 @@ function doGet(e) {
 function doPost(e) {
   const body = JSON.parse(e.postData.contents || "{}")
   const lock = LockService.getScriptLock()
-  lock.waitLock(20000)
+  // Busy with other saves: say so (the site keeps the hole and retries).
+  if (!lock.tryLock(15000)) return json({ ok: false, busy: true, error: "Scoring is busy - trying again" })
   try {
     if (ADMIN_ACTIONS.indexOf(body.action) >= 0) {
       const denied = checkAdmin(body)
@@ -187,7 +188,13 @@ function doPost(e) {
   } catch (err) {
     return json({ ok: false, error: String(err) })
   } finally {
-    lock.releaseLock()
+    // Write everything before the next request can read the sheet, so two
+    // teams saving at once never work from a stale copy of Live Scores.
+    try {
+      SpreadsheetApp.flush()
+    } finally {
+      lock.releaseLock()
+    }
   }
 }
 
