@@ -572,10 +572,16 @@ function CareerTab({ profile, badges }) {
 /* ------------------------------------------------------------------ */
 
 function ResultsTab({ profile, season, playerIds }) {
-  if (profile.results.length === 0) return <EmptyState name={profile.name} />
+  if (profile.results.length === 0 && profile.awards.length === 0) return <EmptyState name={profile.name} />
 
   const s = profile.seasons[season] || profile.career
   const rows = profile.results.filter((r) => yearOf(r) === Number(season))
+  const awards = (profile.awards || []).filter((a) => yearOf(a) === Number(season))
+  // Newest first, with any awarded points listed under their event.
+  const lines = [
+    ...rows.map((r) => ({ ...r, award: false })),
+    ...awards.map((a) => ({ ...a, award: true })),
+  ].sort((a, b) => b.eventId - a.eventId || a.award - b.award)
 
   return (
     <>
@@ -642,7 +648,22 @@ function ResultsTab({ profile, season, playerIds }) {
               </tr>
             </thead>
             <tbody>
-              {[...rows].reverse().map((r) => (
+              {lines.map((r) => (r.award ? (
+                <tr key={`award-${r.id}`} className="pp-award-row">
+                  <td className="pp-nowrap hide-on-phone">{r.date}</td>
+                  <td className="pp-results-event">
+                    <strong>{r.eventName}</strong>
+                    <small>{r.reason ? `Awarded · ${r.reason}` : "Awarded points · did not play"}</small>
+                  </td>
+                  <td><span className="pp-pos is-award">DNP</span></td>
+                  <td colSpan={4} className="pp-award-note">
+                    <span className="hide-on-phone">Power points awarded by the commissioner</span>
+                    <b className="show-on-phone">+{r.points} Power Pts</b>
+                  </td>
+                  <td className="hide-on-phone"><b>+{r.points}</b></td>
+                  <td className="hide-on-phone">-</td>
+                </tr>
+              ) : (
                 <tr key={r.eventId}>
                   <td className="pp-nowrap hide-on-phone">{r.date}</td>
                   <td className="pp-results-event">
@@ -672,7 +693,7 @@ function ResultsTab({ profile, season, playerIds }) {
                   <td className="hide-on-phone">{r.powerPoints}</td>
                   <td className="hide-on-phone">{r.winnings ? formatCurrency(r.winnings) : "-"}</td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         </div>

@@ -486,3 +486,54 @@ export function deleteNews(id) {
 export function clearPractice() {
   return post({ action: "clearPractice" })
 }
+
+// ---- Awarded power points (Admin > Award Points) ----
+// Points given to a player for an event they didn't play, from the sheet's
+// Awarded Points tab: [{ id, event, player, points, reason, awarded }].
+const AWARDS_CACHE = "ht-awards"
+
+// Public. Cached for 2 minutes per visit like the settings; if the script
+// can't be reached the site carries on without them.
+export async function getAwards({ fresh = false } = {}) {
+  if (!LIVE_SCORING_URL) return []
+  if (!fresh) {
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(AWARDS_CACHE))
+      if (cached && Date.now() - cached.at < 120000) return cached.awards
+    } catch {
+      // No cache - load it.
+    }
+  }
+  const response = await fetchWithTimeout(`${LIVE_SCORING_URL}?action=awards&t=${Date.now()}`, {}, 10000)
+  const data = await response.json()
+  if (!Array.isArray(data.awards)) throw new Error("Awarding points needs the latest Google Apps Script.")
+  try {
+    sessionStorage.setItem(AWARDS_CACHE, JSON.stringify({ at: Date.now(), awards: data.awards }))
+  } catch {
+    // Not cached - fine.
+  }
+  return data.awards
+}
+
+function forgetAwards() {
+  try {
+    sessionStorage.removeItem(AWARDS_CACHE)
+  } catch {
+    // Nothing cached.
+  }
+}
+
+// id = an existing award to change it, or "" to add one.
+export async function saveAward(award) {
+  if (useMock) return { ok: true, id: award.id || String(Date.now()) }
+  const result = await post({ action: "saveAward", ...award })
+  forgetAwards()
+  return result
+}
+
+export async function deleteAward(id) {
+  if (useMock) return { ok: true }
+  const result = await post({ action: "deleteAward", id })
+  forgetAwards()
+  return result
+}

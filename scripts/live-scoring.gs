@@ -22,6 +22,9 @@
  *                  personal information is collected)
  *   Ad Clicks    - the date and time of each ad click, and which ad
  *   Settings     - site settings from Admin (the announcement banner)
+ *   Awarded Points - power points the commissioner gives a player for an
+ *                  event they didn't play (Admin > Award Points); the
+ *                  website adds them to the player's Power Points
  *   Matchmaking  - who's playing in the next event (from the Auto
  *                  Matchmaking page); when an event's last card is in,
  *                  the next event is paired and set up automatically
@@ -67,7 +70,7 @@ const ADMIN_ACTIONS = [
   "adminCheck", "setTeams", "planTeams", "saveAttendance", "previewAutoPairing",
   "adStats", "clearAdStats", "saveNews", "deleteNews", "deletePhoto",
   "adminData", "saveAdminRow", "deleteAdminRow", "allPars", "savePars",
-  "uploadAsset", "saveSettings", "adminSaveCard",
+  "uploadAsset", "saveSettings", "adminSaveCard", "saveAward", "deleteAward",
 ]
 
 const LIVE_HEADERS = [
@@ -133,6 +136,7 @@ function setup() {
 function doGet(e) {
   const p = e.parameter || {}
   if (p.action === "settings") return json({ ok: true, settings: readSettings() })
+  if (p.action === "awards") return json({ ok: true, awards: readAwards() })
   if (p.action === "attendance") return json({ ok: true, attendance: readAttendance(String(p.event || "")) })
   if (p.action === "state") {
     return json(getState(String(p.event || ""), String(p.course || ""), String(p.eventName || "")))
@@ -163,6 +167,8 @@ function doPost(e) {
     if (body.action === "uploadAsset") return json(uploadAsset(body))
     if (body.action === "saveSettings") return json(saveSettings(body))
     if (body.action === "adminSaveCard") return json(adminSaveCard(body))
+    if (body.action === "saveAward") return json(saveAward(body))
+    if (body.action === "deleteAward") return json(deleteAward(body))
     if (body.action === "save") return json(saveHole(body))
     if (body.action === "submit") return json(submitCard(body))
     if (body.action === "submitAll") return json(submitAll(body))
@@ -1500,6 +1506,78 @@ function saveSettings(body) {
       values.push([key, value])
     }
   })
+  return { ok: true }
+}
+
+// ---- Awarded power points (Admin > Award Points) ----
+// Power points given to a player for an event they didn't play (e.g. a
+// rainout or an excused absence). Match Entry's Power Score columns are
+// formulas, so these live on their own tab and the website adds them on
+// top of each player's Power Points.
+const AWARDS_SHEET = "Awarded Points"
+const AWARDS_HEADERS = ["Award ID", "Event ID", "Player", "Power Points", "Reason", "Awarded"]
+
+function awardsSheet() {
+  const book = SpreadsheetApp.getActive()
+  let sheet = book.getSheetByName(AWARDS_SHEET)
+  if (!sheet) {
+    sheet = book.insertSheet(AWARDS_SHEET)
+    sheet.getRange(1, 1, 1, AWARDS_HEADERS.length).setValues([AWARDS_HEADERS]).setFontWeight("bold")
+    sheet.setFrozenRows(1)
+  }
+  return sheet
+}
+
+function readAwards() {
+  const sheet = SpreadsheetApp.getActive().getSheetByName(AWARDS_SHEET)
+  if (!sheet) return []
+  return sheet.getDataRange().getValues().slice(1)
+    .filter((r) => clean(r[0]) && clean(r[2]))
+    .map((r) => ({
+      id: clean(r[0]),
+      event: clean(r[1]),
+      player: clean(r[2]),
+      points: Number(r[3]) || 0,
+      reason: clean(r[4]),
+      awarded: r[5] instanceof Date ? r[5].toISOString() : clean(r[5]),
+    }))
+}
+
+// id = an existing award to change it, or "" to add one.
+function saveAward(body) {
+  const eventId = clean(body.event)
+  const player = clean(body.player)
+  const points = Number(body.points)
+  if (!eventRows().some((e) => e.id === eventId)) return { ok: false, error: "That event isn't on the Events tab." }
+  if (!player) return { ok: false, error: "Pick a player." }
+  if (!isFinite(points) || points === 0) return { ok: false, error: "Enter the number of points." }
+
+  const sheet = awardsSheet()
+  const values = sheet.getDataRange().getValues()
+  const id = clean(body.id)
+  const duplicate = values.findIndex((r, i) => i > 0 && clean(r[1]) === eventId && clean(r[2]) === player && clean(r[0]) !== id)
+  if (duplicate > 0) return { ok: false, error: player + " already has points for that event - edit that award instead." }
+
+  const row = [eventId, player, points, safeCell(body.reason), new Date()]
+  if (id) {
+    const r = values.findIndex((v, i) => i > 0 && clean(v[0]) === id)
+    if (r < 0) return { ok: false, error: "That award was already removed." }
+    sheet.getRange(r + 1, 2, 1, row.length).setValues([row])
+    return { ok: true, id: id }
+  }
+  const newId = String(Date.now())
+  sheet.appendRow([newId].concat(row))
+  return { ok: true, id: newId }
+}
+
+function deleteAward(body) {
+  const sheet = SpreadsheetApp.getActive().getSheetByName(AWARDS_SHEET)
+  if (!sheet) return { ok: true }
+  const id = clean(body.id)
+  const values = sheet.getDataRange().getValues()
+  for (let i = values.length - 1; i >= 1; i--) {
+    if (clean(values[i][0]) === id) sheet.deleteRow(i + 1)
+  }
   return { ok: true }
 }
 

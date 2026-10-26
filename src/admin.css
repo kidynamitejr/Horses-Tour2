@@ -1675,3 +1675,430 @@ html[data-theme="dark"] .rla-cat-head h4 {
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* --------------------------------------------------------------------------
+   Award Points: power points for an event a player didn't play
+   -------------------------------------------------------------------------- */
+
+.awa {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  text-align: left;
+}
+
+.awa-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 18px;
+  padding: 22px 24px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-3) 100%);
+  color: white;
+  box-shadow: var(--shadow-md);
+}
+
+.awa-head > div {
+  flex: 1 1 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.awa-eyebrow {
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.awa-head h3 {
+  margin: 0;
+  color: white;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.awa-head .adx-muted {
+  max-width: 560px;
+  color: rgba(255, 255, 255, .72);
+}
+
+.awa-stats {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+}
+
+.awa-stats div {
+  min-width: 78px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .06);
+  text-align: center;
+}
+
+.awa-stats dt {
+  color: rgba(255, 255, 255, .62);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.awa-stats dd {
+  margin: 2px 0 0;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.awa-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+  align-items: start;
+  gap: 18px;
+}
+
+.awa-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+
+.awa-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.awa-card-head h4 {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.awa-text-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sky);
+  font: 800 13px var(--font-body);
+  cursor: pointer;
+}
+
+.awa-player {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--page);
+}
+
+.awa-player img,
+.awa-who img {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface-2);
+}
+
+.awa-player div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.awa-player b {
+  color: var(--ink);
+  font-size: 14.5px;
+}
+
+.awa-player small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.awa-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: -6px;
+}
+
+.awa-suggest > span {
+  margin-right: 2px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.awa-suggest button {
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--page);
+  color: var(--text);
+  font: 700 12px var(--font-body);
+  cursor: pointer;
+}
+
+.awa-suggest button b {
+  margin-left: 2px;
+  color: var(--ink);
+}
+
+.awa-suggest button.is-active {
+  border-color: var(--sky);
+  background: var(--sky-soft);
+  color: var(--sky);
+}
+
+.awa-form .adx-save {
+  width: 100%;
+}
+
+.awa-form .adx-actions {
+  margin-top: 2px;
+}
+
+.awa-message {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--sky-soft);
+  color: var(--navy);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+html[data-theme="dark"] .awa-message {
+  color: var(--ink);
+  background: rgba(26, 159, 224, .14);
+}
+
+.awa-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 36px 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.awa-empty span {
+  font-size: 30px;
+}
+
+.awa-empty p {
+  margin: 0;
+  font-weight: 700;
+}
+
+.awa-ledger .table-scroll {
+  width: auto;
+  margin: 0 -18px -18px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+.awa-table {
+  min-width: 480px;
+  font-size: 14px;
+}
+
+.awa-table th {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0 !important;
+  background: var(--page);
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.awa-table td {
+  padding: 12px 14px;
+  vertical-align: middle;
+}
+
+.awa-table tbody tr:nth-child(even) {
+  background: transparent;
+}
+
+.awa-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.awa-table tr.is-editing td {
+  background: var(--sky-soft);
+}
+
+html[data-theme="dark"] .awa-table tr.is-editing td {
+  background: rgba(26, 159, 224, .1);
+}
+
+.awa-who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.awa-who img {
+  width: 32px;
+  height: 32px;
+}
+
+.awa-event {
+  display: flex;
+  flex-direction: column;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.awa-event small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.awa-num {
+  text-align: right !important;
+}
+
+.awa-points {
+  display: inline-block;
+  min-width: 46px;
+  padding: 4px 9px;
+  border-radius: 8px;
+  background: var(--gold-soft);
+  color: #6b5410;
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-align: center;
+}
+
+html[data-theme="dark"] .awa-points {
+  background: rgba(201, 162, 39, .18);
+  color: var(--gold);
+}
+
+.awa-actions-col {
+  width: 1%;
+  text-align: right !important;
+  white-space: nowrap;
+}
+
+.awa-actions-col button {
+  margin-left: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--page);
+  color: var(--ink);
+  font: 800 12px var(--font-body);
+  cursor: pointer;
+}
+
+@media (max-width: 860px) {
+  .awa-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .awa-head {
+    padding: 18px;
+  }
+
+  .awa-stats {
+    width: 100%;
+  }
+
+  .awa-stats div {
+    flex: 1;
+  }
+}
+
+/* Phones: each award becomes a compact card instead of a wide table */
+@media (max-width: 640px) {
+  .awa-table {
+    min-width: 0;
+  }
+
+  .awa-table thead {
+    display: none;
+  }
+
+  .awa-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .awa-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .awa-table td {
+    padding: 0;
+    border: 0;
+  }
+
+  .awa-table td:nth-child(2) {
+    grid-column: 1;
+    grid-row: 2;
+    padding-left: 42px;
+  }
+
+  .awa-table td.awa-num {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .awa-table td.awa-actions-col {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: end;
+    width: auto;
+  }
+}
+
+.awa-ledger .awa-card-head {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
