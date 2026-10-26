@@ -170,8 +170,15 @@ function fetchWithTimeout(url, options = {}, ms = 20000) {
   return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer))
 }
 
-// A request the server answered with ok: false (e.g. a locked round).
-class RejectedError extends Error {}
+// A request the server answered with ok: false. `locked` means the round
+// is closed, so retrying will never work; anything else (the sheet was
+// busy, a Google hiccup) is worth trying again.
+class RejectedError extends Error {
+  constructor(message, locked = false) {
+    super(message)
+    this.locked = locked
+  }
+}
 
 // The server refused an Admin request (wrong / missing admin password).
 export class AdminError extends Error {}
@@ -219,7 +226,7 @@ function writeStoreRaw(key, value) {
 async function post(payload, timeoutMs) {
   if (useMock) {
     const result = mockRequest(payload)
-    if (!result.ok) throw new RejectedError(result.error)
+    if (!result.ok) throw new RejectedError(result.error, Boolean(result.locked))
     return result
   }
 
@@ -232,7 +239,7 @@ async function post(payload, timeoutMs) {
   const data = await response.json()
   if (!data.ok) {
     if (data.admin) throw new AdminError(data.error || "Admin sign-in needed")
-    throw new RejectedError(data.error || "Couldn't save")
+    throw new RejectedError(data.error || "Couldn't save", Boolean(data.locked))
   }
   return data
 }
@@ -272,22 +279,31 @@ export function flushQueue() {
 }
 
 async function sendQueued() {
-  let queue = readStore(QUEUE_KEY, [])
-  while (queue.length > 0) {
-    const { id, ...item } = queue[0]
+  const tried = new Set()
+  for (;;) {
+    const item = readStore(QUEUE_KEY, []).find((q) => !tried.has(q.id))
+    if (!item) break
+    tried.add(item.id)
+    const { id, ...payload } = item
     try {
-      await post(item)
+      await post(payload)
     } catch (err) {
-      // No signal: keep it queued and try later. Refused by the server
-      // (round locked): drop it so it doesn't block the queue.
+      // No signal: stop and try everything again later.
       if (!(err instanceof RejectedError)) break
+      if (!err.locked) {
+        // The sheet couldn't take it this time (busy, Google error). Keep
+        // it queued so it's re-sent, and carry on with the other holes.
+        lastRejection = `Hole ${payload.hole} didn't save yet (${err.message}) - it will keep retrying.`
+        continue
+      }
+      // Round locked: drop it so it doesn't sit in the queue forever.
       lastRejection = err.message
     }
-    // Re-read in case a newer save was queued while this one was sending.
-    queue = readStore(QUEUE_KEY, []).filter((q) => q.id !== id)
-    writeStore(QUEUE_KEY, queue)
+    // Re-read in case a newer save was queued while this one was sending
+    // (that one has a new id, so it stays).
+    writeStore(QUEUE_KEY, readStore(QUEUE_KEY, []).filter((q) => q.id !== id))
   }
-  return queue.length
+  return readStore(QUEUE_KEY, []).length
 }
 
 export function pendingSaves(eventId, team) {
