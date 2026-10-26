@@ -1707,8 +1707,13 @@ const ALERTS_HEADERS = ["Token", "Added", "Last Seen"]
 const SITE_URL = "https://kidynamitejr.github.io/Horses-Tour2/"
 const queuedAlerts = []
 
+// Forgives stray spaces or lower case in the property's name.
 function scriptProperty(name) {
-  return clean(PropertiesService.getScriptProperties().getProperty(name))
+  const props = PropertiesService.getScriptProperties()
+  const exact = props.getProperty(name)
+  if (exact != null) return clean(exact)
+  const match = props.getKeys().find((k) => k.trim().toUpperCase() === name)
+  return match ? clean(props.getProperty(match)) : ""
 }
 
 // Firebase shows the web config as JavaScript (`apiKey: "..."`), not
@@ -1978,14 +1983,53 @@ function sendAlerts(alerts) {
   return { sent: sent, removed: gone.length }
 }
 
-// Run from the editor to check the Firebase setup: sends a test alert to
-// every phone on the Alert Phones tab.
-function sendTestAlert() {
-  const config = alertsConfig()
-  if (!config.config) {
-    throw new Error("FIREBASE_WEB_CONFIG or FIREBASE_VAPID_KEY is missing or incomplete in Script Properties.")
+// What's wrong with the Firebase Script Properties, as plain sentences
+// (names only - never the keys themselves). Empty when all is well.
+function alertsSetupProblems() {
+  const problems = []
+  const names = PropertiesService.getScriptProperties().getKeys()
+  const check = (name) => {
+    if (names.some((n) => n.trim().toUpperCase() === name)) return true
+    problems.push(name + " isn't in Script Properties (found: " + (names.join(", ") || "none") + ").")
+    return false
   }
+
+  if (check("FIREBASE_WEB_CONFIG")) {
+    const config = parseLooseObject(scriptProperty("FIREBASE_WEB_CONFIG")) || {}
+    const needed = ["apiKey", "projectId", "messagingSenderId", "appId"].filter((k) => !config[k])
+    if (needed.length) {
+      problems.push("FIREBASE_WEB_CONFIG is missing " + needed.join(", ") + " (found: " + (Object.keys(config).join(", ") || "nothing readable") +
+        "). Paste the whole firebaseConfig block from Firebase > Project settings > General > Your apps > Config.")
+    }
+  }
+  if (check("FIREBASE_VAPID_KEY")) {
+    const key = scriptProperty("FIREBASE_VAPID_KEY")
+    if (!/^[A-Za-z0-9_-]{60,}$/.test(key)) {
+      problems.push("FIREBASE_VAPID_KEY doesn't look like a key pair (" + key.length + " characters). Copy the Key pair from Firebase > Project settings > Cloud Messaging > Web Push certificates - just the key, nothing else.")
+    }
+  }
+  if (check("FIREBASE_SERVICE_ACCOUNT")) {
+    const account = parseLooseObject(scriptProperty("FIREBASE_SERVICE_ACCOUNT")) || {}
+    const needed = ["project_id", "client_email", "private_key"].filter((k) => !account[k])
+    if (needed.length) {
+      problems.push("FIREBASE_SERVICE_ACCOUNT is missing " + needed.join(", ") + ". Paste everything from the downloaded .json file, from the first { to the last }.")
+    }
+  }
+  if (!problems.length) Logger.log("Found Script Properties: " + names.join(", "))
+  return problems
+}
+
+// Run from the editor to check the Firebase setup: says what's missing,
+// or sends a test alert to every phone on the Alert Phones tab.
+function sendTestAlert() {
+  const problems = alertsSetupProblems()
+  if (problems.length) {
+    problems.forEach((p) => Logger.log("Fix: " + p))
+    throw new Error(problems.length + " thing(s) to fix - see the lines above.")
+  }
+  Logger.log("Firebase settings look right - the alerts box will show on the Live Scoring page.")
   const result = sendAlerts([{ title: "🐴 Horses Tour alerts work", body: "You'll get birdies, lead changes and final cards here.", url: SITE_URL + "live" }])
   if (result.error) throw new Error(result.error)
   Logger.log("Sent to " + result.sent + " phone(s); removed " + result.removed + " that turned alerts off.")
+  if (!result.sent && !result.removed) Logger.log("No phones yet - tap Turn on alerts on the Live Scoring page, then run this again.")
 }
