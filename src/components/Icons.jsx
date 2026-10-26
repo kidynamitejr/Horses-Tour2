@@ -120,3 +120,23 @@ export const BellIcon = (p) => (
     <path d="M10 20.5a2.2 2.2 0 0 0 4 0" />
   </Icon>
 )
+
+export const BrowserIcon = (p) => (
+  <Icon {...p}><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9h18" /><path d="M7 6.5h6" /></Icon>
+)
+
+export const NewspaperIcon = (p) => (
+  <Icon {...p}>
+    <path d="M4 5h13v14H6a2 2 0 0 1-2-2V5z" />
+    <path d="M17 9h3v8a2 2 0 0 1-2 2h-1" />
+    <path d="M7.5 9h6" /><path d="M7.5 12.5h6" /><path d="M7.5 16h4" />
+  </Icon>
+)
+
+export const PhotoIcon = (p) => (
+  <Icon {...p}>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <circle cx="9" cy="10" r="1.8" />
+    <path d="M21 16l-5-5-8 8" />
+  </Icon>
+)

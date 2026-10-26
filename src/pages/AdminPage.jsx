@@ -1,8 +1,7 @@
 import { useState } from "react"
 import AutoMatchmakingPage from "./AutoMatchmakingPage"
 import SponsorStatsPage from "./SponsorStatsPage"
-import NewsAdmin from "../components/NewsAdmin"
-import GalleryAdmin from "../components/GalleryAdmin"
+import MediaAdmin from "../components/admin/MediaAdmin"
 import RoundAdmin from "../components/admin/RoundAdmin"
 import EventsAdmin from "../components/admin/EventsAdmin"
 import ChampionsAdmin from "../components/admin/ChampionsAdmin"
@@ -28,8 +27,7 @@ const TABS = [
   { id: "champions", label: "Champion Hall" },
   { id: "players", label: "Players" },
   { id: "sponsors", label: "Sponsors" },
-  { id: "news", label: "News" },
-  { id: "gallery", label: "Gallery" },
+  { id: "media", label: "News & Gallery" },
   { id: "rules", label: "Rules" },
   { id: "announcements", label: "Banner & Notifications" },
 ]
@@ -42,8 +40,10 @@ function AdminPage() {
   const [tab, setTab] = useState(() => {
     try {
       const saved = sessionStorage.getItem("ht-admin-tab") || "matchmaking"
-      // The Banner and Notifications tabs are now one.
-      return saved === "banner" || saved === "notifications" ? "announcements" : saved
+      // Tabs that were merged into one.
+      if (saved === "banner" || saved === "notifications") return "announcements"
+      if (saved === "news" || saved === "gallery") return "media"
+      return saved
     } catch {
       return "matchmaking"
     }
@@ -133,8 +133,7 @@ function AdminPage() {
         {tab === "champions" && <ChampionsAdmin />}
         {tab === "players" && <PlayersAdmin />}
         {tab === "sponsors" && <SponsorStatsPage />}
-        {tab === "news" && <NewsAdmin />}
-        {tab === "gallery" && <GalleryAdmin />}
+        {tab === "media" && <MediaAdmin />}
         {tab === "rules" && <RulesAdmin />}
         {tab === "announcements" && <AnnouncementsAdmin />}
       </div>

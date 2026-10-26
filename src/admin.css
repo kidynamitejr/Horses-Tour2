@@ -2174,11 +2174,11 @@ html[data-theme="dark"] .awa-points {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  max-width: 760px;
 }
 
 .ana-switch {
   display: grid;
+  max-width: 760px;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
@@ -2223,33 +2223,20 @@ html[data-theme="dark"] .awa-points {
   color: var(--muted);
 }
 
-.ana-option.is-banner.is-active {
-  border-color: var(--sky);
-  box-shadow: 0 0 0 3px rgba(26, 159, 224, .15);
+.ana-option.is-active {
+  border-color: var(--ana-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ana-color) 18%, transparent);
 }
 
-.ana-option.is-banner.is-active .ana-option-icon {
-  background: var(--sky);
+.ana-option.is-active .ana-option-icon {
+  background: var(--ana-color);
   color: #fff;
 }
 
-.ana-option.is-notifications.is-active {
-  border-color: var(--gold);
-  box-shadow: 0 0 0 3px rgba(201, 162, 39, .18);
+.ana-panel {
+  padding-top: 14px;
+  border-top: 4px solid var(--ana-color);
 }
-
-.ana-option.is-notifications.is-active .ana-option-icon {
-  background: var(--navy);
-  color: var(--gold);
-}
-
-.ana-panel > .bna {
-  max-width: none;
-  border-top-width: 4px;
-}
-
-.ana-panel.is-banner > .bna { border-top-color: var(--sky); }
-.ana-panel.is-notifications > .bna { border-top-color: var(--gold); }
 
 @media (max-width: 560px) {
   .ana-switch {
