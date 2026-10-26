@@ -2168,3 +2168,91 @@ html[data-theme="dark"] .awa-points {
   font-size: 13.5px;
   overflow-wrap: anywhere;
 }
+
+/* Banner & Notifications: pick which one you're working on */
+.ana {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 760px;
+}
+
+.ana-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.ana-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.ana-option b {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.ana-option small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.ana-option-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--page);
+  color: var(--muted);
+}
+
+.ana-option.is-banner.is-active {
+  border-color: var(--sky);
+  box-shadow: 0 0 0 3px rgba(26, 159, 224, .15);
+}
+
+.ana-option.is-banner.is-active .ana-option-icon {
+  background: var(--sky);
+  color: #fff;
+}
+
+.ana-option.is-notifications.is-active {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(201, 162, 39, .18);
+}
+
+.ana-option.is-notifications.is-active .ana-option-icon {
+  background: var(--navy);
+  color: var(--gold);
+}
+
+.ana-panel > .bna {
+  max-width: none;
+  border-top-width: 4px;
+}
+
+.ana-panel.is-banner > .bna { border-top-color: var(--sky); }
+.ana-panel.is-notifications > .bna { border-top-color: var(--gold); }
+
+@media (max-width: 560px) {
+  .ana-switch {
+    grid-template-columns: 1fr;
+  }
+}

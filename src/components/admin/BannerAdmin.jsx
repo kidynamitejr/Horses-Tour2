@@ -50,7 +50,7 @@ function BannerAdmin() {
 
   return (
     <div className="bna">
-      <h3>Announcement banner</h3>
+      <h3>Website banner</h3>
       <p className="adx-muted">Shown across the top of every page. Visitors can close it until the message changes.</p>
 
       <div className={`site-announcement is-${values.style} bna-preview`}>
