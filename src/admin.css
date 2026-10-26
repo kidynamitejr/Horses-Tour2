@@ -2102,3 +2102,67 @@ html[data-theme="dark"] .awa-points {
   padding-bottom: 0;
   border-bottom: 0;
 }
+
+/* Notifications */
+.nta-status {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--page);
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.nta-status.is-ready { background: rgba(45, 106, 79, .12); }
+.nta-status.is-problem { background: rgba(214, 48, 49, .1); }
+
+.nta-status ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-weight: 500;
+}
+
+.nta-preview {
+  display: flex;
+  gap: 12px;
+  max-width: 400px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(30, 36, 44, .92);
+  color: #fff;
+  box-shadow: var(--shadow-md);
+}
+
+.nta-preview-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--navy);
+  color: var(--gold);
+}
+
+.nta-preview > div {
+  min-width: 0;
+}
+
+.nta-preview-app {
+  display: block;
+  color: rgba(255, 255, 255, .6);
+  font-size: 11.5px;
+}
+
+.nta-preview strong {
+  display: block;
+  font-size: 14.5px;
+  overflow-wrap: anywhere;
+}
+
+.nta-preview p {
+  margin: 1px 0 0;
+  color: rgba(255, 255, 255, .85);
+  font-size: 13.5px;
+  overflow-wrap: anywhere;
+}

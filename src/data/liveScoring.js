@@ -553,3 +553,18 @@ export async function deleteAward(id) {
   forgetAwards()
   return result
 }
+
+// ---- Phone alerts (Admin > Notifications) ----
+
+// { problems: [...], phones } - what's wrong with the Firebase setup, and
+// how many phones have alerts on.
+export async function getAlertsStatus() {
+  if (useMock) return { ok: true, problems: [], phones: 0 }
+  return post({ action: "alertsStatus" })
+}
+
+// Sends to every phone with alerts on. Resolves to { sent, removed }.
+export async function sendNotification(payload) {
+  if (useMock) return { ok: true, sent: 0, removed: 0 }
+  return post({ action: "sendNotification", ...payload }, 60000)
+}
