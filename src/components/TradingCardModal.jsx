@@ -184,7 +184,7 @@ function TradingCardModal({ profile, onClose }) {
                   )}
                 </div>
                 <div className="tc-nameplate-meta">
-                  <span className="tc-flag"><UsaFlag width={20} /></span>
+                  <span className="tc-flag"><UsaFlag width={20} /> USA</span>
                 </div>
               </div>
 
@@ -213,7 +213,7 @@ function TradingCardModal({ profile, onClose }) {
                   <strong>{profile.name}</strong>
                   <span>Horses Tour · {currentYear} Series</span>
                 </div>
-                <span className="tc-back-flag"><UsaFlag width={26} /></span>
+                <span className="tc-back-flag"><UsaFlag width={24} /> USA</span>
               </div>
 
               <dl className="tc-bio">
