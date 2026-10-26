@@ -229,7 +229,10 @@ function LiveScoringPage() {
                       <small>{team.label}</small>
                       <em className={row?.submitted ? "is-done" : row?.thru ? "is-going" : ""}>{status}</em>
                     </span>
-                    <b>{team.players.join(" & ")}</b>
+                    <b>
+                      <span className="live-keep-full">{team.players.join(" & ")}</span>
+                      <span className="live-keep-short">{team.players.map((p) => p.split(" ")[0]).join(" & ")}</span>
+                    </b>
                   </span>
                   <span className="live-keep-go" aria-hidden="true"><ChevronRightIcon size={18} /></span>
                 </Link>
