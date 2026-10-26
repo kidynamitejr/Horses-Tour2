@@ -33,6 +33,7 @@ function PlayersAdmin() {
   const [values, setValues] = useState({})
   const [busy, setBusy] = useState("")
   const [message, setMessage] = useState("")
+  const [photoMessage, setPhotoMessage] = useState("")
   const [photoPreview, setPhotoPreview] = useState("")
 
   const players = [...rows].sort((a, b) => Number(a.fields["Player ID"]) - Number(b.fields["Player ID"]))
@@ -45,6 +46,7 @@ function PlayersAdmin() {
     setValues(row ? { ...row.fields } : { Active: "Active" })
     setMessage("")
     setPhotoPreview("")
+    setPhotoMessage("")
   }
 
   async function submit(e) {
@@ -73,14 +75,14 @@ function PlayersAdmin() {
     e.target.value = ""
     if (!file || !selected || selected === "new") return
     setBusy("photo")
-    setMessage("")
+    setPhotoMessage("")
     try {
       const [{ data, preview }, cutout] = await Promise.all([shrinkImage(file, 900), makeCutout(file)])
       await uploadAsset({ kind: "headshot", playerId: selected, data, cutout })
       setPhotoPreview(preview)
-      setMessage("Photo saved - it shows on the site within a few minutes.")
+      setPhotoMessage("Photo saved - it shows on the site within a few minutes.")
     } catch (err) {
-      setMessage(err.message || "Couldn't save the photo.")
+      setPhotoMessage(err.message || "Couldn't save the photo.")
     } finally {
       setBusy("")
     }
@@ -135,6 +137,7 @@ function PlayersAdmin() {
                     {busy === "photo" ? "Saving photo..." : "📷 Upload headshot"}
                   </button>
                   <small>A photo on a plain white background works best - the cut-out is made automatically.</small>
+                  {photoMessage && <p className="adx-message">{photoMessage}</p>}
                 </div>
               </div>
             )}
