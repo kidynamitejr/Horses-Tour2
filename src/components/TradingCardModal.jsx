@@ -134,6 +134,8 @@ function TradingCardModal({ profile, onClose }) {
           <div className="tc-face tc-front" ref={frontRef}>
             <div className="tc-frame">
 
+              <div className="tc-holo" />
+
               <div className="tc-art">
                 <div className="tc-art-stripes" />
                 <img className="tc-art-logo" src={LOGO} alt="" />
@@ -146,10 +148,15 @@ function TradingCardModal({ profile, onClose }) {
                   onError={() => setPhoto(nextPlayerImage)}
                 />
 
+                <div className="tc-art-corner">
+                  <img src={LOGO} alt="" />
+                </div>
+
                 <div className="tc-topline">
                   <span className="tc-brand">
-                    <img src={LOGO} alt="" />
-                    HORSES TOUR
+                    <span>HORSES</span>
+                    <span>TOUR</span>
+                    <span>COLLECTION</span>
                   </span>
                   <span className="tc-year">{currentYear}</span>
                 </div>
@@ -187,13 +194,18 @@ function TradingCardModal({ profile, onClose }) {
           <div className="tc-face tc-back" ref={backRef}>
             <div className="tc-frame tc-back-frame">
 
+              <div className="tc-holo" />
+
+              <span className="tc-back-collection">— Horses Tour Collection —</span>
+
               <div className="tc-back-head">
                 <span className="tc-back-number">No. {cardNumber}</span>
+                <img src={LOGO} alt="" className="tc-back-logo" />
                 <div>
                   <strong>{profile.name}</strong>
                   <span>Horses Tour · {currentYear} Series</span>
                 </div>
-                <img src={LOGO} alt="" className="tc-back-logo" />
+                <span className="tc-back-flag"><UsaFlag width={26} /></span>
               </div>
 
               <dl className="tc-bio">
@@ -269,6 +281,8 @@ function TradingCardModal({ profile, onClose }) {
                     ? `Best finish so far: ${ordinal(Math.min(...profile.results.map((r) => r.placement || 99)))} place. Still chasing that first Horses Tour win.`
                     : "Yet to tee it up on the Horses Tour - the debut is coming."}
               </p>
+
+              <p className="tc-back-motto">Past / Present / Forever</p>
 
               <p className="tc-back-legal">© {currentYear} Horses Tour · Card {cardNumber}</p>
 

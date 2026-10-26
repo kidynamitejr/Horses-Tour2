@@ -320,7 +320,7 @@ html[data-theme="dark"] .pc-art {
   position: absolute;
   inset: 0;
   z-index: 5;
-  border-radius: 18px;
+  border-radius: 14px;
   background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, .28) 45%, rgba(150, 220, 255, .18) 50%, transparent 60%);
   background-size: 250% 100%;
   background-position: 120% 0;
@@ -332,12 +332,23 @@ html[data-theme="dark"] .pc-art {
   background-position: -40% 0;
 }
 
+/* Card faces. The palette follows the premium green-and-gold collection
+   look: forest green front with gold angled corners, cream back with a
+   gold double border. */
 .tc-face {
+  --tc-green: #10402c;
+  --tc-green-dark: #062016;
+  --tc-gold: #c9a227;
+  --tc-gold-light: #f3e2a6;
+  --tc-cream: #f7f4ea;
+  --tc-ink: #0d2419;
+  --tc-serif: Georgia, "Times New Roman", "Iowan Old Style", serif;
+
   display: none;
   width: 100%;
   height: 100%;
-  padding: 9px;
-  border-radius: 18px;
+  padding: 7px;
+  border-radius: 14px;
   background: linear-gradient(135deg, #f7e7a1 0%, #c9a227 22%, #fff3c4 40%, #b8901c 58%, #f2dc8a 78%, #a8820f 100%);
   box-shadow: 0 30px 80px rgba(0, 0, 0, .55), 0 0 0 1px rgba(0, 0, 0, .25);
 }
@@ -359,17 +370,84 @@ html[data-theme="dark"] .pc-art {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  border-radius: 11px;
-  background: #001a33;
-  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .35);
+  border-radius: 8px;
+  padding: 13px;
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, .025) 0 3px, transparent 3px 7px),
+    linear-gradient(150deg, #17533a 0%, var(--tc-green) 45%, var(--tc-green-dark) 100%);
+  box-shadow: inset 0 0 0 1px rgba(201, 162, 39, .55), inset 0 0 40px rgba(0, 0, 0, .35);
 }
 
-/* Front artwork */
+/* Angled gold corners, drawn with hard-stop gradients so they also survive
+   the html2canvas capture used by the download button. */
+.tc-frame::before,
+.tc-frame::after {
+  content: "";
+  position: absolute;
+  width: 92px;
+  height: 92px;
+  pointer-events: none;
+}
+
+.tc-frame::before {
+  top: 0;
+  left: 0;
+  background: linear-gradient(135deg, rgba(243, 226, 166, .75) 0 2px, rgba(201, 162, 39, .35) 2px 4px, transparent 4px);
+}
+
+.tc-frame::after {
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(315deg, rgba(243, 226, 166, .75) 0 2px, rgba(201, 162, 39, .35) 2px 4px, transparent 4px);
+}
+
+/* Holographic foil: a static rainbow grain plus a slow travelling shimmer. */
+.tc-holo {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  border-radius: 8px;
+  opacity: .5;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(115deg,
+      rgba(255, 90, 170, .07) 0 22px,
+      rgba(90, 220, 255, .07) 22px 44px,
+      rgba(255, 235, 120, .07) 44px 66px,
+      rgba(150, 110, 255, .07) 66px 88px),
+    repeating-linear-gradient(65deg,
+      rgba(255, 255, 255, .04) 0 9px,
+      transparent 9px 26px);
+}
+
+.tc-holo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background: linear-gradient(115deg,
+    transparent 30%,
+    rgba(255, 255, 255, .35) 44%,
+    rgba(160, 230, 255, .3) 50%,
+    rgba(255, 190, 230, .25) 56%,
+    transparent 70%);
+  background-size: 260% 100%;
+  animation: tc-holo-sweep 5.5s ease-in-out infinite;
+}
+
+@keyframes tc-holo-sweep {
+  0% { background-position: 130% 0; }
+  60%, 100% { background-position: -60% 0; }
+}
+
+/* Front artwork window */
 .tc-art {
   position: relative;
   flex: 1;
   overflow: hidden;
-  background: linear-gradient(160deg, #0f4d82 0%, #002140 55%, #00101f 100%);
+  border: 2px solid var(--tc-gold);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .35), inset 0 0 0 1px rgba(243, 226, 166, .5);
+  background: linear-gradient(170deg, #1d6b48 0%, #0d3a28 55%, #061d14 100%);
 }
 
 .tc-art-stripes {
@@ -381,10 +459,37 @@ html[data-theme="dark"] .pc-art {
 .tc-art-logo {
   position: absolute;
   right: -60px;
-  bottom: 20px;
-  width: 300px;
+  bottom: 14px;
+  width: 290px;
   opacity: .1;
   filter: brightness(0) invert(1);
+}
+
+/* Angled black corner holding the tour logo, as on the reference card. */
+.tc-art-corner {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 3;
+  width: 104px;
+  height: 104px;
+  background: linear-gradient(225deg, #0b1410 0 70px, transparent 70px);
+}
+
+.tc-art-corner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(225deg, transparent 0 68px, var(--tc-gold) 68px 70px, transparent 70px);
+}
+
+.tc-art-corner img {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
 }
 
 .tc-photo {
@@ -401,75 +506,71 @@ html[data-theme="dark"] .pc-art {
 
 .tc-topline {
   position: absolute;
-  top: 10px;
-  left: 12px;
-  right: 12px;
-  z-index: 2;
+  top: 14px;
+  left: 14px;
+  z-index: 4;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
 }
 
 .tc-brand {
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: #f2dc8a;
-  font-family: var(--font-display);
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: .18em;
-}
-
-.tc-brand img {
-  width: 26px;
-  height: 26px;
-  object-fit: contain;
+  flex-direction: column;
+  color: var(--tc-gold-light);
+  font-family: var(--tc-serif);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .22em;
+  line-height: 1.5;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .6);
 }
 
 .tc-year {
-  padding: 3px 9px;
-  border: 1px solid rgba(242, 220, 138, .6);
-  border-radius: 999px;
-  color: #f2dc8a;
-  font-family: var(--font-display);
+  padding: 2px 9px;
+  border: 1px solid rgba(243, 226, 166, .7);
+  background: rgba(6, 32, 22, .5);
+  color: var(--tc-gold-light);
+  font-family: var(--tc-serif);
   font-size: 11px;
-  font-weight: 800;
-  letter-spacing: .08em;
+  font-weight: 700;
+  letter-spacing: .14em;
 }
 
 .tc-rookie {
   position: absolute;
-  top: 46px;
-  right: 12px;
-  z-index: 2;
+  left: 14px;
+  bottom: 14px;
+  z-index: 4;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   width: 46px;
   height: 46px;
-  border: 2px solid #fff3c4;
+  border: 2px solid var(--tc-gold-light);
   border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #f7e7a1, #b8901c);
-  color: #3a2b00;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, .35);
+  color: #2a2300;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, .45);
   line-height: 1;
 }
 
 .tc-rookie b {
-  font-family: var(--font-display);
+  font-family: var(--tc-serif);
   font-size: 16px;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .tc-rookie small {
   font-size: 7px;
-  font-weight: 900;
+  font-weight: 700;
   letter-spacing: .1em;
   text-transform: uppercase;
 }
 
+/* Name plate: dark green with gold edges and clipped corners. */
 .tc-nameplate {
   position: relative;
   z-index: 2;
@@ -477,37 +578,61 @@ html[data-theme="dark"] .pc-art {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 9px 14px 9px 16px;
-  background: linear-gradient(90deg, #c9a227 0%, #f2dc8a 50%, #c9a227 100%);
-  box-shadow: 0 -6px 14px rgba(0, 0, 0, .35);
+  margin: 11px 0 0;
+  padding: 9px 14px;
+  border: 2px solid var(--tc-gold);
+  background: linear-gradient(180deg, #17533a 0%, var(--tc-green) 55%, var(--tc-green-dark) 100%);
+  box-shadow: inset 0 0 0 1px rgba(243, 226, 166, .35), 0 6px 16px rgba(0, 0, 0, .4);
+}
+
+/* Clipped plate corners, echoing the reference card's angled name plate. */
+.tc-nameplate::before,
+.tc-nameplate::after {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+}
+
+.tc-nameplate::before {
+  top: -2px;
+  left: -2px;
+  background: linear-gradient(135deg, var(--tc-green-dark) 0 11px, var(--tc-gold) 11px 13px, transparent 13px);
+}
+
+.tc-nameplate::after {
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(315deg, var(--tc-green-dark) 0 11px, var(--tc-gold) 11px 13px, transparent 13px);
 }
 
 .tc-nameplate-text {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  line-height: 1;
+  line-height: 1.1;
 }
 
 .tc-nameplate-text span {
-  color: #3a2b00;
-  font-family: var(--font-display);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: .14em;
+  color: var(--tc-gold-light);
+  font-family: var(--tc-serif);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .26em;
   text-transform: uppercase;
 }
 
 .tc-nameplate-text strong {
   overflow: hidden;
-  color: #001a33;
-  font-family: var(--font-display);
-  font-size: 28px;
-  font-weight: 900;
-  letter-spacing: -0.01em;
+  color: #fff;
+  font-family: var(--tc-serif);
+  font-size: 27px;
+  font-weight: 700;
+  letter-spacing: .04em;
   text-transform: uppercase;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, .5);
 }
 
 .tc-nameplate-meta {
@@ -518,14 +643,13 @@ html[data-theme="dark"] .pc-art {
 }
 
 .tc-pos {
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: #001a33;
-  color: #f2dc8a;
-  font-family: var(--font-display);
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: .1em;
+  padding: 3px 8px;
+  border: 1px solid rgba(243, 226, 166, .7);
+  color: var(--tc-gold-light);
+  font-family: var(--tc-serif);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .16em;
 }
 
 .tc-flag {
@@ -535,105 +659,151 @@ html[data-theme="dark"] .pc-art {
 .tc-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  padding: 10px 6px 11px;
-  background: #001a33;
+  margin-top: 9px;
+  padding: 8px 4px;
+  border: 1px solid rgba(201, 162, 39, .7);
+  background: rgba(6, 32, 22, .55);
   text-align: center;
 }
 
 .tc-strip div + div {
-  border-left: 1px solid rgba(242, 220, 138, .25);
+  border-left: 1px solid rgba(201, 162, 39, .45);
 }
 
 .tc-strip b {
   display: block;
-  color: white;
-  font-family: var(--font-display);
-  font-size: 17px;
-  font-weight: 800;
-  line-height: 1.1;
+  color: #fff;
+  font-family: var(--tc-serif);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .tc-strip span {
-  color: #f2dc8a;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: .14em;
+  color: var(--tc-gold-light);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .16em;
   text-transform: uppercase;
 }
 
-/* Back (classic cardboard-style stat back) */
+/* ---------------- Back: cream stock, gold double border ---------------- */
 .tc-back-frame {
-  padding: 14px 14px 10px;
-  background: linear-gradient(180deg, #f4ecd6 0%, #ebe0c2 100%);
-  color: #1b2430;
+  padding: 13px 13px 8px;
+  background:
+    repeating-linear-gradient(45deg, rgba(0, 0, 0, .012) 0 2px, transparent 2px 4px),
+    linear-gradient(180deg, #fbf9f2 0%, var(--tc-cream) 100%);
+  color: var(--tc-ink);
+  box-shadow:
+    inset 0 0 0 2px var(--tc-gold),
+    inset 0 0 0 5px var(--tc-cream),
+    inset 0 0 0 6px rgba(201, 162, 39, .55);
+}
+
+.tc-back-frame::before,
+.tc-back-frame::after {
+  width: 58px;
+  height: 58px;
+}
+
+.tc-back-frame::before {
+  top: auto;
+  left: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, var(--tc-green) 0 38px, var(--tc-gold) 38px 40px, transparent 40px);
+}
+
+.tc-back-frame::after {
+  background: linear-gradient(315deg, var(--tc-green) 0 38px, var(--tc-gold) 38px 40px, transparent 40px);
+}
+
+.tc-back-frame .tc-holo {
+  opacity: .2;
+}
+
+.tc-back-collection {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--tc-green);
+  font-family: var(--tc-serif);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .26em;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 .tc-back-head {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding-bottom: 10px;
-  border-bottom: 3px solid #001a33;
+  gap: 8px;
+  padding-bottom: 7px;
+  border-bottom: 2px solid var(--tc-gold);
 }
 
 .tc-back-number {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 46px;
-  height: 46px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: #001a33;
-  color: #f2dc8a;
-  font-family: var(--font-display);
+  position: absolute;
+  top: -14px;
+  right: 0;
+  color: var(--tc-green);
+  font-family: var(--tc-serif);
   font-size: 10px;
-  font-weight: 900;
-  text-align: center;
-  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: .12em;
 }
 
 .tc-back-head > div {
   flex: 1;
   min-width: 0;
+  text-align: center;
 }
 
 .tc-back-head strong {
   display: block;
-  color: #001a33;
-  font-family: var(--font-display);
-  font-size: 19px;
-  font-weight: 900;
+  color: var(--tc-green);
+  font-family: var(--tc-serif);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: .06em;
   text-transform: uppercase;
-  line-height: 1.05;
+  line-height: 1.1;
 }
 
 .tc-back-head span {
-  color: #6b5a2e;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: .1em;
+  color: #6f6245;
+  font-family: var(--tc-serif);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .18em;
   text-transform: uppercase;
 }
 
 .tc-back-logo {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   object-fit: contain;
+}
+
+.tc-back-flag {
+  display: flex;
+  align-items: center;
+  width: 42px;
+  flex-shrink: 0;
 }
 
 .tc-bio {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px 12px;
-  margin: 10px 0;
+  gap: 4px 12px;
+  margin: 7px 0;
 }
 
 .tc-bio dt {
-  color: #6b5a2e;
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: .12em;
+  color: #8a7c57;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .16em;
   text-transform: uppercase;
 }
 
@@ -642,7 +812,8 @@ html[data-theme="dark"] .pc-art {
   align-items: center;
   gap: 5px;
   margin: 1px 0 0;
-  color: #1b2430;
+  color: var(--tc-ink);
+  font-family: var(--tc-serif);
   font-size: 12px;
   font-weight: 700;
 }
@@ -651,28 +822,39 @@ html[data-theme="dark"] .pc-art {
   grid-column: 1 / -1;
 }
 
+/* Stats box */
 .tc-table {
   width: 100%;
   min-width: 0;
   border-collapse: collapse;
+  border: 1px solid var(--tc-gold);
+  font-family: var(--tc-serif);
   font-size: 11px;
 }
 
 .tc-table th,
 html[data-theme="dark"] .tc-table th {
-  padding: 5px 3px;
-  background: #001a33;
-  color: #f2dc8a;
-  font-size: 9px;
-  letter-spacing: .06em;
+  padding: 4px 3px;
+  background: var(--tc-green);
+  color: var(--tc-gold-light);
+  font-family: var(--tc-serif);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
 }
 
 .tc-table td,
 html[data-theme="dark"] .tc-table td {
-  padding: 5px 3px;
-  border-bottom: 1px solid rgba(0, 26, 51, .15);
-  color: #1b2430;
+  padding: 4px 3px;
+  border-bottom: 1px solid rgba(201, 162, 39, .35);
+  color: var(--tc-ink);
   text-align: center;
+}
+
+.tc-table td + td,
+html[data-theme="dark"] .tc-table td + td {
+  border-left: 1px solid rgba(201, 162, 39, .3);
 }
 
 .tc-table tbody tr,
@@ -684,54 +866,69 @@ html[data-theme="dark"] .tc-table tbody tr:hover {
 }
 
 .tc-table-total td {
-  font-weight: 900;
-  border-top: 2px solid #001a33;
+  font-weight: 800;
+  border-top: 2px solid var(--tc-green);
 }
 
 .tc-back-highlights {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-  margin: 10px 0;
+  margin: 7px 0;
+  border: 1px solid var(--tc-gold);
 }
 
 .tc-back-highlights div {
-  padding: 7px 4px;
-  border-radius: 8px;
-  background: #001a33;
+  padding: 6px 4px;
   text-align: center;
+}
+
+.tc-back-highlights div + div {
+  border-left: 1px solid rgba(201, 162, 39, .5);
 }
 
 .tc-back-highlights span {
   display: block;
-  color: #f2dc8a;
-  font-size: 8px;
-  font-weight: 900;
-  letter-spacing: .1em;
+  color: #8a7c57;
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: .14em;
   text-transform: uppercase;
 }
 
 .tc-back-highlights b {
-  color: white;
-  font-family: var(--font-display);
+  color: var(--tc-green);
+  font-family: var(--tc-serif);
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .tc-back-fact {
-  padding: 8px 10px;
-  border-left: 3px solid #c9a227;
-  background: rgba(255, 255, 255, .5);
-  color: #1b2430;
+  margin: 0;
+  padding: 6px 9px;
+  border-left: 3px solid var(--tc-gold);
+  background: rgba(16, 64, 44, .05);
+  color: var(--tc-ink);
+  font-family: var(--tc-serif);
   font-size: 11px;
   font-style: italic;
   line-height: 1.45;
 }
 
+.tc-back-motto {
+  margin: 7px 0 0;
+  color: var(--tc-green);
+  font-family: var(--tc-serif);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .22em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
 .tc-back-legal {
   margin-top: auto;
-  padding-top: 6px;
-  color: #6b5a2e;
+  padding-top: 5px;
+  color: #8a7c57;
   font-size: 8px;
   font-weight: 700;
   letter-spacing: .08em;
