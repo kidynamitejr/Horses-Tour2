@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { getMatchEntry, getSchedule, getPlayers } from "../data/googleSheets"
+import { headshotUrl, playerImageFallback } from "../utils/headshot"
 
 function formatOverPar(value) {
   if (value === "" || value === null || value === undefined) return value
@@ -166,12 +167,10 @@ function LastMatchResults() {
                     <div className="leaderboard-player">
 
                       <img
-                        src={`${import.meta.env.BASE_URL}images/players/${playerIds[row.player]}.jpg`}
+                        src={headshotUrl(playerIds[row.player])}
                         alt={row.player}
                         className="leaderboard-avatar"
-                        onError={(e) => {
-                          e.target.src = `${import.meta.env.BASE_URL}images/players/default.jpg`
-                        }}
+                        onError={playerImageFallback}
                       />
 
                       {row.player}

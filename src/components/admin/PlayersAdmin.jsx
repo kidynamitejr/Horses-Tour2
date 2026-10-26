@@ -1,13 +1,13 @@
 import { useRef, useState } from "react"
 import { uploadAsset } from "../../data/liveScoring"
+import { headshotUrl, nextPlayerImage } from "../../utils/headshot"
 import { makeCutout, shrinkImage } from "../../utils/image"
 import { AdminField } from "./AdminFields"
 import { rowFields, useAdminRows } from "./useAdminRows"
 
 // Admin > Players: add or edit players (Players tab) and upload their
-// headshot - the photo and its cut-out are saved into the website.
-
-const BASE = import.meta.env.BASE_URL
+// headshot - the photo and its cut-out go in the repo's uploads/players/
+// folder, like Gallery photos.
 
 const PLAYER_FIELDS = [
   { name: "Name", wide: true },
@@ -18,17 +18,12 @@ const PLAYER_FIELDS = [
 ]
 const SKIP = ["Player ID", "Headshot"]
 
-function Headshot({ id, version }) {
-  const [failed, setFailed] = useState(false)
+// Tries the uploads/ copy, then the website's older copy, then says "No photo".
+function Headshot({ id }) {
+  const [src, setSrc] = useState(headshotUrl(id))
+  const failed = src.includes("/default.")
   if (!id || failed) return <span className="pl-photo pl-photo-empty">No photo</span>
-  return (
-    <img
-      className="pl-photo"
-      src={`${BASE}images/players/${id}.jpg${version ? `?v=${version}` : ""}`}
-      alt=""
-      onError={() => setFailed(true)}
-    />
-  )
+  return <img className="pl-photo" src={src} alt="" onError={() => setSrc(nextPlayerImage)} />
 }
 
 function PlayersAdmin() {
@@ -83,7 +78,7 @@ function PlayersAdmin() {
       const [{ data, preview }, cutout] = await Promise.all([shrinkImage(file, 900), makeCutout(file)])
       await uploadAsset({ kind: "headshot", playerId: selected, data, cutout })
       setPhotoPreview(preview)
-      setMessage("Photo saved - it shows on the site in about 2 minutes, once the site updates.")
+      setMessage("Photo saved - it shows on the site within a few minutes.")
     } catch (err) {
       setMessage(err.message || "Couldn't save the photo.")
     } finally {

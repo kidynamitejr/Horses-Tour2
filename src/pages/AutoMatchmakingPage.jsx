@@ -5,8 +5,7 @@ import { completedEventIds } from "../utils/eventStatus"
 import { getPlayerSummaries } from "../utils/matchEntry"
 import { parseEventDate } from "../utils/liveEvent"
 import { getPartnershipHistory, partnershipLabel } from "../utils/partnership"
-
-const BASE = import.meta.env.BASE_URL
+import { headshotUrl, playerImageFallback } from "../utils/headshot"
 
 // Auto Matchmaking: every active player ranked by ranking points from the
 // last match (or their average if they missed it), a Playing dropdown for
@@ -471,11 +470,9 @@ function AutoMatchmakingPage() {
                     {t.players.map((p) => (
                       <span className={`ev-player${p.isSub ? " mm-is-sub" : ""}`} key={p.name}>
                         <img
-                          src={`${BASE}images/players/${playerIds[p.name] || "default"}.jpg`}
+                          src={headshotUrl(playerIds[p.name])}
                           alt=""
-                          onError={(e) => {
-                            e.target.src = `${BASE}images/players/default.jpg`
-                          }}
+                          onError={playerImageFallback}
                         />
                         <span className="ev-player-name">{p.name}</span>
                         {tourRankByName[p.name] && <span className="ev-player-rank">#{tourRankByName[p.name]}</span>}

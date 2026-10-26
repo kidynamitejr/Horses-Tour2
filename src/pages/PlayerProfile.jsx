@@ -35,8 +35,7 @@ import {
   CardIcon,
   UsaFlag,
 } from "../components/Icons"
-
-const BASE = import.meta.env.BASE_URL
+import { headshotUrl, cutoutUrl, nextPlayerImage, playerImageFallback } from "../utils/headshot"
 
 const TABS = [
   { key: "overview", label: "Overview" },
@@ -50,13 +49,13 @@ const num = (v, digits = 2) => (v === null || v === undefined ? "-" : v.toFixed(
 const yearOf = (r) => (r.dateValue ? r.dateValue.getFullYear() : "")
 
 function PlayerPhoto({ id, name, className }) {
-  const [src, setSrc] = useState(`${BASE}images/players/cutouts/${id}.png`)
+  const [src, setSrc] = useState(cutoutUrl(id))
   return (
     <img
       className={className}
       src={src}
       alt={name}
-      onError={() => setSrc(`${BASE}images/players/cutouts/default.png`)}
+      onError={() => setSrc(nextPlayerImage)}
     />
   )
 }
@@ -65,13 +64,11 @@ function Avatar({ id, name, size = 40 }) {
   return (
     <img
       className="pp-avatar"
-      src={`${BASE}images/players/${id}.jpg`}
+      src={headshotUrl(id)}
       alt={name}
       width={size}
       height={size}
-      onError={(e) => {
-        e.target.src = `${BASE}images/players/default.jpg`
-      }}
+      onError={playerImageFallback}
     />
   )
 }

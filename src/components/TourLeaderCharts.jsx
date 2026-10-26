@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import { getMatchEntry, getEvents, getPlayers } from "../data/googleSheets"
 import { getPlayerSummaries } from "../utils/matchEntry"
 import { getPlayerWinnings, formatCurrency } from "../utils/winnings"
+import { headshotUrl, playerImageFallback } from "../utils/headshot"
 
 const MAX_ROWS = 8
 
@@ -60,11 +61,9 @@ function LeaderChart({ title, subtitle, rows, format = (v) => v, accent }) {
                 className="leader-chart-player"
               >
                 <img
-                  src={`${import.meta.env.BASE_URL}images/players/${row.id || "default"}.jpg`}
+                  src={headshotUrl(row.id)}
                   alt=""
-                  onError={(e) => {
-                    e.target.src = `${import.meta.env.BASE_URL}images/players/default.jpg`
-                  }}
+                  onError={playerImageFallback}
                 />
                 <span>{row.name}</span>
               </Link>
