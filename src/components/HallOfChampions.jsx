@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { getSchedule, getMatchEntry, getPlayers, getEvents } from "../data/googleSheets"
 import { formatCurrency } from "../utils/winnings"
+import { winnerNames } from "../utils/majors"
 import { Lightbox } from "./Gallery"
 import { TrophyIcon } from "./Icons"
 
@@ -119,6 +120,17 @@ function HallOfChampions() {
 
         })
 
+        // The Events tab's Winner (set in Admin > Champion Hall) names the
+        // champions when it's filled; it also adds past champions that
+        // have no scorecards in Match Entry.
+        events.forEach((e) => {
+          const names = winnerNames(e.Winner)
+          if (!names.length) return
+          const eventId = e["Event ID"]
+          if (!byEvent[eventId]) byEvent[eventId] = { eventId, players: [], teamScore: "", totalTeams: null }
+          byEvent[eventId].players = names
+        })
+
         const list = Object.values(byEvent)
           .map((c) => {
             const event = eventById[c.eventId]
@@ -126,9 +138,9 @@ function HallOfChampions() {
             const type = (details["Event Type"] || "").trim()
             return {
               ...c,
-              eventName: event ? event["Event Name"].trim() : `Event ${c.eventId}`,
-              date: event ? event.Date : "",
-              year: event ? getEventYear(event.Date) : "",
+              eventName: (event?.["Event Name"] || details["Event Name"] || `Event ${c.eventId}`).trim(),
+              date: event?.Date || details.Date || "",
+              year: getEventYear(event?.Date || details.Date),
               course: ((details.Course || event?.Course) || "").trim(),
               type,
               isMajor: ["major", "championship"].includes(type.toLowerCase()),
@@ -243,7 +255,7 @@ function HallOfChampions() {
           <dl className="hoc-feature-stats">
             <div>
               <dt>Winning Score</dt>
-              <dd>{formatOverPar(reigning.teamScore)}</dd>
+              <dd>{formatOverPar(reigning.teamScore) || "-"}</dd>
             </div>
             <div>
               <dt>Field</dt>
@@ -341,7 +353,7 @@ function HallOfChampions() {
                 <div className="hoc-card-foot">
                   <span>
                     <small>Score</small>
-                    <b>{formatOverPar(c.teamScore)}</b>
+                    <b>{formatOverPar(c.teamScore) || "-"}</b>
                   </span>
                   <span>
                     <small>Field</small>
