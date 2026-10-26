@@ -2148,10 +2148,12 @@ html[data-theme="dark"] .awa-points {
   min-width: 0;
 }
 
-.nta-preview-app {
-  display: block;
-  color: rgba(255, 255, 255, .6);
-  font-size: 11.5px;
+.nta-preview > div {
+  align-self: center;
+}
+
+.nta-preview .nta-preview-empty {
+  color: rgba(255, 255, 255, .55);
 }
 
 .nta-preview strong {
