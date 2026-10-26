@@ -83,9 +83,9 @@ function NotificationsAdmin() {
       <div className="nta-preview" aria-label="Preview">
         <span className="nta-preview-icon"><BellIcon size={18} /></span>
         <div>
-          <span className="nta-preview-app">Horses Tour · now</span>
-          <strong>{title.trim() || "Your title"}</strong>
-          <p>{body.trim() || "Your message"}</p>
+          {title.trim() && <strong>{title.trim()}</strong>}
+          {body.trim() && <p>{body.trim()}</p>}
+          {!title.trim() && !body.trim() && <p className="nta-preview-empty">Your notification will look like this.</p>}
         </div>
       </div>
 
