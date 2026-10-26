@@ -11,6 +11,7 @@ import "./live.css"
 import "./matchmaking.css"
 import "./sponsor.css"
 import "./admin.css"
+import "./alerts.css"
 import "./mobile.css"
 import { BrowserRouter, Navigate, Routes, Route, useLocation } from "react-router-dom"
 
@@ -19,6 +20,7 @@ import Hero from "./components/Hero"
 import Footer from "./components/Footer"
 import AdvertisementBanner from "./components/AdvertisementBanner"
 import AnnouncementBanner from "./components/AnnouncementBanner"
+import AlertsPrompt from "./components/AlertsPrompt"
 import { PAGE_HEROES } from "./siteConfig"
 
 import Home from "./pages/Home"
@@ -59,6 +61,8 @@ function Layout() {
       <Header />
 
       <AnnouncementBanner />
+
+      <AlertsPrompt />
 
       {!isHome && pageHero && <Hero {...pageHero} />}
 
