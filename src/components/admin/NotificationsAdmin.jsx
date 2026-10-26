@@ -1,18 +1,20 @@
 import { useEffect, useState } from "react"
 import { getAlertsStatus, sendNotification } from "../../data/liveScoring"
 import { BellIcon } from "../Icons"
+import { MORE_NAV, PRIMARY_NAV } from "../../siteConfig"
 
 // Admin > Notifications: write an alert and send it to every phone that
 // has alerts turned on (e.g. "Tee times moved to 1:30").
 
+// Every page in the site's menus (so new pages show up here too), plus
+// Home and Next Event. Admin is left out - it's only for you.
 const LINKS = [
-  { value: "/live", label: "Live Scoring" },
   { value: "/", label: "Home" },
-  { value: "/schedule", label: "Schedule" },
-  { value: "/leaderboard", label: "Leaderboard" },
-  { value: "/news", label: "News" },
-  { value: "custom", label: "Another link..." },
-]
+  ...PRIMARY_NAV,
+  { to: "/next-event", label: "Next Event" },
+  ...MORE_NAV.filter((item) => item.to !== "/admin"),
+].map((item) => ({ value: item.value || item.to, label: item.label }))
+  .concat({ value: "custom", label: "Another link..." })
 
 function NotificationsAdmin() {
   const [status, setStatus] = useState(null)
