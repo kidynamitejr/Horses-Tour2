@@ -78,6 +78,7 @@ const ADMIN_ACTIONS = [
   "adStats", "clearAdStats", "saveNews", "deleteNews", "deletePhoto",
   "adminData", "saveAdminRow", "deleteAdminRow", "allPars", "savePars",
   "uploadAsset", "saveSettings", "adminSaveCard", "saveAward", "deleteAward",
+  "alertsStatus", "sendNotification",
 ]
 
 const LIVE_HEADERS = [
@@ -156,7 +157,12 @@ function doGet(e) {
 // wait on them.
 function doPost(e) {
   const result = handlePost(e)
-  sendQueuedAlerts()
+  const sent = sendQueuedAlerts()
+  // Admin > Notifications wants to know how many phones it reached.
+  if (notificationRequested) {
+    if (sent.error) return json({ ok: false, error: "Not sent: " + sent.error })
+    return json({ ok: true, sent: sent.sent, removed: sent.removed })
+  }
   return result
 }
 
@@ -196,6 +202,8 @@ function handlePost(e) {
     if (body.action === "adEvent") return json(recordAdEvent(body))
     if (body.action === "alertsOn") return json(alertsOn(body))
     if (body.action === "alertsOff") return json(alertsOff(body))
+    if (body.action === "alertsStatus") return json(alertsStatus())
+    if (body.action === "sendNotification") return json(sendNotification(body))
     if (body.action === "previewAutoPairing") {
       const nextId = nextEventAfter(clean(body.completedEvent))
       const values = sheetById(MATCH_SHEET_ID).getDataRange().getValues()
@@ -1795,6 +1803,37 @@ function queueAlert(title, body, eventId) {
     body: body,
     url: SITE_URL + "live" + (eventId ? "?event=" + encodeURIComponent(eventId) : ""),
   })
+}
+
+// ---- Admin > Notifications ----
+let notificationRequested = false
+
+function alertPhoneCount() {
+  const sheet = SpreadsheetApp.getActive().getSheetByName(ALERTS_SHEET)
+  if (!sheet) return 0
+  return sheet.getDataRange().getValues().slice(1).filter((r) => clean(r[0])).length
+}
+
+function alertsStatus() {
+  return { ok: true, problems: alertsSetupProblems(), phones: alertPhoneCount() }
+}
+
+// A message written in Admin, sent to every phone once the request is done
+// (see doPost). link: a page on the site ("/schedule") or a full https link.
+function sendNotification(body) {
+  const title = clean(body.title).slice(0, 80)
+  const text = clean(body.body).slice(0, 240)
+  if (!title) return { ok: false, error: "Add a title." }
+  const problems = alertsSetupProblems()
+  if (problems.length) return { ok: false, error: problems[0] }
+  if (!alertPhoneCount()) return { ok: false, error: "No phones have alerts turned on yet." }
+  const link = clean(body.link)
+  let url = SITE_URL
+  if (/^https:\/\//i.test(link)) url = link
+  else if (link) url = SITE_URL + link.replace(/^\/+/, "")
+  queuedAlerts.push({ title: title, body: text, url: url })
+  notificationRequested = true
+  return { ok: true }
 }
 
 function teamNames(row) {
