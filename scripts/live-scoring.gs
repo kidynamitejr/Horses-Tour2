@@ -12,6 +12,8 @@
  *   Hole by Hole - finished cards fill columns D-U (score to par per hole)
  *   Match Entry  - finished cards fill columns D (Team Score) and
  *                  E (Contributions) on each player's row
+ *                  Placement, when teams tied on Team Score are split
+ *                  by the tiebreak (see "Tiebreaks")
  *   Events       - column G (Winner) and F (Status = Played) once every
  *                  team has a score
  *   Gallery      - photos uploaded from the website are saved to the
@@ -23,7 +25,7 @@
  *   Matchmaking  - who's playing in the next event (from the Auto
  *                  Matchmaking page); when an event's last card is in,
  *                  the next event is paired and set up automatically
- * Formula cells are never overwritten.
+ * Formula cells are never overwritten, except a tied team's Placement.
  *
  * Photos: uploads (Gallery, News and headshots) are saved into the website's GitHub
  * repo (uploads/ folder) when GITHUB_TOKEN is set in Script Properties -
@@ -343,8 +345,11 @@ function saveHole(body, force) {
 //                  player's row for the event
 //   Events       - column G (Winner), once every team in the event has a
 //                  Team Score
-// Cells holding a formula are never overwritten, and Match Entry / Events
-// rows are never added - they must already exist.
+//   Match Entry  - Placement, once every team has a Team Score, for teams
+//                  whose finish the tiebreak changes
+// Cells holding a formula are never overwritten (except those Placement
+// cells), and Match Entry / Events rows are never added - they must
+// already exist.
 
 const HOLE_FIRST_COL = 4 // D (1-based)
 const MATCH_COLS = { event: 0, player: 1, team: 2, score: 3, contributions: 4 } // A, B, C, D, E
@@ -433,6 +438,108 @@ function holeByHoleChanges(holeTable, eventName, plan, appends) {
   return changes
 }
 
+// A team's Hole by Hole scores to par (18 numbers), or null when its row
+// is missing or incomplete.
+function holeScores(holeTable, eventName, players, team) {
+  const name = eventName.toLowerCase()
+  const key = pairKey(players)
+  const isEvent = (row, idx) => idx > 0 && clean(row[0]).toLowerCase() === name
+  const row = holeTable.values.find((r, idx) => isEvent(r, idx) && pairKey(clean(r[2]).split("/")) === key)
+    || holeTable.values.find((r, idx) => isEvent(r, idx) && clean(r[1]) === team)
+  if (!row) return null
+  const scores = row.slice(HOLE_FIRST_COL - 1, HOLE_FIRST_COL - 1 + 18).map((v) => (v === "" ? NaN : Number(v)))
+  return scores.length === 18 && scores.every((v) => !isNaN(v)) ? scores : null
+}
+
+// ---- Tiebreaks ----
+//
+// Teams tied on Team Score are split by the front nine (holes 1-9), then
+// the back nine counted back from the 18th: last 6, last 3, then the 18th
+// alone. (Teams tied on the total and the front nine always have the same
+// full back nine, so that part goes by its closing holes.) Lower wins each
+// step; teams level on all of them stay tied. Same rule as the website's
+// live board (src/utils/liveEvent.js).
+const TIEBREAK_HOLES = [[0, 1, 2, 3, 4, 5, 6, 7, 8], [12, 13, 14, 15, 16, 17], [15, 16, 17], [17]]
+
+// Negative when scores a beat b (scores to par, or strokes, per hole).
+function compareTiebreak(a, b) {
+  if (!a || !b) return 0
+  for (let i = 0; i < TIEBREAK_HOLES.length; i++) {
+    const sum = (scores) => TIEBREAK_HOLES[i].reduce((t, h) => t + scores[h], 0)
+    const diff = sum(a) - sum(b)
+    if (diff) return diff
+  }
+  return 0
+}
+
+// Every team in the event from Match Entry: players, row indexes and Team
+// Score (newScores wins over what's in the sheet).
+function eventTeams(matchTable, matchEventId, newScores) {
+  const teams = {}
+  matchTable.values.forEach((row, idx) => {
+    if (idx === 0 || clean(row[MATCH_COLS.event]) !== matchEventId) return
+    const team = clean(row[MATCH_COLS.team])
+    if (!team) return
+    if (!teams[team]) teams[team] = { players: [], rows: [], score: null }
+    teams[team].players.push(clean(row[MATCH_COLS.player]))
+    teams[team].rows.push(idx)
+    const score = row[MATCH_COLS.score]
+    if (score !== "" && !isNaN(Number(score))) teams[team].score = Number(score)
+  })
+  Object.keys(newScores || {}).forEach((team) => { if (teams[team]) teams[team].score = newScores[team] })
+  return teams
+}
+
+// Match Entry Placement for an event where every team has a score: each
+// team finishes 1 + the number of teams ahead of it on Team Score and then
+// the tiebreak. A Placement formula is left alone unless the tiebreak moves
+// that team; a plain value is kept up to date.
+function placementChanges(matchTable, teams, holesOf) {
+  const col = matchTable.values[0].map((h) => clean(h).toLowerCase()).indexOf("placement")
+  if (col < 0) return []
+  const letters = Object.keys(teams)
+  const changes = []
+  letters.forEach((t) => {
+    const score = teams[t].score
+    const plain = 1 + letters.filter((o) => teams[o].score < score).length
+    const place = 1 + letters.filter((o) => teams[o].score < score
+      || (teams[o].score === score && compareTiebreak(holesOf(o), holesOf(t)) < 0)).length
+    teams[t].rows.forEach((r) => {
+      const isFormula = Boolean(matchTable.formulas[r] && matchTable.formulas[r][col])
+      if (isFormula ? place === plain : Number(matchTable.values[r][col]) === place) return
+      changes.push({ table: matchTable, row: r, col: col, value: place, label: clean(matchTable.values[r][MATCH_COLS.player]) + " (team " + t + ") Placement = " + place + " (tiebreak)" })
+    })
+  })
+  return changes
+}
+
+// Run once from the Apps Script editor to apply the tiebreak to events
+// played before it existed (new events get it when their last card is
+// submitted). Changes a tied team's Placement - and so its points - and
+// the event's Winner. The log lists every change.
+function applyTiebreaksToPastEvents() {
+  const holeTable = readTable(SpreadsheetApp.getActive().getSheetByName(HOLE_SHEET))
+  const matchTable = readTable(sheetById(MATCH_SHEET_ID))
+  const eventsTable = readTable(sheetById(EVENTS_SHEET_ID))
+  const nameCol = eventsTable.values[0].map((h) => clean(h).toLowerCase()).indexOf("event name")
+  let changes = []
+  eventsTable.values.slice(1).forEach((row) => {
+    const eventId = clean(row[EVENTS_COLS.event])
+    if (!eventId || !clean(row[EVENTS_COLS.winner]) || nameCol < 0) return
+    const teams = eventTeams(matchTable, eventId)
+    const holesOf = (team) => holeScores(holeTable, clean(row[nameCol]), teams[team].players, team)
+    const result = winnerChange(eventsTable, matchTable, eventId, {}, holesOf)
+    if (!result.changes) return
+    // The Winner is only rewritten when first place was tied.
+    const scores = Object.keys(teams).map((t) => teams[t].score)
+    const tiedForFirst = scores.filter((v) => v === Math.min.apply(null, scores)).length > 1
+    changes = changes.concat(result.changes.filter((ch) => ch.table === matchTable || tiedForFirst))
+  })
+  changes = changes.filter((ch) => String(ch.table.values[ch.row][ch.col]) !== String(ch.value))
+  changes.forEach((ch) => ch.table.sheet.getRange(ch.row + 1, ch.col + 1).setValue(ch.value))
+  Logger.log(changes.length ? changes.map((ch) => ch.label).join("\n") : "No ties to change.")
+}
+
 // Match Entry: each player's row for the event gets D (Team Score) and E
 // (Contributions).
 function matchEntryChanges(matchTable, matchEventId, plan, missing) {
@@ -450,35 +557,30 @@ function matchEntryChanges(matchTable, matchEventId, plan, missing) {
   return changes
 }
 
-// Events: column G gets the winning team ("Name / Name", ties joined with
-// " & ") once every team in the event's Match Entry rows has a Team Score.
-function winnerChange(eventsTable, matchTable, matchEventId, newScores) {
-  const teams = {}
-  matchTable.values.forEach((row, idx) => {
-    if (idx === 0 || clean(row[MATCH_COLS.event]) !== matchEventId) return
-    const team = clean(row[MATCH_COLS.team])
-    if (!team) return
-    if (!teams[team]) teams[team] = { players: [], score: null }
-    teams[team].players.push(clean(row[MATCH_COLS.player]))
-    const score = row[MATCH_COLS.score]
-    if (score !== "" && !isNaN(Number(score))) teams[team].score = Number(score)
-  })
-  Object.keys(newScores).forEach((team) => { if (teams[team]) teams[team].score = newScores[team] })
-
+// Events: column G gets the winning team ("Name / Name", teams still tied
+// after the tiebreak joined with " & ") once every team in the event's
+// Match Entry rows has a Team Score. Match Entry Placement gets the
+// tiebreak at the same time.
+// holesOf(team) gives a team's scores per hole (or null).
+function winnerChange(eventsTable, matchTable, matchEventId, newScores, holesOf) {
+  const teams = eventTeams(matchTable, matchEventId, newScores)
   const letters = Object.keys(teams)
   if (!letters.length) return { pending: "no teams found in Match Entry" }
   const waiting = letters.filter((t) => teams[t].score == null)
   if (waiting.length) return { pending: "waiting on team " + waiting.join(", ") }
 
   const best = Math.min.apply(null, letters.map((t) => teams[t].score))
-  const winner = letters.filter((t) => teams[t].score === best).map((t) => teams[t].players.join(" / ")).join(" & ")
+  const leaders = letters.filter((t) => teams[t].score === best)
+    .sort((a, b) => compareTiebreak(holesOf(a), holesOf(b)))
+  const winner = leaders.filter((t) => compareTiebreak(holesOf(t), holesOf(leaders[0])) === 0)
+    .map((t) => teams[t].players.join(" / ")).join(" & ")
 
   const r = eventsTable.values.findIndex((row, idx) => idx > 0 && clean(row[EVENTS_COLS.event]) === matchEventId)
   if (r < 0) return { pending: "event " + matchEventId + " not found in Events" }
   const changes = []
   queueCell(changes, eventsTable, r, EVENTS_COLS.winner, winner, "Events Winner (G) = " + winner)
   queueCell(changes, eventsTable, r, EVENTS_COLS.status, "Played", "Events Status (F) = Played")
-  return { changes: changes, winner: winner }
+  return { changes: changes.concat(placementChanges(matchTable, teams, holesOf)), winner: winner }
 }
 
 // Submits one team (or every team with scores). With dryRun nothing is
@@ -524,7 +626,13 @@ function submitTeams(body, onlyTeam, force) {
     changes = changes.concat(matchEntryChanges(matchTable, matchEventId, plan, missing))
     newScores[plan.team] = plan.teamScore
   })
-  const winner = finished.length ? winnerChange(eventsTable, matchTable, matchEventId, newScores) : { pending: "no finished cards" }
+  const teamsNow = eventTeams(matchTable, matchEventId)
+  const holesOf = (team) => {
+    const players = teamsNow[team] ? teamsNow[team].players : []
+    const plan = finished.find((p) => pairKey(p.players) === pairKey(players)) || finished.find((p) => p.team === team)
+    return plan ? plan.toPar : holeScores(holeTable, eventName, players, team)
+  }
+  const winner = finished.length ? winnerChange(eventsTable, matchTable, matchEventId, newScores, holesOf) : { pending: "no finished cards" }
   if (winner.changes) changes = changes.concat(winner.changes)
 
   let nextEvent = null
