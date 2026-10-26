@@ -25,7 +25,7 @@
  *                  the next event is paired and set up automatically
  * Formula cells are never overwritten.
  *
- * Photos: uploads (Gallery and News) are saved into the website's GitHub
+ * Photos: uploads (Gallery, News and headshots) are saved into the website's GitHub
  * repo (uploads/ folder) when GITHUB_TOKEN is set in Script Properties -
  * Google Drive links get blocked when a website shows them. Without the
  * token they fall back to Drive. Run rehostDrivePhotos() once to move
@@ -1338,8 +1338,9 @@ function savePars(body) {
 
 // ---- Images for the editors ----
 // kind "winner" / "ad": a photo in the repo's uploads/ folder.
-// kind "headshot": the player's photo and cut-out in the website itself
-// (public/images/players/<id>.jpg and cutouts/<id>.png).
+// kind "headshot": the player's photo and cut-out, also in uploads/ like the
+// Gallery (uploads/players/<id>.jpg and uploads/players/cutouts/<id>.png),
+// so they show without the website rebuilding.
 function uploadAsset(body) {
   const data = String(body.data || "")
   if (!data) return { ok: false, error: "No photo was sent." }
@@ -1348,8 +1349,8 @@ function uploadAsset(body) {
   if (kind === "headshot") {
     const id = clean(body.playerId)
     if (!/^\d+$/.test(id)) return { ok: false, error: "Save the player first, then add the photo." }
-    githubPut("public/images/players/" + id + ".jpg", data, "Headshot for player " + id)
-    if (body.cutout) githubPut("public/images/players/cutouts/" + id + ".png", String(body.cutout), "Cut-out for player " + id)
+    githubPut("uploads/players/" + id + ".jpg", data, "Headshot for player " + id)
+    if (body.cutout) githubPut("uploads/players/cutouts/" + id + ".png", String(body.cutout), "Cut-out for player " + id)
     return { ok: true }
   }
   return { ok: true, url: hostImage(data, kind === "ad" ? "ad" : "winner", clean(body.title)) }

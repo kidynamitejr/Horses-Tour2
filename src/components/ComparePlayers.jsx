@@ -6,8 +6,7 @@ import { formatCurrency } from "../utils/winnings"
 import { ordinal } from "../utils/ordinal"
 import CourseCrest from "./CourseCrest"
 import { SwapIcon, UsaFlag, ChevronDownIcon } from "./Icons"
-
-const BASE = import.meta.env.BASE_URL
+import { headshotUrl, cutoutUrl, nextPlayerImage, playerImageFallback } from "../utils/headshot"
 
 const num = (digits) => (v) => (v === null || v === undefined ? "-" : v.toFixed(digits))
 const pct = (v) => (v === null || v === undefined ? "-" : `${v.toFixed(1)}%`)
@@ -94,13 +93,13 @@ function compareStat(stat, a, b) {
 }
 
 function Cutout({ id, name }) {
-  const [src, setSrc] = useState(`${BASE}images/players/cutouts/${id}.png`)
+  const [src, setSrc] = useState(cutoutUrl(id))
   return (
     <img
       className="cmp-cutout"
       src={src}
       alt={name}
-      onError={() => setSrc(`${BASE}images/players/cutouts/default.png`)}
+      onError={() => setSrc(nextPlayerImage)}
     />
   )
 }
@@ -147,11 +146,9 @@ function PlayerPicker({ profiles, selectedId, otherId, onSelect, side }) {
                 }}
               >
                 <img
-                  src={`${BASE}images/players/${p.id}.jpg`}
+                  src={headshotUrl(p.id)}
                   alt=""
-                  onError={(e) => {
-                    e.target.src = `${BASE}images/players/default.jpg`
-                  }}
+                  onError={playerImageFallback}
                 />
                 <span>{p.name}</span>
                 <small>{p.tourRank ? `#${p.tourRank.position}` : "—"}</small>

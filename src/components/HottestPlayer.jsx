@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { getPlayers, getSchedule, getMatchEntry } from "../data/googleSheets"
+import { headshotUrl, playerImageFallback } from "../utils/headshot"
 
 function HottestPlayer() {
 
@@ -96,12 +97,10 @@ function HottestPlayer() {
         <div className="featured-player-avatar-ring">
 
           <img
-            src={`${import.meta.env.BASE_URL}images/players/${player["Player ID"]}.jpg`}
+            src={headshotUrl(player["Player ID"])}
             alt={player.Name}
             className="featured-player-image"
-            onError={(e) => {
-              e.target.src = `${import.meta.env.BASE_URL}images/players/default.jpg`
-            }}
+            onError={playerImageFallback}
           />
 
         </div>

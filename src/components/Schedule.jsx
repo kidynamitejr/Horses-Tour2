@@ -4,6 +4,7 @@ import { getEvents, getMatchEntry, getPlayers } from "../data/googleSheets"
 import { slugify } from "../utils/slugify"
 import { formatCurrency } from "../utils/winnings"
 import { CalendarIcon, FlagIcon, MapPinIcon, TrophyIcon } from "./Icons"
+import { headshotUrl, playerImageFallback } from "../utils/headshot"
 
 const BASE = import.meta.env.BASE_URL
 const COURSE_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"]
@@ -288,11 +289,9 @@ function Schedule() {
                       {e.winner.players.map((name) => (
                         <Link key={name} to={`/player-profile/${playerIds[name]}`} className="sch-winner">
                           <img
-                            src={`${BASE}images/players/${playerIds[name] || "default"}.jpg`}
+                            src={headshotUrl(playerIds[name])}
                             alt=""
-                            onError={(ev) => {
-                              ev.target.src = `${BASE}images/players/default.jpg`
-                            }}
+                            onError={playerImageFallback}
                           />
                           <span>{name}</span>
                         </Link>

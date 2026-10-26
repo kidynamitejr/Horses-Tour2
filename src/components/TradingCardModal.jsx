@@ -7,8 +7,7 @@ import { ordinal } from "../utils/ordinal"
 import { LOGO } from "../siteConfig"
 import CourseCrest from "./CourseCrest"
 import { UsaFlag } from "./Icons"
-
-const BASE = import.meta.env.BASE_URL
+import { cutoutUrl, nextPlayerImage } from "../utils/headshot"
 
 // Phones get the share sheet (Save Image -> camera roll) instead of a file download.
 const isPhone = typeof navigator !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
@@ -21,7 +20,7 @@ function TradingCardModal({ profile, onClose }) {
   const backRef = useRef(null)
   const [flipped, setFlipped] = useState(false)
   const [downloading, setDownloading] = useState(false)
-  const [photo, setPhoto] = useState(`${BASE}images/players/cutouts/${profile.id}.png`)
+  const [photo, setPhoto] = useState(cutoutUrl(profile.id))
 
   const seasons = Object.entries(profile.seasons)
     .filter(([year]) => year !== "Unknown")
@@ -144,7 +143,7 @@ function TradingCardModal({ profile, onClose }) {
                   src={photo}
                   alt={profile.name}
                   crossOrigin="anonymous"
-                  onError={() => setPhoto(`${BASE}images/players/cutouts/default.png`)}
+                  onError={() => setPhoto(nextPlayerImage)}
                 />
 
                 <div className="tc-topline">

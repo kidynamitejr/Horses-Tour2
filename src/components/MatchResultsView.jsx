@@ -4,6 +4,7 @@ import { TeamModal, TeamModalPlayer, TeamModalSection } from "./TeamModal"
 import confetti from "canvas-confetti"
 import { slugify } from "../utils/slugify"
 import { ordinal } from "../utils/ordinal"
+import { headshotUrl, cutoutUrl, playerImageFallback } from "../utils/headshot"
 
 const COURSE_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"]
 
@@ -377,11 +378,9 @@ function MatchResultsView({ eventId, matchEntry, schedule, playerIds, eyebrow, o
                         {t.players.map((p) => (
                           <img
                             key={p.name}
-                            src={`${import.meta.env.BASE_URL}images/players/cutouts/${playerIds[p.name] || "default"}.png`}
+                            src={cutoutUrl(playerIds[p.name])}
                             alt=""
-                            onError={(e) => {
-                              e.target.src = `${import.meta.env.BASE_URL}images/players/cutouts/default.png`
-                            }}
+                            onError={playerImageFallback}
                           />
                         ))}
                       </span>
@@ -458,11 +457,9 @@ function MatchResultsView({ eventId, matchEntry, schedule, playerIds, eyebrow, o
                       {t.players.map((p) => (
                         <span className="ev-player" key={p.name}>
                           <img
-                            src={`${import.meta.env.BASE_URL}images/players/${playerIds[p.name]}.jpg`}
+                            src={headshotUrl(playerIds[p.name])}
                             alt=""
-                            onError={(e) => {
-                              e.target.src = `${import.meta.env.BASE_URL}images/players/default.jpg`
-                            }}
+                            onError={playerImageFallback}
                           />
                           <span className="ev-player-name">{p.name}</span>
                         </span>
@@ -528,11 +525,9 @@ function MatchResultsView({ eventId, matchEntry, schedule, playerIds, eyebrow, o
                       <td>
                         <Link to={`/player-profile/${playerIds[player.name]}`} className="ev-ind-player">
                           <img
-                            src={`${import.meta.env.BASE_URL}images/players/${playerIds[player.name]}.jpg`}
+                            src={headshotUrl(playerIds[player.name])}
                             alt=""
-                            onError={(e) => {
-                              e.target.src = `${import.meta.env.BASE_URL}images/players/default.jpg`
-                            }}
+                            onError={playerImageFallback}
                           />
                           {player.name}
                         </Link>

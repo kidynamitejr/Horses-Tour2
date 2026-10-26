@@ -5,8 +5,7 @@ import { formatCurrency } from "../utils/winnings"
 import { winnerNames } from "../utils/majors"
 import { Lightbox } from "./Gallery"
 import { TrophyIcon } from "./Icons"
-
-const BASE = import.meta.env.BASE_URL
+import { headshotUrl, playerImageFallback } from "../utils/headshot"
 
 function formatOverPar(value) {
   if (value === "" || value === null || value === undefined) return value
@@ -37,13 +36,11 @@ function Headshot({ id, name, size = 40 }) {
   return (
     <img
       className="hoc-headshot"
-      src={`${BASE}images/players/${id || "default"}.jpg`}
+      src={headshotUrl(id)}
       alt={name}
       width={size}
       height={size}
-      onError={(e) => {
-        e.target.src = `${BASE}images/players/default.jpg`
-      }}
+      onError={playerImageFallback}
     />
   )
 }

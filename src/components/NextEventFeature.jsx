@@ -13,6 +13,7 @@ import { ordinal } from "../utils/ordinal"
 import { getPartnershipHistory, partnershipLabel } from "../utils/partnership"
 import { completedEventIds } from "../utils/eventStatus"
 import { getEventForecast } from "../utils/weather"
+import { headshotUrl, playerImageFallback } from "../utils/headshot"
 
 const COURSE_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"]
 
@@ -457,11 +458,9 @@ function NextEventFeature() {
                     {t.teamPlayers.map((p) => (
                       <span className="ev-player" key={p}>
                         <img
-                          src={`${import.meta.env.BASE_URL}images/players/${playerIds[p]}.jpg`}
+                          src={headshotUrl(playerIds[p])}
                           alt=""
-                          onError={(e) => {
-                            e.target.src = `${import.meta.env.BASE_URL}images/players/default.jpg`
-                          }}
+                          onError={playerImageFallback}
                         />
                         <span className="ev-player-name">{p}</span>
                         {tourRankByName[p] && <span className="ev-player-rank">#{tourRankByName[p]}</span>}

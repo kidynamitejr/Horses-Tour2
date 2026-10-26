@@ -5,8 +5,7 @@ import { buildPlayerProfiles } from "../utils/playerProfile"
 import { formatCurrency } from "../utils/winnings"
 import CourseCrest from "./CourseCrest"
 import { UsaFlag } from "./Icons"
-
-const BASE = import.meta.env.BASE_URL
+import { cutoutUrl, nextPlayerImage } from "../utils/headshot"
 
 const SORTS = {
   rank: { label: "Tour Rank", compare: (a, b) => (a.tourRank?.position ?? 999) - (b.tourRank?.position ?? 999) },
@@ -16,14 +15,14 @@ const SORTS = {
 }
 
 function PlayerPhoto({ id, name }) {
-  const [src, setSrc] = useState(`${BASE}images/players/cutouts/${id}.png`)
+  const [src, setSrc] = useState(cutoutUrl(id))
   return (
     <img
       className="pc-photo"
       src={src}
       alt={name}
       loading="lazy"
-      onError={() => setSrc(`${BASE}images/players/cutouts/default.png`)}
+      onError={() => setSrc(nextPlayerImage)}
     />
   )
 }

@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import { Link } from "react-router-dom"
-
-const BASE = import.meta.env.BASE_URL
+import { cutoutUrl, nextPlayerImage } from "../utils/headshot"
 
 // Shared shell for the team popups (Matchup Preview + Match Recap):
 // a header band, then one panel per player, then any detail sections.
@@ -48,13 +47,13 @@ export function TeamModal({ eyebrow, title, tags, onClose, children }) {
 }
 
 function Cutout({ id, name }) {
-  const [src, setSrc] = useState(`${BASE}images/players/cutouts/${id || "default"}.png`)
+  const [src, setSrc] = useState(cutoutUrl(id))
   return (
     <img
       className="tm-cutout"
       src={src}
       alt={name}
-      onError={() => setSrc(`${BASE}images/players/cutouts/default.png`)}
+      onError={() => setSrc(nextPlayerImage)}
     />
   )
 }

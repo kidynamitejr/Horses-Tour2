@@ -5,8 +5,7 @@ import { getPlayerSummaries } from "../utils/matchEntry"
 import { buildPlayerProfiles } from "../utils/playerProfile"
 import { ordinal } from "../utils/ordinal"
 import { UsaFlag, ChevronDownIcon } from "./Icons"
-
-const BASE = import.meta.env.BASE_URL
+import { headshotUrl, cutoutUrl, nextPlayerImage, playerImageFallback } from "../utils/headshot"
 
 // Ranks every player by their average Match Ranking Points using only
 // played rows through (and including) maxEventId - lets us reconstruct
@@ -82,13 +81,13 @@ const BOARDS = {
 }
 
 function Cutout({ id, name }) {
-  const [src, setSrc] = useState(`${BASE}images/players/cutouts/${id || "default"}.png`)
+  const [src, setSrc] = useState(cutoutUrl(id))
   return (
     <img
       className="lb2-podium-photo"
       src={src}
       alt={name}
-      onError={() => setSrc(`${BASE}images/players/cutouts/default.png`)}
+      onError={() => setSrc(nextPlayerImage)}
     />
   )
 }
@@ -289,11 +288,9 @@ function Leaderboard() {
 
                   <span className="lb2-player" role="cell">
                     <img
-                      src={`${BASE}images/players/${playerIds[player.name]}.jpg`}
+                      src={headshotUrl(playerIds[player.name])}
                       alt=""
-                      onError={(e) => {
-                        e.target.src = `${BASE}images/players/default.jpg`
-                      }}
+                      onError={playerImageFallback}
                     />
                     <span className="lb2-player-text">
                       <span className="lb2-name">
