@@ -9,6 +9,9 @@ import CourseCrest from "./CourseCrest"
 import { UsaFlag } from "./Icons"
 import { cutoutUrl, nextPlayerImage } from "../utils/headshot"
 
+// Golf course scenery behind the player cut-out on the front.
+const COURSE_SCENE = `${import.meta.env.BASE_URL}images/cards/course-bg.jpg`
+
 // Phones get the share sheet (Save Image -> camera roll) instead of a file download.
 const isPhone = typeof navigator !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 
@@ -137,8 +140,7 @@ function TradingCardModal({ profile, onClose }) {
               <div className="tc-holo" />
 
               <div className="tc-art">
-                <div className="tc-art-stripes" />
-                <img className="tc-art-logo" src={LOGO} alt="" />
+                <div className="tc-art-scene" style={{ backgroundImage: `url(${COURSE_SCENE})` }} />
 
                 <img
                   className="tc-photo"

@@ -447,22 +447,27 @@ html[data-theme="dark"] .pc-art {
   overflow: hidden;
   border: 2px solid var(--tc-gold);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, .35), inset 0 0 0 1px rgba(243, 226, 166, .5);
-  background: linear-gradient(170deg, #1d6b48 0%, #0d3a28 55%, #061d14 100%);
+  background: #0d3a28;
 }
 
-.tc-art-stripes {
+.tc-art-scene {
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(120deg, rgba(255, 255, 255, .05) 0 14px, transparent 14px 34px);
+  background-color: #6f8fb8;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+  background-size: cover;
 }
 
-.tc-art-logo {
+/* Darken the edges a touch so the gold lettering and the player stand out
+   against the bright sky and fairway. */
+.tc-art-scene::after {
+  content: "";
   position: absolute;
-  right: -60px;
-  bottom: 14px;
-  width: 290px;
-  opacity: .1;
-  filter: brightness(0) invert(1);
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(6, 32, 22, .35) 0%, transparent 28%, transparent 70%, rgba(6, 32, 22, .45) 100%),
+    radial-gradient(ellipse at 50% 55%, transparent 55%, rgba(0, 0, 0, .3) 100%);
 }
 
 /* Angled black corner holding the tour logo, as on the reference card. */
