@@ -137,6 +137,24 @@ export function officialCard(live, team) {
   }
 }
 
+// Tiebreak for teams level on score: the front nine (holes 1-9), then the
+// back nine counted back from the 18th - last 6, last 3, the 18th alone.
+// (Level on the total and the front nine means level on the full back
+// nine, so that part goes by its closing holes.) Same rule the Apps Script
+// uses for Placement and the Winner.
+const TIEBREAK_HOLES = [[0, 1, 2, 3, 4, 5, 6, 7, 8], [12, 13, 14, 15, 16, 17], [15, 16, 17], [17]]
+
+// Negative when card a wins the tiebreak, 0 when it can't split them
+// (still level, or either card is missing a hole).
+export function compareTiebreak(a, b) {
+  if (!a?.strokes.every(Boolean) || !b?.strokes.every(Boolean)) return 0
+  for (const holes of TIEBREAK_HOLES) {
+    const diff = holes.reduce((t, h) => t + a.strokes[h] - b.strokes[h], 0)
+    if (diff) return diff
+  }
+  return 0
+}
+
 export function summarizeCard(card, pars) {
   let total = 0
   let toPar = 0

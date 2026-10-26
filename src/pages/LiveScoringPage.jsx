@@ -4,6 +4,7 @@ import { ContributionSplit, LiveBoardCard } from "../components/LiveBoard"
 import { CalendarIcon, MapPinIcon } from "../components/Icons"
 import { PRACTICE_ID, clearPractice, flushQueue, liveScoringReady, submitAll } from "../data/liveScoring"
 import {
+  compareTiebreak,
   isSubmitted,
   isToday,
   parseEventDate,
@@ -78,19 +79,20 @@ function LiveScoringPage() {
       if (!a.thru !== !b.thru) return a.thru ? -1 : 1
       const ap = a.toPar ?? a.total
       const bp = b.toPar ?? b.total
-      return ap - bp || b.thru - a.thru
+      return ap - bp || b.thru - a.thru || compareTiebreak(a.card, b.card)
     })
 
-  // Positions with ties ("T2").
+  // Positions with ties ("T2"). Finished cards level on score are split by
+  // the front nine tiebreak.
   const scoreOf = (r) => (r.thru ? r.toPar ?? r.total : null)
+  const level = (a, b) => scoreOf(a) === scoreOf(b) && compareTiebreak(a.card, b.card) === 0
   rows.forEach((r) => {
-    const score = scoreOf(r)
-    if (score == null) {
+    if (scoreOf(r) == null) {
       r.pos = "-"
       return
     }
-    const first = rows.findIndex((x) => scoreOf(x) === score)
-    const tied = rows.filter((x) => scoreOf(x) === score).length > 1
+    const first = rows.findIndex((x) => level(x, r))
+    const tied = rows.filter((x) => level(x, r)).length > 1
     r.pos = `${tied ? "T" : ""}${first + 1}`
   })
 
