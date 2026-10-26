@@ -225,9 +225,11 @@ function LiveScoringPage() {
                     {team.players.map((p) => <Headshot key={p} id={playerIds[p]} />)}
                   </span>
                   <span className="live-keep-info">
-                    <small>{team.label}</small>
+                    <span className="live-keep-top">
+                      <small>{team.label}</small>
+                      <em className={row?.submitted ? "is-done" : row?.thru ? "is-going" : ""}>{status}</em>
+                    </span>
                     <b>{team.players.join(" & ")}</b>
-                    <em className={row?.submitted ? "is-done" : row?.thru ? "is-going" : ""}>{status}</em>
                   </span>
                   <span className="live-keep-go" aria-hidden="true"><ChevronRightIcon size={18} /></span>
                 </Link>
