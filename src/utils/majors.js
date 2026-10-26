@@ -29,3 +29,12 @@ export function getMajorWins(events) {
   return majorWins
 
 }
+
+// The Winner column as a list of names: "Trent / Logan" (or a tie,
+// "A / B & C / D") -> ["Trent", "Logan"].
+export function winnerNames(text) {
+  return String(text || "")
+    .split(/[/&]/)
+    .map((name) => name.trim())
+    .filter(Boolean)
+}
