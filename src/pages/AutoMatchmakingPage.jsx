@@ -13,6 +13,11 @@ import { headshotUrl, playerImageFallback } from "../utils/headshot"
 // last, and so on. With an odd number playing, a sub fills in for one of
 // the missing players at that player's spot.
 //
+// Any player can be moved by hand - drag them in the Players list (or use
+// the arrows), or swap two players between teams on the Pairings board.
+// A moved player keeps the spot they were moved to and everyone else fills
+// in around them by ranking points.
+//
 // Who's playing is saved to the sheet's Matchmaking tab, so when the
 // current event's last card is in, the Apps Script pairs the next event
 // the same way and sets up Match Entry automatically.
@@ -40,17 +45,31 @@ function writeStore(key, value) {
   }
 }
 
+// Moved players go back in at their spot (1 = top); everyone else keeps
+// their seeded order around them.
+function applyPins(list, pins) {
+  const pinned = list.filter((p) => pins[p.name] >= 1).sort((a, b) => pins[a.name] - pins[b.name])
+  const order = list.filter((p) => !(pins[p.name] >= 1))
+  pinned.forEach((p) => order.splice(Math.min(pins[p.name] - 1, order.length), 0, p))
+  return order
+}
+
+const EMPTY_ATTENDANCE = { statuses: {}, subFor: "", subName: "", extras: [], pins: {} }
+
 function AutoMatchmakingPage() {
   const [players, setPlayers] = useState([])
   const [matchEntry, setMatchEntry] = useState([])
   const [events, setEvents] = useState([])
   const [pickedId, setPickedId] = useState("")
-  const [attendance, setAttendance] = useState({ eventId: "", statuses: {}, subFor: "", subName: "", extras: [] })
+  const [attendance, setAttendance] = useState({ eventId: "", ...EMPTY_ATTENDANCE })
   const [newName, setNewName] = useState("")
   const [newSeed, setNewSeed] = useState("")
   const [sync, setSync] = useState("")
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState("")
+  const [picked, setPicked] = useState("")
+  const [dragging, setDragging] = useState(null)
+  const [dropAt, setDropAt] = useState(null)
   const saveTimer = useRef(null)
 
   useEffect(() => {
@@ -99,11 +118,12 @@ function AutoMatchmakingPage() {
             subFor: a.subFor || "",
             subName: a.subName || "",
             extras: a.extras || [],
+            pins: a.pins || {},
           })
         }
       })
       .catch(() => {
-        if (!cancelled) setAttendance({ eventId: nextId, statuses: {}, subFor: "", subName: "", extras: [] })
+        if (!cancelled) setAttendance({ eventId: nextId, ...EMPTY_ATTENDANCE })
       })
     return () => { cancelled = true }
   }, [nextId])
@@ -112,6 +132,7 @@ function AutoMatchmakingPage() {
   const statusFor = (name) => (loaded && attendance.statuses[name]) || "playing"
   const subFor = loaded ? attendance.subFor : ""
   const extras = loaded ? attendance.extras || [] : []
+  const pins = (loaded && attendance.pins) || {}
 
   const summaries = getPlayerSummaries(matchEntry)
 
@@ -125,7 +146,7 @@ function AutoMatchmakingPage() {
     .sort((a, b) => b[1].avgRankingPoints - a[1].avgRankingPoints)
     .forEach(([n], index) => { tourRankByName[n] = index + 1 })
 
-  const ranked = players
+  const seeded = players
     .filter((p) => /^active$/i.test((p.Active || "").trim()) && p.Name && !/\(sub\)/i.test(p.Name))
     .map((p) => {
       const name = p.Name.trim()
@@ -148,6 +169,11 @@ function AutoMatchmakingPage() {
         .map((x) => ({ name: x.name, seed: x.seed, source: "Added", average: x.seed, added: true })),
     )
     .sort((a, b) => b.seed - a.seed || b.average - a.average || a.name.localeCompare(b.name))
+
+  const ranked = applyPins(seeded, pins)
+  const seededSpot = {}
+  seeded.forEach((p, i) => { seededSpot[p.name] = i })
+  const hasMoves = ranked.some((p) => pins[p.name])
 
   const playing = ranked.filter((p) => statusFor(p.name) === "playing")
   const missing = ranked.filter((p) => statusFor(p.name) !== "playing")
@@ -179,10 +205,18 @@ function AutoMatchmakingPage() {
 
   const defaultSubName = subTarget ? subName(subTarget.name) : ""
   const typedSubName = subTarget && attendance.subFor === subTarget.name ? attendance.subName : ""
-  const field = playing.map((p) => ({ ...p, isSub: false }))
+  // slot = the name on the Players list each spot belongs to (for the sub,
+  // the missing player they stand in for).
+  const field = playing.map((p) => ({ ...p, slot: p.name, isSub: false }))
   if (subTarget) {
-    field.push({ name: typedSubName || defaultSubName, seed: subTarget.seed, source: `${subTarget.name}'s spot`, isSub: true })
-    field.sort((a, b) => b.seed - a.seed)
+    const sub = { name: typedSubName || defaultSubName, slot: subTarget.name, seed: subTarget.seed, source: `${subTarget.name}'s spot`, isSub: true }
+    if (hasMoves) {
+      // With hand moves the order is fixed: the sub stands in at the missing player's spot.
+      field.splice(ranked.filter((p) => p === subTarget || statusFor(p.name) === "playing").indexOf(subTarget), 0, sub)
+    } else {
+      field.push(sub)
+      field.sort((a, b) => b.seed - a.seed)
+    }
   }
 
   const teams = []
@@ -212,18 +246,22 @@ function AutoMatchmakingPage() {
       statuses: { ...statuses, ...(changes.statuses || {}) },
       ...(changes.sub || {}),
       extras: changes.extras || attendance.extras || [],
+      pins: changes.pins || attendance.pins || {},
     }
     if (changes.extras) {
-      // A removed player drops out of the statuses too.
+      // A removed player drops out of the statuses (and moves) too.
       const keep = new Set(ranked.filter((p) => !p.added).map((p) => p.name).concat(changes.extras.map((x) => x.name)))
       Object.keys(next.statuses).forEach((n) => { if (!keep.has(n)) delete next.statuses[n] })
+      next.pins = Object.fromEntries(Object.entries(next.pins).filter(([n]) => keep.has(n)))
     }
     setAttendance(next)
     setMessage("")
     setSync("saving")
     clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
-      const payload = { event: nextId, statuses: next.statuses, subFor: next.subFor, subName: next.subName, extras: next.extras }
+      const payload = {
+        event: nextId, statuses: next.statuses, subFor: next.subFor, subName: next.subName, extras: next.extras, pins: next.pins,
+      }
       if (!liveScoringReady) {
         writeStore(`ht-matchmaking-${nextId}`, payload)
         setSync("saved")
@@ -235,6 +273,58 @@ function AutoMatchmakingPage() {
 
   function setPlayerStatus(name, value) {
     updateAttendance({ statuses: { [name]: value } })
+  }
+
+  // Saves a new order: the players just moved, plus anyone moved before,
+  // are held at their new spots so the list stays exactly as shown.
+  function saveOrder(names, moved) {
+    const next = {}
+    new Set([...Object.keys(pins), ...moved]).forEach((n) => {
+      const spot = names.indexOf(n)
+      if (spot >= 0) next[n] = spot + 1
+    })
+    updateAttendance({ pins: next })
+  }
+
+  function movePlayer(name, to) {
+    const names = ranked.map((p) => p.name).filter((n) => n !== name)
+    names.splice(Math.max(0, Math.min(to, names.length)), 0, name)
+    saveOrder(names, [name])
+  }
+
+  function swapPlayers(a, b) {
+    const names = ranked.map((p) => p.name)
+    const i = names.indexOf(a)
+    const j = names.indexOf(b)
+    if (i < 0 || j < 0 || i === j) return
+    ;[names[i], names[j]] = [names[j], names[i]]
+    saveOrder(names, [a, b])
+  }
+
+  function resetPlayer(name) {
+    const next = { ...pins }
+    delete next[name]
+    updateAttendance({ pins: next })
+  }
+
+  function resetOrder() {
+    setPicked("")
+    updateAttendance({ pins: {} })
+  }
+
+  // Pairings board: tap one player, then another, to swap them.
+  function pickSlot(slot) {
+    if (!picked) setPicked(slot)
+    else if (picked === slot) setPicked("")
+    else {
+      swapPlayers(picked, slot)
+      setPicked("")
+    }
+  }
+
+  function endDrag() {
+    setDragging(null)
+    setDropAt(null)
   }
 
   function addPlayer(e) {
@@ -345,6 +435,7 @@ function AutoMatchmakingPage() {
             <thead>
               <tr>
                 <th>#</th>
+                <th><span className="mm-sr">Move</span></th>
                 <th>Player</th>
                 <th>Ranking Pts</th>
                 <th>Playing?</th>
@@ -353,11 +444,62 @@ function AutoMatchmakingPage() {
             <tbody>
               {ranked.map((p, i) => {
                 const value = statusFor(p.name)
+                const shift = seededSpot[p.name] - i
+                const from = dragging?.type === "row" ? ranked.findIndex((r) => r.name === dragging.name) : -1
+                const dropClass = from >= 0 && dropAt === i && from !== i ? (from < i ? " is-drop-below" : " is-drop-above") : ""
                 return (
-                  <tr key={p.name} className={value === "playing" ? "" : "is-out"}>
+                  <tr
+                    key={p.name}
+                    className={`${value === "playing" ? "" : "is-out"}${pins[p.name] ? " is-moved" : ""}${dragging?.name === p.name && dragging.type === "row" ? " is-dragging" : ""}${dropClass}`}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = "move"
+                      e.dataTransfer.setData("text/plain", p.name)
+                      setDragging({ type: "row", name: p.name })
+                    }}
+                    onDragOver={(e) => {
+                      if (dragging?.type !== "row") return
+                      e.preventDefault()
+                      if (dropAt !== i) setDropAt(i)
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      if (dragging?.type === "row" && dragging.name !== p.name) movePlayer(dragging.name, i)
+                      endDrag()
+                    }}
+                    onDragEnd={endDrag}
+                  >
                     <td className="mm-rank">{i + 1}</td>
+                    <td className="mm-move">
+                      <span className="mm-grip" aria-hidden="true" title="Drag to move">⋮⋮</span>
+                      <span className="mm-arrows">
+                        <button type="button" onClick={() => movePlayer(p.name, i - 1)} disabled={i === 0} aria-label={`Move ${p.name} up`}>
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => movePlayer(p.name, i + 1)}
+                          disabled={i === ranked.length - 1}
+                          aria-label={`Move ${p.name} down`}
+                        >
+                          ▼
+                        </button>
+                      </span>
+                    </td>
                     <td className="mm-name">
-                      {p.name}
+                      <span className="mm-name-text">{p.name}</span>
+                      {pins[p.name] && (
+                        <button
+                          type="button"
+                          className="mm-moved"
+                          onClick={() => resetPlayer(p.name)}
+                          title={`Moved by hand${shift ? ` (seeded #${seededSpot[p.name] + 1})` : ""} - click to put back`}
+                          aria-label={`Put ${p.name} back in seeded order`}
+                        >
+                          {shift > 0 ? `▲${shift}` : shift < 0 ? `▼${-shift}` : "Moved"}
+                          <span aria-hidden="true">×</span>
+                        </button>
+                      )}
                       {p.added && (
                         <button type="button" className="mm-remove" onClick={() => removePlayer(p.name)} aria-label={`Remove ${p.name}`}>
                           ×
@@ -383,6 +525,17 @@ function AutoMatchmakingPage() {
               })}
             </tbody>
           </table>
+
+          <div className="mm-order">
+            <span>
+              {hasMoves
+                ? `${Object.keys(pins).filter((n) => ranked.some((p) => p.name === n)).length} moved by hand - everyone else stays in seeded order.`
+                : "Drag a player (or use the arrows) to move them to a different spot."}
+            </span>
+            {hasMoves && (
+              <button type="button" onClick={resetOrder}>Reset to seeded order</button>
+            )}
+          </div>
 
           <form className="mm-add" onSubmit={addPlayer}>
             <h4>Add a player to {nextEvent ? nextEvent["Event Name"].trim() : "this event"}</h4>
@@ -412,8 +565,26 @@ function AutoMatchmakingPage() {
         <section className="mm-card mm-board">
           <div className="ev-board-head">
             <h3>Pairings</h3>
-            <span>{teams.length} teams · 1st with last, 2nd with second to last · Favorite by combined Ranking Factor</span>
+            <span>
+              {teams.length} teams · 1st with last, 2nd with second to last{hasMoves ? " · includes moves made by hand" : ""}
+              {" "}· Favorite by combined Ranking Factor
+            </span>
           </div>
+
+          {teams.length > 0 && (
+            <div className={`mm-swap-bar${picked ? " is-active" : ""}`}>
+              {picked ? (
+                <>
+                  <span>
+                    Swapping <b>{field.find((f) => f.slot === picked)?.name || picked}</b> - pick who to swap with
+                  </span>
+                  <button type="button" onClick={() => setPicked("")}>Cancel</button>
+                </>
+              ) : (
+                <span>Tap a player, then another, to swap them between teams - or drag one onto the other.</span>
+              )}
+            </div>
+          )}
 
           {needsSub && missing.length > 0 && (
             <div className="mm-sub">
@@ -468,15 +639,43 @@ function AutoMatchmakingPage() {
 
                   <span className="ev-players" role="cell">
                     {t.players.map((p) => (
-                      <span className={`ev-player${p.isSub ? " mm-is-sub" : ""}`} key={p.name}>
+                      <button
+                        type="button"
+                        className={`ev-player mm-chip${p.isSub ? " mm-is-sub" : ""}${picked === p.slot ? " is-picked" : ""}${picked && picked !== p.slot ? " is-target" : ""}${dragging?.type === "chip" && dropAt === p.slot && dragging.name !== p.slot ? " is-drop" : ""}${pins[p.slot] ? " is-moved" : ""}`}
+                        key={p.name}
+                        onClick={() => pickSlot(p.slot)}
+                        aria-pressed={picked === p.slot}
+                        aria-label={picked && picked !== p.slot ? `Swap with ${p.name}` : `Move ${p.name}`}
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.effectAllowed = "move"
+                          e.dataTransfer.setData("text/plain", p.name)
+                          setDragging({ type: "chip", name: p.slot })
+                        }}
+                        onDragOver={(e) => {
+                          if (dragging?.type !== "chip") return
+                          e.preventDefault()
+                          if (dropAt !== p.slot) setDropAt(p.slot)
+                        }}
+                        onDragLeave={() => { if (dropAt === p.slot) setDropAt(null) }}
+                        onDrop={(e) => {
+                          e.preventDefault()
+                          if (dragging?.type === "chip") swapPlayers(dragging.name, p.slot)
+                          setPicked("")
+                          endDrag()
+                        }}
+                        onDragEnd={endDrag}
+                      >
                         <img
                           src={headshotUrl(playerIds[p.name])}
                           alt=""
                           onError={playerImageFallback}
+                          draggable={false}
                         />
                         <span className="ev-player-name">{p.name}</span>
                         {tourRankByName[p.name] && <span className="ev-player-rank">#{tourRankByName[p.name]}</span>}
-                      </span>
+                        <span className="mm-chip-icon" aria-hidden="true">⇄</span>
+                      </button>
                     ))}
                   </span>
 
