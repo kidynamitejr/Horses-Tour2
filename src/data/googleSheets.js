@@ -1,4 +1,6 @@
 import axios from "axios"
+import { getAwards } from "./liveScoring"
+import { withAwards } from "../utils/matchEntry"
 
 // ==============================
 // SHEET URLS
@@ -200,8 +202,13 @@ export async function getContributions() {
   return await readCSV(CONTRIBUTIONS_URL)
 }
 
+// Includes power points awarded to players who didn't play (see withAwards).
 export async function getMatchEntry() {
-  return await readCSV(MATCH_ENTRY_URL)
+  const [rows, awards] = await Promise.all([
+    readCSV(MATCH_ENTRY_URL),
+    getAwards().catch(() => []),
+  ])
+  return withAwards(rows, awards)
 }
 
 // Returns the Team Pairing tab as a raw grid (array of row arrays)

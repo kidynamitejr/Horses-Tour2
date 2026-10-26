@@ -9,10 +9,12 @@ import ChampionsAdmin from "../components/admin/ChampionsAdmin"
 import PlayersAdmin from "../components/admin/PlayersAdmin"
 import RulesAdmin from "../components/admin/RulesAdmin"
 import BannerAdmin from "../components/admin/BannerAdmin"
+import AwardsAdmin from "../components/admin/AwardsAdmin"
 import { adminSignIn, adminSignOut, getAdminPassword, liveScoringReady } from "../data/liveScoring"
 
 // Admin: the commissioner's tools behind a password - matchmaking, the
-// round dashboard and scorecard fixes, events (and course pars), the
+// round dashboard and scorecard fixes, events (and course pars), awarded
+// power points, the
 // Hall of Champions, players,
 // sponsors, news, gallery, rules and the announcement banner. The password is checked by the Google Apps
 // Script on every admin action, so it isn't stored in this public code.
@@ -21,6 +23,7 @@ const TABS = [
   { id: "matchmaking", label: "Auto Matchmaking" },
   { id: "round", label: "Round" },
   { id: "events", label: "Events" },
+  { id: "awards", label: "Award Points" },
   { id: "champions", label: "Champion Hall" },
   { id: "players", label: "Players" },
   { id: "sponsors", label: "Sponsors" },
@@ -123,6 +126,7 @@ function AdminPage() {
         {tab === "matchmaking" && <AutoMatchmakingPage />}
         {tab === "round" && <RoundAdmin />}
         {tab === "events" && <EventsAdmin />}
+        {tab === "awards" && <AwardsAdmin />}
         {tab === "champions" && <ChampionsAdmin />}
         {tab === "players" && <PlayersAdmin />}
         {tab === "sponsors" && <SponsorStatsPage />}

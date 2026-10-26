@@ -530,6 +530,29 @@ html[data-theme="dark"] .pp-hero {
   color: #2a1f00;
 }
 
+/* Power points awarded for an event the player didn't play */
+.pp-pos.is-award {
+  background: var(--sky-soft);
+  color: var(--sky);
+  font-size: 11px;
+  letter-spacing: .06em;
+}
+
+.pp-award-row td {
+  background: color-mix(in srgb, var(--sky) 5%, transparent);
+}
+
+.pp-award-note {
+  color: var(--muted);
+  font-size: 12.5px;
+  font-style: italic;
+}
+
+.pp-award-note b {
+  color: var(--sky);
+  font-style: normal;
+}
+
 /* Starts / Wins / Earnings boxes */
 .pp-stat-boxes {
   display: grid;

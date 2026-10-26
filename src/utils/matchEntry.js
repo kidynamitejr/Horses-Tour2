@@ -38,3 +38,27 @@ export function getPlayerSummaries(matchEntry) {
 export function getPlayedMatchEntryRows(matchEntry) {
   return matchEntry.filter((row) => row.Player && row.Contributions)
 }
+
+// Power points the commissioner awarded for events a player didn't play
+// (Admin > Award Points) go on top of the sheet's Total Power Score on each
+// of that player's rows. The awards themselves stay on the list as
+// `matchEntry.awards` for the player profile.
+export function withAwards(matchEntry, awards) {
+
+  const bonus = {}
+
+  awards.forEach((award) => {
+    const name = (award.player || "").trim().toLowerCase()
+    bonus[name] = (bonus[name] || 0) + (Number(award.points) || 0)
+  })
+
+  matchEntry.forEach((row) => {
+    const extra = row.Player ? bonus[row.Player.trim().toLowerCase()] : 0
+    if (extra) row["Total Power Score"] = String((Number(row["Total Power Score"]) || 0) + extra)
+  })
+
+  matchEntry.awards = awards
+
+  return matchEntry
+
+}

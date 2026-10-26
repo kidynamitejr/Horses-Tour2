@@ -200,6 +200,24 @@ export function buildPlayerProfiles({ players, matchEntry, events, holeRows }) {
       })
       .sort((a, b) => a.eventId - b.eventId)
 
+    // Power points awarded for events they didn't play (Admin > Award Points).
+    const awards = (matchEntry.awards || [])
+      .filter((a) => norm(a.player) === norm(name))
+      .map((a) => {
+        const event = eventById[String(a.event).trim()] || {}
+        return {
+          id: a.id,
+          eventId: Number(a.event),
+          eventName: (event["Event Name"] || `Event ${a.event}`).trim(),
+          date: event.Date || "",
+          dateValue: parseEventDate(event.Date),
+          course: (event.Course || "").trim(),
+          points: Number(a.points) || 0,
+          reason: a.reason || "",
+        }
+      })
+      .sort((a, b) => a.eventId - b.eventId)
+
     const wins = results.filter((r) => r.placement === 1)
 
     const scored = results.filter((r) => r.teamScore !== null)
@@ -211,14 +229,21 @@ export function buildPlayerProfiles({ players, matchEntry, events, holeRows }) {
       ? results.reduce((best, r) => (r.rankingPoints > best.rankingPoints ? r : best))
       : null
 
+    const yearKey = (r) => (r.dateValue ? r.dateValue.getFullYear() : "Unknown")
+
     const seasons = {}
     results.forEach((r) => {
-      const year = r.dateValue ? r.dateValue.getFullYear() : "Unknown"
+      const year = yearKey(r)
       if (!seasons[year]) seasons[year] = []
       seasons[year].push(r)
     })
+    awards.forEach((a) => {
+      if (!seasons[yearKey(a)]) seasons[yearKey(a)] = []
+    })
 
-    const summarize = (list) => ({
+    const awardedPoints = (list) => list.reduce((sum, a) => sum + a.points, 0)
+
+    const summarize = (list, awarded = 0) => ({
       events: list.length,
       wins: list.filter((r) => r.placement === 1).length,
       runnerUps: list.filter((r) => r.placement === 2).length,
@@ -226,11 +251,12 @@ export function buildPlayerProfiles({ players, matchEntry, events, holeRows }) {
       topThree: list.filter((r) => r.placement && r.placement <= 3).length,
       majors: list.filter((r) => r.placement === 1 && r.isMajor).length,
       winnings: list.reduce((sum, r) => sum + r.winnings, 0),
-      powerPoints: list.reduce((sum, r) => sum + r.powerPoints, 0),
+      powerPoints: list.reduce((sum, r) => sum + r.powerPoints, 0) + awarded,
+      awardedPoints: awarded,
       rankingPoints: list.reduce((sum, r) => sum + r.rankingPoints, 0),
     })
 
-    const career = summarize(results)
+    const career = summarize(results, awardedPoints(awards))
 
     profiles[name] = {
       id: player["Player ID"],
@@ -242,9 +268,13 @@ export function buildPlayerProfiles({ players, matchEntry, events, holeRows }) {
       age: getAge(birthDate),
       homeCourse: homeCourse && !/^n\/?a$/i.test(homeCourse) ? homeCourse : "",
       results,
+      awards,
       career,
       seasons: Object.fromEntries(
-        Object.entries(seasons).map(([year, list]) => [year, summarize(list)])
+        Object.entries(seasons).map(([year, list]) => [
+          year,
+          summarize(list, awardedPoints(awards.filter((a) => String(yearKey(a)) === year))),
+        ])
       ),
       wins,
       lastWin: wins.length ? wins[wins.length - 1] : null,
