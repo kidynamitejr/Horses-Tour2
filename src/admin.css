@@ -77,62 +77,286 @@ html[data-theme="dark"] .adm-login button {
 
 /* Tabs */
 .adm {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  max-width: 1200px;
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
+  max-width: 1280px;
   margin: 0 auto;
+  text-align: left;
 }
 
-.adm-bar {
+/* Side menu (computers): sections grouped, with icons */
+.adm-nav {
   position: sticky;
-  top: 76px;
-  z-index: 5;
+  top: calc(var(--header-h) + 16px);
   display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  padding: 8px;
+  flex-direction: column;
+  max-height: calc(100vh - var(--header-h) - 32px);
+  overflow-y: auto;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--radius-lg);
   background: var(--surface);
   box-shadow: var(--shadow-md);
 }
 
-.adm-tabs {
+.adm-nav-head {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 16px 14px;
+  border-bottom: 1px solid var(--line);
 }
 
-.adm-tabs button {
-  padding: 9px 18px;
-  border: 0;
-  border-radius: 999px;
-  background: none;
-  color: var(--muted);
-  font: 800 14px var(--font-body);
-  cursor: pointer;
-}
-
-.adm-tabs button.active {
+.adm-nav-badge {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
   background: var(--navy);
-  color: white;
+  color: var(--gold);
 }
 
-html[data-theme="dark"] .adm-tabs button.active {
+.adm-nav-head b {
+  display: block;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.adm-nav-head small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.adm-nav-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 10px;
+}
+
+.adm-nav-group > span {
+  display: block;
+  margin: 0 10px 6px;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.adm-nav-group button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--text);
+  font: 700 14px var(--font-body);
+  text-align: left;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+
+.adm-nav-group button svg {
+  flex: none;
+  color: var(--muted);
+}
+
+.adm-nav-group button:hover {
+  background: var(--page);
+  color: var(--ink);
+}
+
+.adm-nav-group button.active {
+  background: var(--navy);
+  color: #fff;
+}
+
+.adm-nav-group button.active svg {
+  color: var(--gold);
+}
+
+html[data-theme="dark"] .adm-nav-group button.active {
   background: var(--sky);
 }
 
+html[data-theme="dark"] .adm-nav-group button.active svg {
+  color: #fff;
+}
+
 .adm-signout {
-  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: auto 10px 12px;
+  padding: 9px 12px;
   border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--page);
-  color: var(--ink);
+  border-radius: 10px;
+  background: none;
+  color: var(--muted);
   font: 700 13px var(--font-body);
   cursor: pointer;
+}
+
+.adm-signout:hover {
+  color: #d63031;
+  border-color: rgba(214, 48, 49, .4);
+}
+
+/* Section title above the panel */
+.adm-main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.adm-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.adm-title-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--navy);
+  color: var(--gold);
+}
+
+.adm-title small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.adm-title h2 {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+/* Section picker (phones and tablets): looks like a button, opens the
+   phone's own grouped list */
+.adm-picker {
+  display: none;
+}
+
+@media (max-width: 1000px) {
+  .adm {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .adm-nav {
+    display: none;
+  }
+
+  .adm-picker {
+    position: sticky;
+    top: calc(var(--header-h) + 8px);
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    box-shadow: var(--shadow-md);
+  }
+
+  .adm-picker-current {
+    position: relative;
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 6px 10px 6px 6px;
+    border-radius: 10px;
+    background: var(--page);
+  }
+
+  .adm-picker-current .adm-title-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+  }
+
+  .adm-picker-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .adm-picker-text small {
+    display: block;
+    color: var(--muted);
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+
+  .adm-picker-text b {
+    display: block;
+    overflow: hidden;
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 800;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .adm-picker-current > svg {
+    flex: none;
+    color: var(--muted);
+  }
+
+  /* The real dropdown sits invisibly on top, so tapping opens it. */
+  .adm-picker select {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .adm-signout {
+    flex: none;
+    margin: 0;
+    padding: 10px;
+  }
+
+  .adm-signout span {
+    display: none;
+  }
+
+  .adm-title {
+    display: none;
+  }
 }
 
 /* News editor */
@@ -442,42 +666,6 @@ html[data-theme="dark"] .adm-tabs button.active {
 }
 
 @media (max-width: 640px) {
-  .adm-bar {
-    top: 68px;
-    border-radius: 18px;
-  }
-
-  .adm-bar {
-    flex-wrap: nowrap;
-    gap: 6px;
-    padding: 6px;
-  }
-
-  .adm-tabs {
-    flex-wrap: nowrap;
-    min-width: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .adm-tabs::-webkit-scrollbar {
-    display: none;
-  }
-
-  .adm-tabs button {
-    flex: none;
-    padding: 8px 9px;
-    font-size: 13px;
-  }
-
-
-
-  .adm-signout {
-    flex: none;
-    padding: 7px 10px;
-    font-size: 12px;
-  }
-
   .nws-form,
   .nws-list {
     padding: 14px 12px;
@@ -603,32 +791,6 @@ html[data-theme="dark"] .adm-tabs button.active {
   .gad-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
-  }
-}
-
-/* --------------------------------------------------------------------------
-   Admin tabs: pills on computers, a dropdown on phones
-   -------------------------------------------------------------------------- */
-
-.adm-tab-select {
-  display: none;
-}
-
-@media (max-width: 760px) {
-  .adm-tabs {
-    display: none;
-  }
-
-  .adm-tab-select {
-    display: block;
-    flex: 1;
-    min-width: 0;
-    padding: 9px 12px;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    background: var(--page);
-    color: var(--ink);
-    font: 800 14px var(--font-body);
   }
 }
 
