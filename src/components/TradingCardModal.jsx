@@ -138,6 +138,7 @@ function TradingCardModal({ profile, onClose }) {
             <div className="tc-frame">
 
               <div className="tc-holo" />
+              <div className="tc-edge" />
 
               <div className="tc-art">
                 <div className="tc-art-scene" style={{ backgroundImage: `url(${COURSE_SCENE})` }} />
@@ -175,9 +176,14 @@ function TradingCardModal({ profile, onClose }) {
                 <div className="tc-nameplate-text">
                   <span>{firstName}</span>
                   <strong>{lastName}</strong>
+                  {profile.homeCourse && (
+                    <em className="tc-home">
+                      <CourseCrest course={profile.homeCourse} playerId={profile.id} size={16} onDark />
+                      {profile.homeCourse}
+                    </em>
+                  )}
                 </div>
                 <div className="tc-nameplate-meta">
-                  <span className="tc-pos">PRO</span>
                   <span className="tc-flag"><UsaFlag width={20} /></span>
                 </div>
               </div>
@@ -215,7 +221,7 @@ function TradingCardModal({ profile, onClose }) {
                 <div><dt>Age</dt><dd>{profile.age ?? "-"}</dd></div>
                 <div><dt>Country</dt><dd>USA</dd></div>
                 <div><dt>Turned Pro</dt><dd>{profile.joinDate || "-"}</dd></div>
-                <div className="tc-bio-wide">
+                <div className="tc-bio-course">
                   <dt>Home Course</dt>
                   <dd>
                     {profile.homeCourse ? (
@@ -283,8 +289,6 @@ function TradingCardModal({ profile, onClose }) {
                     ? `Best finish so far: ${ordinal(Math.min(...profile.results.map((r) => r.placement || 99)))} place. Still chasing that first Horses Tour win.`
                     : "Yet to tee it up on the Horses Tour - the debut is coming."}
               </p>
-
-              <p className="tc-back-motto">Past / Present / Forever</p>
 
               <p className="tc-back-legal">© {currentYear} Horses Tour · Card {cardNumber}</p>
 

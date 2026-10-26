@@ -345,6 +345,7 @@ html[data-theme="dark"] .pc-art {
   --tc-serif: Georgia, "Times New Roman", "Iowan Old Style", serif;
 
   display: none;
+  box-sizing: border-box;
   width: 100%;
   height: 100%;
   padding: 7px;
@@ -366,6 +367,7 @@ html[data-theme="dark"] .pc-art {
 
 .tc-frame {
   position: relative;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -376,6 +378,31 @@ html[data-theme="dark"] .pc-art {
     repeating-linear-gradient(135deg, rgba(255, 255, 255, .025) 0 3px, transparent 3px 7px),
     linear-gradient(150deg, #17533a 0%, var(--tc-green) 45%, var(--tc-green-dark) 100%);
   box-shadow: inset 0 0 0 1px rgba(201, 162, 39, .55), inset 0 0 40px rgba(0, 0, 0, .35);
+}
+
+.tc-front {
+  padding: 4px;
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, .03) 0 2px, transparent 2px 5px),
+    linear-gradient(150deg, #0d3324 0%, #06180f 100%);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .55), inset 0 0 0 1px rgba(201, 162, 39, .7);
+}
+
+.tc-front .tc-frame {
+  box-shadow: inset 0 0 0 1px rgba(201, 162, 39, .35), inset 0 0 40px rgba(0, 0, 0, .35);
+}
+
+/* Silver and gold bevel bands across three corners, like the reference
+   card's front border (the fourth corner holds the black logo corner). */
+.tc-edge {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background:
+    linear-gradient(135deg, transparent 0 30px, #f3e2a6 30px 32px, #b8901c 32px 33px, transparent 33px 37px, #f4f2ea 37px 45px, #c9c6b8 45px 46px, var(--tc-gold) 46px 48px, transparent 48px) top left / 140px 140px no-repeat,
+    linear-gradient(45deg, transparent 0 8px, #f3e2a6 8px 10px, #b8901c 10px 11px, transparent 11px 13px, #f4f2ea 13px 19px, #c9c6b8 19px 20px, var(--tc-gold) 20px 22px, transparent 22px) bottom left / 140px 140px no-repeat,
+    linear-gradient(315deg, transparent 0 8px, #f3e2a6 8px 10px, #b8901c 10px 11px, transparent 11px 13px, #f4f2ea 13px 19px, #c9c6b8 19px 20px, var(--tc-gold) 20px 22px, transparent 22px) bottom right / 140px 140px no-repeat;
 }
 
 /* Angled gold corners, drawn with hard-stop gradients so they also survive
@@ -511,8 +538,8 @@ html[data-theme="dark"] .pc-art {
 
 .tc-topline {
   position: absolute;
-  top: 14px;
-  left: 14px;
+  top: 22px;
+  left: 22px;
   z-index: 4;
   display: flex;
   flex-direction: column;
@@ -647,14 +674,25 @@ html[data-theme="dark"] .pc-art {
   flex-shrink: 0;
 }
 
-.tc-pos {
-  padding: 3px 8px;
-  border: 1px solid rgba(243, 226, 166, .7);
+.tc-home {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  overflow: hidden;
   color: var(--tc-gold-light);
   font-family: var(--tc-serif);
   font-size: 10px;
+  font-style: normal;
   font-weight: 700;
-  letter-spacing: .16em;
+  letter-spacing: .12em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tc-home > * {
+  flex-shrink: 0;
 }
 
 .tc-flag {
@@ -707,19 +745,19 @@ html[data-theme="dark"] .pc-art {
 
 .tc-back-frame::before,
 .tc-back-frame::after {
-  width: 58px;
-  height: 58px;
+  width: 44px;
+  height: 44px;
 }
 
 .tc-back-frame::before {
   top: auto;
   left: 0;
   bottom: 0;
-  background: linear-gradient(45deg, var(--tc-green) 0 38px, var(--tc-gold) 38px 40px, transparent 40px);
+  background: linear-gradient(45deg, var(--tc-green) 0 26px, var(--tc-gold) 26px 28px, transparent 28px);
 }
 
 .tc-back-frame::after {
-  background: linear-gradient(315deg, var(--tc-green) 0 38px, var(--tc-gold) 38px 40px, transparent 40px);
+  background: linear-gradient(315deg, var(--tc-green) 0 26px, var(--tc-gold) 26px 28px, transparent 28px);
 }
 
 .tc-back-frame .tc-holo {
@@ -799,7 +837,7 @@ html[data-theme="dark"] .pc-art {
 
 .tc-bio {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px 12px;
   margin: 7px 0;
 }
@@ -823,8 +861,15 @@ html[data-theme="dark"] .pc-art {
   font-weight: 700;
 }
 
-.tc-bio-wide {
-  grid-column: 1 / -1;
+.tc-bio-course {
+  grid-column: span 2;
+  min-width: 0;
+}
+
+.tc-bio-course dd {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Stats box */
@@ -851,7 +896,7 @@ html[data-theme="dark"] .tc-table th {
 
 .tc-table td,
 html[data-theme="dark"] .tc-table td {
-  padding: 4px 3px;
+  padding: 3px;
   border-bottom: 1px solid rgba(201, 162, 39, .35);
   color: var(--tc-ink);
   text-align: center;
@@ -917,17 +962,6 @@ html[data-theme="dark"] .tc-table tbody tr:hover {
   font-size: 11px;
   font-style: italic;
   line-height: 1.45;
-}
-
-.tc-back-motto {
-  margin: 7px 0 0;
-  color: var(--tc-green);
-  font-family: var(--tc-serif);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: .22em;
-  text-align: center;
-  text-transform: uppercase;
 }
 
 .tc-back-legal {
