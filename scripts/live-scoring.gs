@@ -786,15 +786,16 @@ function matchmakingSheet() {
   let sheet = book.getSheetByName(MATCHMAKING_SHEET)
   if (!sheet) {
     sheet = book.insertSheet(MATCHMAKING_SHEET)
-    sheet.getRange(1, 1, 1, 6).setValues([["Event ID", "Player", "Playing", "Sub For", "Sub Name", "Added Ranking Pts"]]).setFontWeight("bold")
+    sheet.getRange(1, 1, 1, 7).setValues([["Event ID", "Player", "Playing", "Sub For", "Sub Name", "Added Ranking Pts", "Moved To"]]).setFontWeight("bold")
     sheet.setFrozenRows(1)
   }
   if (!clean(sheet.getRange(1, 6).getValue())) sheet.getRange(1, 6).setValue("Added Ranking Pts").setFontWeight("bold")
+  if (!clean(sheet.getRange(1, 7).getValue())) sheet.getRange(1, 7).setValue("Moved To").setFontWeight("bold")
   return sheet
 }
 
 function readAttendance(eventId) {
-  const result = { statuses: {}, subFor: "", subName: "", extras: [] }
+  const result = { statuses: {}, subFor: "", subName: "", extras: [], pins: {} }
   const sheet = SpreadsheetApp.getActive().getSheetByName(MATCHMAKING_SHEET)
   if (!sheet) return result
   sheet.getDataRange().getValues().slice(1).forEach((r) => {
@@ -806,6 +807,8 @@ function readAttendance(eventId) {
       result.statuses[clean(r[1])] = /^no/i.test(clean(r[2])) ? "out" : "playing"
       // A player added just for this event, with the ranking points to seed them at.
       if (clean(r[5]) !== "" && !isNaN(Number(r[5]))) result.extras.push({ name: clean(r[1]), seed: Number(r[5]) })
+      // A player moved by hand to this spot in the order (1 = top seed).
+      if (Number(r[6]) >= 1) result.pins[clean(r[1])] = Number(r[6])
     }
   })
   return result
@@ -824,12 +827,15 @@ function saveAttendance(body) {
   ;(body.extras || []).forEach((x) => { if (clean(x.name)) extraSeed[clean(x.name)] = Number(x.seed) || 0 })
   const names = Object.keys(body.statuses || {})
   Object.keys(extraSeed).forEach((n) => { if (names.indexOf(n) < 0) names.push(n) })
+  const pins = body.pins || {}
+  Object.keys(pins).forEach((n) => { if (names.indexOf(n) < 0) names.push(n) })
   const rows = names.map((name) => [
     eventId, name, (body.statuses || {})[name] === "out" ? "No" : "Yes", "", "",
     name in extraSeed ? extraSeed[name] : "",
+    Number(pins[name]) >= 1 ? Number(pins[name]) : "",
   ])
-  rows.push([eventId, SUB_ROW, "", clean(body.subFor), clean(body.subName), ""])
-  sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 6).setValues(rows)
+  rows.push([eventId, SUB_ROW, "", clean(body.subFor), clean(body.subName), "", ""])
+  sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 7).setValues(rows)
   return { ok: true }
 }
 
@@ -867,7 +873,15 @@ function activeRoster() {
 // Same pairing as the Auto Matchmaking page: seed by the last match's
 // ranking points (or the player's average if they missed it), 1st with
 // last, 2nd with second to last; an odd count brings in a sub at a missing
-// player's spot.
+// player's spot. Players moved by hand on the page keep the spot they
+// were moved to; everyone else fills in around them by seed.
+function applyPins(ranked, pins) {
+  const pinned = ranked.filter((p) => pins[p.name] >= 1).sort((a, b) => pins[a.name] - pins[b.name])
+  const order = ranked.filter((p) => !(pins[p.name] >= 1))
+  pinned.forEach((p) => order.splice(Math.min(pins[p.name] - 1, order.length), 0, p))
+  return order
+}
+
 function buildPairings(lastEventId, nextEventId, attendance, matchValues) {
   const firstRow = {}
   matchValues.slice(1).forEach((r) => {
@@ -878,7 +892,7 @@ function buildPairings(lastEventId, nextEventId, attendance, matchValues) {
 
   const roster = activeRoster()
   const extras = (attendance.extras || []).filter((x) => roster.indexOf(x.name) < 0)
-  const ranked = roster.map((name) => {
+  const seeded = roster.map((name) => {
     const last = matchValues.find((r) =>
       clean(r[MATCH_COLS.event]) === lastEventId && clean(r[MATCH_COLS.player]) === name && num(r[MATCH_COLS.score]) != null)
     const average = num(firstRow[name] ? firstRow[name][AVG_COL] : null) || 0
@@ -886,6 +900,9 @@ function buildPairings(lastEventId, nextEventId, attendance, matchValues) {
     return { name: name, seed: lastPoints != null ? lastPoints : average, average: average }
   }).concat(extras.map((x) => ({ name: x.name, seed: x.seed, average: x.seed })))
     .sort((a, b) => b.seed - a.seed || b.average - a.average || a.name.localeCompare(b.name))
+  const pins = attendance.pins || {}
+  const moved = Object.keys(pins).length > 0
+  const ranked = applyPins(seeded, pins)
 
   const status = (name) => attendance.statuses[name] || "playing"
   const playing = ranked.filter((p) => status(p.name) === "playing")
@@ -898,8 +915,14 @@ function buildPairings(lastEventId, nextEventId, attendance, matchValues) {
       const middle = playing[Math.floor(playing.length / 2)].seed
       target = missing.slice().sort((a, b) => Math.abs(a.seed - middle) - Math.abs(b.seed - middle))[0]
     }
-    field.push({ name: attendance.subFor === target.name && attendance.subName ? attendance.subName : subNameFor(target.name, ranked, nextEventId, matchValues), seed: target.seed })
-    field.sort((a, b) => b.seed - a.seed)
+    const sub = { name: attendance.subFor === target.name && attendance.subName ? attendance.subName : subNameFor(target.name, ranked, nextEventId, matchValues), seed: target.seed }
+    if (moved) {
+      // With hand moves the order is fixed: the sub stands in at the missing player's spot.
+      field.splice(ranked.filter((p) => p === target || status(p.name) === "playing").indexOf(target), 0, sub)
+    } else {
+      field.push(sub)
+      field.sort((a, b) => b.seed - a.seed)
+    }
   }
 
   const assignments = []
