@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react"
 import { getAdvertisements } from "../data/googleSheets"
 import { trackAd } from "../data/liveScoring"
+import { extraCreatives } from "../data/adCreatives"
+
+// How long each ad stays up before the next one slides up into place.
+const SLIDE_MS = 7000
 
 // "10/25/26" or "10/25/2026" -> Date (blank -> null).
 function parseDay(text) {
@@ -9,19 +13,47 @@ function parseDay(text) {
   return new Date(parts[2] < 100 ? 2000 + parts[2] : parts[2], parts[0] - 1, parts[1])
 }
 
+// One slide per picture: every running sponsor's own ad, plus any extra
+// designs listed for it in adCreatives.js.
+function buildSlides(running) {
+  const slides = []
+  running.forEach((ad) => {
+    slides.push({ ad, desktop: ad["Store Picture Desktop"], mobile: ad["Store Picture Mobile"] })
+    extraCreatives(ad["Advertisement Title"]).forEach((c) => slides.push({ ad, ...c }))
+  })
+  return slides.filter((s) => s.desktop || s.mobile)
+}
+
+function AdSlide({ slide, field, className, onClick }) {
+  const title = slide.ad["Advertisement Title"] || "Shop our store"
+  return (
+    <a
+      href={slide.ad["Store Link"]}
+      target="_blank"
+      rel="noopener noreferrer sponsored"
+      className={`ad-banner-link ad-slide${className ? ` ${className}` : ""}`}
+      onClick={onClick}
+      tabIndex={className === "is-leaving" ? -1 : undefined}
+      aria-hidden={className === "is-leaving" ? "true" : undefined}
+    >
+      <img src={slide[field] || slide.desktop || slide.mobile} alt={title} className="ad-banner-image" />
+    </a>
+  )
+}
+
 function AdvertisementBanner() {
 
-  const [ad, setAd] = useState(null)
+  const [slides, setSlides] = useState([])
+  const [step, setStep] = useState(0)
+  const [paused, setPaused] = useState(false)
   const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
 
     getAdvertisements().then((rows) => {
 
-      // Lowest Advertisement # wins if more than one row ever gets
-      // added - keeps which ad shows predictable rather than "whatever
-      // order the sheet happens to be in."
-      // Ads running today (Start / End Date optional, set in Admin).
+      // Ads running today (Start / End Date optional, set in Admin),
+      // lowest Advertisement # first so the order is predictable.
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       const running = rows
@@ -33,97 +65,90 @@ function AdvertisementBanner() {
         })
         .sort((a, b) => Number(a["Advertisement #"]) - Number(b["Advertisement #"]))
 
-      // More than one running: each visit shows one of them.
-      let pick = 0
-      if (running.length > 1) {
-        try {
-          const saved = sessionStorage.getItem("ht-ad-pick")
-          pick = saved !== null && Number.isInteger(Number(saved))
-            ? Number(saved) % running.length
-            : Math.floor(Math.random() * running.length)
-          sessionStorage.setItem("ht-ad-pick", String(pick))
-        } catch {
-          pick = Math.floor(Math.random() * running.length)
-        }
-      }
-      setAd(running[pick] || null)
+      const list = buildSlides(running)
 
-    })
+      // Warm the cache so each slide is ready before it slides in.
+      list.forEach((s) => [s.desktop, s.mobile].forEach((src) => {
+        if (src) new Image().src = src
+      }))
+
+      // Start somewhere different each visit so every design gets seen.
+      setStep(list.length > 1 ? Math.floor(Math.random() * list.length) : 0)
+      setSlides(list)
+
+    }).catch(() => {})
 
   }, [])
 
-  // Anonymous view count (once per visit) for the sponsor stats.
+  const count = slides.length
+  const rotating = count > 1 && !paused && !dismissed
+
   useEffect(() => {
-    if (ad) trackAd("view", ad)
-  }, [ad])
+    if (!rotating) return
+    const timer = setInterval(() => {
+      if (!document.hidden) setStep((s) => s + 1)
+    }, SLIDE_MS)
+    return () => clearInterval(timer)
+  }, [rotating])
 
-  if (!ad || dismissed) return null
+  const current = count ? slides[step % count] : null
+  const previous = count > 1 && step > 0 ? slides[(step - 1) % count] : null
+  const moved = previous && previous !== current
 
-  const title = ad["Advertisement Title"] || "Shop our store"
+  // Anonymous view count (once per ad per visit) for the sponsor stats.
+  useEffect(() => {
+    if (current && !dismissed) trackAd("view", current.ad)
+  }, [current, dismissed])
+
+  if (!current || dismissed) return null
+
+  const hover = {
+    onMouseEnter: () => setPaused(true),
+    onMouseLeave: () => setPaused(false),
+    onFocus: () => setPaused(true),
+    onBlur: () => setPaused(false),
+  }
+
+  const renderSlides = (field) => (
+    <>
+      {moved && <AdSlide key={`out-${step}`} slide={previous} field={field} className="is-leaving" />}
+      <AdSlide
+        key={`in-${step}`}
+        slide={current}
+        field={field}
+        className={moved ? "is-entering" : ""}
+        onClick={() => trackAd("click", current.ad)}
+      />
+    </>
+  )
+
+  const close = (
+    <button
+      type="button"
+      className="ad-banner-close"
+      onClick={() => setDismissed(true)}
+      aria-label="Dismiss advertisement"
+    >
+      ×
+    </button>
+  )
 
   return (
 
     <>
 
-      {/* Desktop: a full-height skyscraper pinned to the right edge,
-          top to bottom. */}
-      <div className="ad-banner ad-banner-desktop">
-
-        <button
-          type="button"
-          className="ad-banner-close"
-          onClick={() => setDismissed(true)}
-          aria-label="Dismiss advertisement"
-        >
-          ×
-        </button>
-
+      {/* Desktop: a tall skyscraper pinned to the right edge. */}
+      <div className="ad-banner ad-banner-desktop" {...hover}>
+        {close}
         <span className="ad-banner-tag">Sponsor</span>
-
-        <a
-          href={ad["Store Link"]}
-          target="_blank"
-          rel="noopener noreferrer sponsored"
-          className="ad-banner-link"
-          onClick={() => trackAd("click", ad)}
-        >
-          <img
-            src={ad["Store Picture Desktop"]}
-            alt={title}
-            className="ad-banner-image"
-          />
-        </a>
-
+        {renderSlides("desktop")}
       </div>
 
-      {/* Mobile: a full-width bar pinned to the bottom, left to right. */}
-      <div className="ad-banner ad-banner-mobile">
-
+      {/* Mobile: a full-width bar pinned to the bottom. */}
+      <div className="ad-banner ad-banner-mobile" {...hover}>
         <span className="ad-banner-tag">Sponsor</span>
-
-        <a
-          href={ad["Store Link"]}
-          target="_blank"
-          rel="noopener noreferrer sponsored"
-          className="ad-banner-link"
-          onClick={() => trackAd("click", ad)}
-        >
-          <img
-            src={ad["Store Picture Mobile"]}
-            alt={title}
-            className="ad-banner-image"
-          />
-        </a>
-
-        <button
-          type="button"
-          className="ad-banner-close"
-          onClick={() => setDismissed(true)}
-          aria-label="Dismiss advertisement"
-        >
-          ×
-        </button>
-
+        {renderSlides("mobile")}
+        {close}
       </div>
 
     </>
