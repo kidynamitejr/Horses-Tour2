@@ -2405,3 +2405,49 @@ html[data-theme="dark"] .awa-points {
     grid-template-columns: 1fr;
   }
 }
+
+/* Sponsors: ready-made designs that can be added as their own ad */
+.adx-designs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.adx-designs h4 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.adx-designs .adx-muted {
+  margin: 0;
+  font-size: 12px;
+}
+
+.adx-design {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 700 12.5px var(--font-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.adx-design img {
+  width: 100%;
+  border-radius: 6px;
+}
+
+.adx-design:disabled {
+  opacity: .6;
+  cursor: default;
+}
