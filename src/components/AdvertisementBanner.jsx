@@ -4,7 +4,7 @@ import { trackAd } from "../data/liveScoring"
 import { extraCreatives } from "../data/adCreatives"
 
 // How long each ad stays up before the next one slides up into place.
-const SLIDE_MS = 7000
+const SLIDE_MS = 6000
 
 // "10/25/26" or "10/25/2026" -> Date (blank -> null).
 function parseDay(text) {
@@ -17,9 +17,13 @@ function parseDay(text) {
 // designs listed for it in adCreatives.js.
 function buildSlides(running) {
   const slides = []
-  running.forEach((ad) => {
+  const extras = running.map((ad) => extraCreatives(ad))
+  // Only one sponsor running (Jon's Stuff today) and its name didn't
+  // match: the extra designs are still theirs.
+  if (running.length === 1 && !extras[0].length) extras[0] = extraCreatives(null)
+  running.forEach((ad, i) => {
     slides.push({ ad, desktop: ad["Store Picture Desktop"], mobile: ad["Store Picture Mobile"] })
-    extraCreatives(ad["Advertisement Title"]).forEach((c) => slides.push({ ad, ...c }))
+    extras[i].forEach((c) => slides.push({ ad, ...c }))
   })
   return slides.filter((s) => s.desktop || s.mobile)
 }
@@ -103,10 +107,9 @@ function AdvertisementBanner() {
   if (!current || dismissed) return null
 
   const hover = {
-    onMouseEnter: () => setPaused(true),
-    onMouseLeave: () => setPaused(false),
-    onFocus: () => setPaused(true),
-    onBlur: () => setPaused(false),
+    // Mouse only: a tap on a phone would otherwise "hover" forever.
+    onPointerEnter: (e) => { if (e.pointerType === "mouse") setPaused(true) },
+    onPointerLeave: () => setPaused(false),
   }
 
   const renderSlides = (field) => (
