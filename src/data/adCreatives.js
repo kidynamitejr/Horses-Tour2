@@ -9,9 +9,11 @@
 // Paths are inside public/.
 
 export const AD_CREATIVES = {
-  // jonsstuff: [
-  //   { desktop: "images/ads/jons-stuff-2-tall.png", mobile: "images/ads/jons-stuff-2-wide.png" },
-  // ],
+  jonsstuff: [
+    { desktop: "images/ads/jons-stuff-fresh-pulls-tall.png", mobile: "images/ads/jons-stuff-fresh-pulls-wide.png" },
+    { desktop: "images/ads/jons-stuff-graded-slabs-tall.png", mobile: "images/ads/jons-stuff-graded-slabs-wide.png" },
+    { desktop: "images/ads/jons-stuff-every-sport-tall.png", mobile: "images/ads/jons-stuff-every-sport-wide.png" },
+  ],
 }
 
 export function adKey(title) {
@@ -20,7 +22,13 @@ export function adKey(title) {
 
 export function extraCreatives(title) {
   const base = import.meta.env.BASE_URL
-  return (AD_CREATIVES[adKey(title)] || []).map((c) => ({
+  const key = adKey(title)
+  // Exact match first, otherwise a name that contains the key
+  // (e.g. "Jon's Stuff Sports Cards").
+  const match = AD_CREATIVES[key]
+    || Object.entries(AD_CREATIVES).find(([k]) => key && key.includes(k))?.[1]
+    || []
+  return match.map((c) => ({
     desktop: base + c.desktop,
     mobile: base + c.mobile,
   }))
