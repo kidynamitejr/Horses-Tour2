@@ -13,7 +13,8 @@ import "./sponsor.css"
 import "./admin.css"
 import "./alerts.css"
 import "./mobile.css"
-import { BrowserRouter, Navigate, Routes, Route, useLocation } from "react-router-dom"
+import "./transitions.css"
+import { BrowserRouter, Navigate, Routes, Route, useLocation, useNavigationType } from "react-router-dom"
 
 import Header from "./components/Header"
 import Hero from "./components/Hero"
@@ -55,6 +56,8 @@ function Layout() {
   const location = useLocation()
   const isHome = location.pathname === "/"
   const pageHero = getPageHero(location.pathname)
+  // Going back fades in from the left, going forward slides in from the right.
+  const direction = useNavigationType() === "POP" ? "back" : "forward"
 
   return (
     <div className={`website${isHome ? " is-home" : ""}`}>
@@ -64,6 +67,8 @@ function Layout() {
 
       <AlertsPrompt />
 
+      {/* Keyed by page so each new page plays its entrance animation. */}
+      <div key={location.pathname} className={`page-transition page-transition-${direction}`}>
       {!isHome && pageHero && <Hero {...pageHero} />}
 
       <main className={isHome ? "main main-home" : pageHero ? "main" : "main main-no-hero"}>
@@ -114,6 +119,7 @@ function Layout() {
           />
         </Routes>
       </main>
+      </div>
 
       <Footer />
 
