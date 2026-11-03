@@ -13,6 +13,7 @@ import "./sponsor.css"
 import "./admin.css"
 import "./alerts.css"
 import "./mobile.css"
+import "./magazine.css"
 import { BrowserRouter, Navigate, Routes, Route, useLocation } from "react-router-dom"
 
 import Header from "./components/Header"
@@ -33,6 +34,7 @@ import NewsPage from "./pages/NewsPage"
 import PastMatchesPage from "./pages/PastMatchesPage"
 import RulesPage from "./pages/RulesPage"
 import PlayerProfile from "./pages/PlayerProfile"
+import PlayerMagazine from "./pages/PlayerMagazine"
 import ArticlePage from "./pages/ArticlePage"
 import PointsCalculatorPage from "./pages/PointsCalculatorPage"
 import ComparePlayersPage from "./pages/ComparePlayersPage"
@@ -107,6 +109,9 @@ function Layout() {
           <Route path="/auto-matchmaking" element={<Navigate to="/admin" replace />} />
 
           <Route path="/sponsor-stats" element={<Navigate to="/admin" replace />} />
+
+          {/* Preview only: magazine-style profile */}
+          <Route path="/player-profile-preview/:name" element={<PlayerMagazine />} />
 
           <Route
             path="/player-profile/:name"
