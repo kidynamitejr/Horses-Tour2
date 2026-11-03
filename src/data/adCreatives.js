@@ -20,15 +20,18 @@ export function adKey(title) {
   return String(title || "").toLowerCase().replace(/[^a-z0-9]/g, "")
 }
 
-export function extraCreatives(title) {
+// Matches on the sponsor name or its store link, so it still works if the
+// name in the sheet is written differently (e.g. "Jons Sports Cards").
+// Pass null to get the first sponsor's designs regardless of name.
+export function extraCreatives(ad) {
   const base = import.meta.env.BASE_URL
-  const key = adKey(title)
-  // Exact match first, otherwise a name that contains the key
-  // (e.g. "Jon's Stuff Sports Cards").
-  const match = AD_CREATIVES[key]
-    || Object.entries(AD_CREATIVES).find(([k]) => key && key.includes(k))?.[1]
-    || []
-  return match.map((c) => ({
+  if (!ad) return Object.values(AD_CREATIVES)[0].map((c) => ({ desktop: base + c.desktop, mobile: base + c.mobile }))
+  const name = adKey(ad["Advertisement Title"])
+  const link = adKey(ad["Store Link"])
+  const words = (k) => [k, k.replace(/stuff$/, "")]
+  const found = Object.entries(AD_CREATIVES).find(([k]) =>
+    words(k).some((w) => w && (name.includes(w) || link.includes(w))))
+  return (found ? found[1] : []).map((c) => ({
     desktop: base + c.desktop,
     mobile: base + c.mobile,
   }))
