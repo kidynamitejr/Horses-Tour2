@@ -2292,3 +2292,36 @@ input[type="number"] {
   text-transform: uppercase;
   pointer-events: none;
 }
+
+/* Rotating ads: each new ad slides up from below while the old one
+   slides off the top. */
+.ad-banner .ad-slide {
+  position: absolute;
+  inset: 0;
+}
+
+.ad-banner .ad-slide.is-entering {
+  animation: ad-slide-in .7s cubic-bezier(.22, .8, .24, 1) both;
+}
+
+.ad-banner .ad-slide.is-leaving {
+  animation: ad-slide-out .7s cubic-bezier(.22, .8, .24, 1) both;
+  pointer-events: none;
+}
+
+@keyframes ad-slide-in {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes ad-slide-out {
+  from { transform: translateY(0); }
+  to { transform: translateY(-100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ad-banner .ad-slide.is-entering,
+  .ad-banner .ad-slide.is-leaving {
+    animation-duration: 1ms;
+  }
+}
