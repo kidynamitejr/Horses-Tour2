@@ -1,0 +1,46 @@
+/* Smooth page-to-page transitions so the site feels like an app.
+   Each page fades in and glides a little from the direction you came. */
+/* "backwards" fill: once finished the transform is dropped, so pop-ups and
+   sticky bits inside the page position against the screen like normal. */
+.page-transition {
+  animation: page-enter-forward 360ms cubic-bezier(.22, .8, .3, 1) backwards;
+  /* Keep the slide from flashing a sideways scrollbar on phones. */
+  overflow-x: clip;
+}
+
+.page-transition-back {
+  animation-name: page-enter-back;
+}
+
+@keyframes page-enter-forward {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes page-enter-back {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-transition {
+    animation: page-fade 150ms ease backwards;
+  }
+
+  @keyframes page-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}
