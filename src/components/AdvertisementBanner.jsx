@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react"
 import { getAdvertisements } from "../data/googleSheets"
 import { trackAd } from "../data/liveScoring"
-import { extraCreatives } from "../data/adCreatives"
 
 // How long each ad stays up before the next one slides up into place.
 const SLIDE_MS = 6000
@@ -13,19 +12,11 @@ function parseDay(text) {
   return new Date(parts[2] < 100 ? 2000 + parts[2] : parts[2], parts[0] - 1, parts[1])
 }
 
-// One slide per picture: every running sponsor's own ad, plus any extra
-// designs listed for it in adCreatives.js.
+// One slide per running ad (each row in Admin > Sponsors).
 function buildSlides(running) {
-  const slides = []
-  const extras = running.map((ad) => extraCreatives(ad))
-  // Only one sponsor running (Jon's Stuff today) and its name didn't
-  // match: the extra designs are still theirs.
-  if (running.length === 1 && !extras[0].length) extras[0] = extraCreatives(null)
-  running.forEach((ad, i) => {
-    slides.push({ ad, desktop: ad["Store Picture Desktop"], mobile: ad["Store Picture Mobile"] })
-    extras[i].forEach((c) => slides.push({ ad, ...c }))
-  })
-  return slides.filter((s) => s.desktop || s.mobile)
+  return running
+    .map((ad) => ({ ad, desktop: ad["Store Picture Desktop"], mobile: ad["Store Picture Mobile"] }))
+    .filter((s) => s.desktop || s.mobile)
 }
 
 function AdSlide({ slide, field, className, onClick }) {
